@@ -26,22 +26,24 @@ object DatabaseModule {
             context,
             HealthTrackerDatabase::class.java,
             "health_tracker_db"
-        ).build().also { db ->
-            // 在数据库创建后初始化默认食品数据
-            runBlocking {
-                try {
-                    val foodDao = db.foodDao()
-                    // 使用同步方式检查，Flow 不能直接用于条件判断
-                    val foodCount = foodDao.getFoodCount()
-                    if (foodCount == 0) {
-                        foodDao.insertFoods(DefaultFoods.foods)
+        )
+            .addMigrations(HealthTrackerDatabase.MIGRATION_1_2)
+            .build().also { db ->
+                // 在数据库创建后初始化默认食品数据
+                runBlocking {
+                    try {
+                        val foodDao = db.foodDao()
+                        // 使用同步方式检查，Flow 不能直接用于条件判断
+                        val foodCount = foodDao.getFoodCount()
+                        if (foodCount == 0) {
+                            foodDao.insertFoods(DefaultFoods.foods)
+                        }
+                    } catch (e: Exception) {
+                        // 忽略初始化错误，不影响应用启动
+                        e.printStackTrace()
                     }
-                } catch (e: Exception) {
-                    // 忽略初始化错误，不影响应用启动
-                    e.printStackTrace()
                 }
             }
-        }
     }
 
     @Provides
