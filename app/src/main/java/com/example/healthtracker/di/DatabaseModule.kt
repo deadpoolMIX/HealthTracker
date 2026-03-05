@@ -10,10 +10,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import javax.inject.Singleton
 
 @Module
@@ -31,10 +28,17 @@ object DatabaseModule {
             "health_tracker_db"
         ).build().also { db ->
             // 在数据库创建后初始化默认食品数据
-            CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-                val foodDao = db.foodDao()
-                if (foodDao.getAllFoods().toString().isEmpty()) {
-                    foodDao.insertFoods(DefaultFoods.foods)
+            runBlocking {
+                try {
+                    val foodDao = db.foodDao()
+                    // 使用同步方式检查，Flow 不能直接用于条件判断
+                    val foodCount = foodDao.getFoodCount()
+                    if (foodCount == 0) {
+                        foodDao.insertFoods(DefaultFoods.foods)
+                    }
+                } catch (e: Exception) {
+                    // 忽略初始化错误，不影响应用启动
+                    e.printStackTrace()
                 }
             }
         }

@@ -9,6 +9,9 @@ interface FoodDao {
     @Query("SELECT * FROM foods WHERE id = :id")
     suspend fun getFoodById(id: Long): FoodEntity?
 
+    @Query("SELECT COUNT(*) FROM foods")
+    suspend fun getFoodCount(): Int
+
     @Query("SELECT * FROM foods WHERE name LIKE '%' || :keyword || '%' ORDER BY name")
     fun searchFoods(keyword: String): Flow<List<FoodEntity>>
 
