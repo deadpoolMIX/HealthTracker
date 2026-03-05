@@ -36,7 +36,6 @@ import com.example.healthtracker.util.DateTimeUtils
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
-    onNavigateToReports: () -> Unit,
     onNavigateToAddIntake: () -> Unit,
     onNavigateToAddBodyData: () -> Unit,
     onNavigateToAddSleep: () -> Unit,
@@ -93,26 +92,6 @@ fun HomeScreen(
                     onNavigateToAddSleep()
                 }
             )
-        },
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = true,
-                    onClick = { },
-                    icon = {
-                        Icon(Icons.Filled.Home, contentDescription = "首页")
-                    },
-                    label = { Text("首页") }
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = onNavigateToReports,
-                    icon = {
-                        Icon(Icons.Outlined.BarChart, contentDescription = "报表")
-                    },
-                    label = { Text("报表") }
-                )
-            }
         }
     ) { paddingValues ->
         LazyColumn(

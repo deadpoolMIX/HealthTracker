@@ -1,6 +1,9 @@
 package com.example.healthtracker.ui.navigation
 
 sealed class Screen(val route: String) {
+    // 主容器（包含首页和报表）
+    object Main : Screen("main")
+
     object Home : Screen("home")
     object Reports : Screen("reports")
 

@@ -2,7 +2,6 @@ package com.example.healthtracker.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,7 +16,6 @@ import com.example.healthtracker.ui.screens.reports.ReportsViewModel
 @Composable
 fun ReportsScreen(
     viewModel: ReportsViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit,
     onNavigateToDataExport: () -> Unit
 ) {
     var selectedPeriod by remember { mutableIntStateOf(0) }
@@ -27,14 +25,9 @@ fun ReportsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("数据报表", fontWeight = FontWeight.Medium) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
                 actions = {
                     IconButton(onClick = onNavigateToDataExport) {
-                        Icon(Icons.Default.FileDownload, contentDescription = "导出数据")
+                        Icon(Icons.Default.Download, contentDescription = "导出数据")
                     }
                 }
             )

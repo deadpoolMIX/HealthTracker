@@ -5,8 +5,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.healthtracker.ui.screens.home.HomeScreen
-import com.example.healthtracker.ui.screens.ReportsScreen
 import com.example.healthtracker.ui.screens.AddIntakeScreen
 import com.example.healthtracker.ui.screens.AddBodyDataScreen
 import com.example.healthtracker.ui.screens.AddSleepScreen
@@ -20,27 +18,20 @@ import com.example.healthtracker.ui.screens.DataImportScreen
 @Composable
 fun HealthTrackerNavGraph(
     navController: NavHostController = rememberNavController(),
-    startDestination: String = Screen.Home.route
+    startDestination: String = Screen.Main.route
 ) {
     NavHost(
         navController = navController,
         startDestination = startDestination
     ) {
-        // 主页面
-        composable(Screen.Home.route) {
-            HomeScreen(
-                onNavigateToReports = { navController.navigate(Screen.Reports.route) },
+        // 主容器（包含首页和报表）
+        composable(Screen.Main.route) {
+            MainScreen(
                 onNavigateToAddIntake = { navController.navigate(Screen.AddIntake.route) },
                 onNavigateToAddBodyData = { navController.navigate(Screen.AddBodyData.route) },
                 onNavigateToAddSleep = { navController.navigate(Screen.AddSleep.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                onNavigateToUserProfile = { navController.navigate(Screen.UserProfile.route) }
-            )
-        }
-
-        composable(Screen.Reports.route) {
-            ReportsScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateToUserProfile = { navController.navigate(Screen.UserProfile.route) },
                 onNavigateToDataExport = { navController.navigate(Screen.DataExport.route) }
             )
         }
