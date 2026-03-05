@@ -1,0 +1,21 @@
+# IDE 配置 (可重新生成)
+.idea/
+*.iml
+
+# Gradle 缓存 (可重新生成)
+.gradle/
+
+# 本地配置 (包含本地路径)
+local.properties
+
+# 编译输出
+build/
+/app/build/
+captures/
+
+# macOS
+.DS_Store
+
+# Native build
+.externalNativeBuild
+.cxx
