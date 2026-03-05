@@ -5,7 +5,17 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.healthtracker.ui.screens.*
+import com.example.healthtracker.ui.screens.home.HomeScreen
+import com.example.healthtracker.ui.screens.ReportsScreen
+import com.example.healthtracker.ui.screens.AddIntakeScreen
+import com.example.healthtracker.ui.screens.AddBodyDataScreen
+import com.example.healthtracker.ui.screens.AddSleepScreen
+import com.example.healthtracker.ui.screens.settings.SettingsScreen
+import com.example.healthtracker.ui.screens.UserProfileScreen
+import com.example.healthtracker.ui.screens.MealPlansScreen
+import com.example.healthtracker.ui.screens.FoodManagerScreen
+import com.example.healthtracker.ui.screens.DataExportScreen
+import com.example.healthtracker.ui.screens.DataImportScreen
 
 @Composable
 fun HealthTrackerNavGraph(

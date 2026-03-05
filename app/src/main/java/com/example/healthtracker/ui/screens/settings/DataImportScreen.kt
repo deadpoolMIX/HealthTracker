@@ -3,6 +3,7 @@ package com.example.healthtracker.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,7 +37,7 @@ fun DataImportScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Icon(
-                imageVector = Icons.Default.FileUpload,
+                imageVector = Icons.Default.Upload,
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
                 tint = MaterialTheme.colorScheme.primary

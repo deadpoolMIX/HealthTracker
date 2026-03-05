@@ -1,5 +1,6 @@
-package com.example.healthtracker.ui.screens
+package com.example.healthtracker.ui.screens.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -40,19 +41,19 @@ fun SettingsScreen(
                 subtitle = "设置身高、体重、活动水平等基本信息",
                 onClick = onNavigateToUserProfile
             )
-            Divider()
+            HorizontalDivider()
             SettingsItem(
                 title = "饮食计划",
                 subtitle = "管理自定义饮食计划",
                 onClick = onNavigateToMealPlans
             )
-            Divider()
+            HorizontalDivider()
             SettingsItem(
                 title = "食物管理",
                 subtitle = "添加或编辑自定义食物",
                 onClick = onNavigateToFoodManager
             )
-            Divider()
+            HorizontalDivider()
             SettingsItem(
                 title = "数据备份与恢复",
                 subtitle = "导出或导入应用数据",
@@ -73,15 +74,6 @@ private fun SettingsItem(
         supportingContent = { Text(subtitle) },
         modifier = Modifier
             .fillMaxWidth()
-            .then(
-                Modifier.clickable(onClick = onClick)
-            )
-    )
-}
-
-// 添加 clickable modifier
-private fun Modifier.clickable(onClick: () -> Unit): Modifier {
-    return this.then(
-        androidx.compose.foundation.clickable(onClick = onClick)
+            .clickable(onClick = onClick)
     )
 }

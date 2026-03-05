@@ -3,6 +3,8 @@ package com.example.healthtracker.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -55,7 +57,7 @@ fun DataExportScreen(
                         onClick = { },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Default.FileDownload, contentDescription = null)
+                        Icon(Icons.Default.Download, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("导出备份文件")
                     }
@@ -86,7 +88,7 @@ fun DataExportScreen(
                         onClick = onNavigateToDataImport,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Default.FileUpload, contentDescription = null)
+                        Icon(Icons.Default.Upload, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("导入备份文件")
                     }

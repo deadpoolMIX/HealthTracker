@@ -1,7 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.hilt)
 }
 
@@ -29,8 +30,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
     }
     buildFeatures {
         compose = true
@@ -47,6 +51,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
 
+    // Material Icons Extended
+    implementation("androidx.compose.material:material-icons-extended")
+
     // Lifecycle ViewModel
     implementation(libs.lifecycle.viewmodel.compose)
 
@@ -56,11 +63,11 @@ dependencies {
     // Room
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
-    ksp(libs.room.compiler)
+    kapt(libs.room.compiler)
 
     // Hilt
     implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
+    kapt(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 
     // Vico Charts
