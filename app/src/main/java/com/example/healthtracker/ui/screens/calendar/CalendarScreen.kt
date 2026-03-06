@@ -1,11 +1,14 @@
 package com.example.healthtracker.ui.screens.calendar
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,6 +43,10 @@ fun CalendarScreen(
     val maxCalories = viewModel.getMaxCalories()
     var showMonthYearPicker by remember { mutableStateOf(false) }
 
+    // 用于控制滑动方向和动画
+    var slideDirection by remember { mutableStateOf(0) } // -1 向左, 1 向右
+    var canSwipe by remember { mutableStateOf(true) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -58,15 +65,29 @@ fun CalendarScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .pointerInput(Unit) {
+                .pointerInput(canSwipe) {
                     // 左右滑动切换月份
-                    detectHorizontalDragGestures { change, dragAmount ->
-                        if (dragAmount > 100) {
-                            // 向右滑动 - 上个月
-                            viewModel.nextMonth()
-                        } else if (dragAmount < -100) {
-                            // 向左滑动 - 下个月
-                            viewModel.previousMonth()
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            // 滑动结束后重新启用滑动
+                            canSwipe = true
+                        }
+                    ) { change, dragAmount ->
+                        if (canSwipe) {
+                            when {
+                                dragAmount > 80 -> {
+                                    // 向右滑动 - 下个月（内容从右边进入）
+                                    slideDirection = 1
+                                    viewModel.nextMonth()
+                                    canSwipe = false
+                                }
+                                dragAmount < -80 -> {
+                                    // 向左滑动 - 上个月（内容从左边进入）
+                                    slideDirection = -1
+                                    viewModel.previousMonth()
+                                    canSwipe = false
+                                }
+                            }
                         }
                     }
                 }
@@ -74,8 +95,14 @@ fun CalendarScreen(
             // 月份选择器 - 点击可弹出选择窗口
             MonthSelector(
                 monthName = viewModel.getMonthName(),
-                onPrevious = { viewModel.previousMonth() },
-                onNext = { viewModel.nextMonth() },
+                onPrevious = {
+                    slideDirection = -1
+                    viewModel.previousMonth()
+                },
+                onNext = {
+                    slideDirection = 1
+                    viewModel.nextMonth()
+                },
                 onTitleClick = { showMonthYearPicker = true }
             )
 
@@ -84,14 +111,30 @@ fun CalendarScreen(
             // 星期标题
             WeekDayHeader()
 
-            // 日历热力图
-            CalendarHeatmap(
-                selectedMonth = uiState.selectedMonth,
-                selectedDate = uiState.selectedDate,
-                dailyCalories = uiState.dailyCalories,
-                maxCalories = maxCalories,
-                onDateSelected = { viewModel.selectDate(it) }
-            )
+            // 日历热力图 - 带动画
+            AnimatedContent(
+                targetState = uiState.selectedMonth,
+                transitionSpec = {
+                    if (slideDirection > 0) {
+                        // 向右滑动，新内容从右边进入
+                        slideInHorizontally { width -> width } togetherWith
+                                slideOutHorizontally { width -> -width }
+                    } else {
+                        // 向左滑动，新内容从左边进入
+                        slideInHorizontally { width -> -width } togetherWith
+                                slideOutHorizontally { width -> width }
+                    }.using(SizeTransform(clip = false))
+                },
+                label = "calendar_animation"
+            ) { targetMonth ->
+                CalendarHeatmap(
+                    selectedMonth = targetMonth,
+                    selectedDate = uiState.selectedDate,
+                    dailyCalories = uiState.dailyCalories,
+                    maxCalories = maxCalories,
+                    onDateSelected = { viewModel.selectDate(it) }
+                )
+            }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
 
