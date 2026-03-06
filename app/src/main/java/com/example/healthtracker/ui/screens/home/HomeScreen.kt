@@ -162,13 +162,8 @@ fun HomeScreen(
             }
         }
     ) { paddingValues ->
-        // 在Composable上下文中预先定义餐次颜色
-        val mealColors = listOf(
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),  // 早餐
-            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f), // 午餐
-            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),  // 晚餐
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)      // 加餐
-        )
+        // 餐次分组颜色 - 统一使用主题色，比背景浅一点
+        val mealCardColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
 
         LazyColumn(
             modifier = Modifier
@@ -232,7 +227,7 @@ fun HomeScreen(
                 // 按餐次分组显示
                 val mealTypes = listOf(0, 1, 2, 3) // 早餐、午餐、晚餐、加餐
 
-                mealTypes.forEachIndexed { index, mealType ->
+                mealTypes.forEach { mealType ->
                     val recordsForMeal = uiState.todayIntake.filter { it.mealType == mealType }
                     if (recordsForMeal.isNotEmpty()) {
                         // 餐次分组卡片
@@ -240,7 +235,7 @@ fun HomeScreen(
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = mealColors[index]
+                                    containerColor = mealCardColor
                                 ),
                                 shape = RoundedCornerShape(12.dp)
                             ) {

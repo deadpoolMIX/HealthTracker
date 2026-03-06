@@ -2,11 +2,14 @@ package com.example.healthtracker.ui.screens.calendar
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -16,10 +19,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.healthtracker.data.local.entity.IntakeRecordEntity
 import com.example.healthtracker.util.DateTimeUtils
@@ -33,6 +38,7 @@ fun CalendarScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val maxCalories = viewModel.getMaxCalories()
+    var showMonthYearPicker by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -46,16 +52,31 @@ fun CalendarScreen(
             )
         }
     ) { paddingValues ->
+        // 整个页面使用 verticalScroll，一起滑动
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .pointerInput(Unit) {
+                    // 左右滑动切换月份
+                    detectHorizontalDragGestures { change, dragAmount ->
+                        if (dragAmount > 100) {
+                            // 向右滑动 - 上个月
+                            viewModel.nextMonth()
+                        } else if (dragAmount < -100) {
+                            // 向左滑动 - 下个月
+                            viewModel.previousMonth()
+                        }
+                    }
+                }
         ) {
-            // 月份选择器
+            // 月份选择器 - 点击可弹出选择窗口
             MonthSelector(
                 monthName = viewModel.getMonthName(),
                 onPrevious = { viewModel.previousMonth() },
-                onNext = { viewModel.nextMonth() }
+                onNext = { viewModel.nextMonth() },
+                onTitleClick = { showMonthYearPicker = true }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -72,14 +93,29 @@ fun CalendarScreen(
                 onDateSelected = { viewModel.selectDate(it) }
             )
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
 
             // 选中日期的摄入记录
             SelectedDayRecords(
                 selectedDate = uiState.selectedDate,
                 records = uiState.selectedDayRecords
             )
+
+            // 底部间距
+            Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+
+    // 年月选择对话框
+    if (showMonthYearPicker) {
+        MonthYearPickerDialog(
+            currentMonth = uiState.selectedMonth,
+            onDismiss = { showMonthYearPicker = false },
+            onConfirm = { newMonth ->
+                viewModel.setMonth(newMonth)
+                showMonthYearPicker = false
+            }
+        )
     }
 }
 
@@ -87,7 +123,8 @@ fun CalendarScreen(
 private fun MonthSelector(
     monthName: String,
     onPrevious: () -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
+    onTitleClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -99,10 +136,12 @@ private fun MonthSelector(
         IconButton(onClick = onPrevious) {
             Icon(Icons.Default.ChevronLeft, contentDescription = "上个月")
         }
+        // 点击标题弹出年月选择
         Text(
             text = monthName,
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.clickable(onClick = onTitleClick)
         )
         IconButton(onClick = onNext) {
             Icon(Icons.Default.ChevronRight, contentDescription = "下个月")
@@ -305,11 +344,12 @@ private fun SelectedDayRecords(
                 )
             }
         } else {
-            LazyColumn(
+            // 使用 Column 替代 LazyColumn，因为外层已有滚动
+            Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(records) { record ->
+                records.forEach { record ->
                     IntakeRecordItem(record = record)
                 }
             }
@@ -372,6 +412,91 @@ private fun IntakeRecordItem(record: IntakeRecordEntity) {
             )
         }
     }
+}
+
+/**
+ * 年月选择对话框
+ */
+@Composable
+private fun MonthYearPickerDialog(
+    currentMonth: Long,
+    onDismiss: () -> Unit,
+    onConfirm: (Long) -> Unit
+) {
+    val calendar = Calendar.getInstance()
+    calendar.timeInMillis = currentMonth
+
+    var selectedYear by remember { mutableIntStateOf(calendar.get(Calendar.YEAR)) }
+    var selectedMonth by remember { mutableIntStateOf(calendar.get(Calendar.MONTH) + 1) }
+
+    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+    val years = (currentYear - 10..currentYear + 10).toList()
+    val months = (1..12).toList()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("选择年月") },
+        text = {
+            Column {
+                // 年份选择
+                Text(
+                    text = "年份",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    years.take(5).forEach { year ->
+                        FilterChip(
+                            selected = selectedYear == year,
+                            onClick = { selectedYear = year },
+                            label = { Text("$year") }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 月份选择
+                Text(
+                    text = "月份",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    months.forEach { month ->
+                        FilterChip(
+                            selected = selectedMonth == month,
+                            onClick = { selectedMonth = month },
+                            label = { Text("${month}月") }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    calendar.set(selectedYear, selectedMonth - 1, 1)
+                    onConfirm(calendar.timeInMillis)
+                }
+            ) {
+                Text("确定")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
 }
 
 private fun getMealTypeName(mealType: Int): String {

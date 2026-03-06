@@ -111,4 +111,9 @@ class CalendarViewModel @Inject constructor(
     fun getMaxCalories(): Double {
         return _uiState.value.dailyCalories.values.maxOrNull() ?: 2000.0
     }
+
+    // 设置月份（用于年月选择对话框）
+    fun setMonth(month: Long) {
+        selectMonth(month)
+    }
 }
