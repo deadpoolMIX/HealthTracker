@@ -71,4 +71,20 @@ interface IntakeRecordDao {
     // 获取最近N条摄入记录（用于最近摄入的食物）
     @Query("SELECT * FROM intake_records ORDER BY createdAt DESC LIMIT :limit")
     fun getRecentRecords(limit: Int = 50): Flow<List<IntakeRecordEntity>>
+
+    // 获取每个食物名称的最近记录时间（返回食物名称和最近记录时间）
+    @Query("""
+        SELECT foodName, MAX(createdAt) as lastRecordTime
+        FROM intake_records
+        GROUP BY foodName
+    """)
+    suspend fun getFoodLastRecordTimes(): List<FoodLastRecord>
 }
+
+/**
+ * 食物最近记录时间的数据类
+ */
+data class FoodLastRecord(
+    val foodName: String,
+    val lastRecordTime: Long
+)

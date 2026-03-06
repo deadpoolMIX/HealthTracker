@@ -20,7 +20,8 @@
       "Read(//c/Users/MIX/AppData/Local/Temp/claude-code/cli-tmp-6aYBeb/cli-tmp-lYyUpM/**)",
       "Bash(JAVA_HOME=\"C:/Program Files/Android/Android Studio/jbr\" ./gradlew:*)",
       "Bash(python:*)",
-      "Bash(ffmpeg:*)"
+      "Bash(ffmpeg:*)",
+      "Bash(\"D:/Projects/HealthTracker/README.txt\":*)"
     ]
   }
 }

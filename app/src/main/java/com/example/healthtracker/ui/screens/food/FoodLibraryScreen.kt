@@ -21,7 +21,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.healthtracker.data.local.entity.FoodEntity
-import com.example.healthtracker.data.local.entity.IntakeRecordEntity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,7 +29,7 @@ fun FoodLibraryScreen(
     onNavigateToAddCustomFood: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val recentRecords by viewModel.recentRecords.collectAsState()
+    val recentFoods by viewModel.recentFoods.collectAsState()
     val customFoods by viewModel.customFoods.collectAsState()
     val favoriteFoods by viewModel.favoriteFoods.collectAsState()
 
@@ -76,7 +75,8 @@ fun FoodLibraryScreen(
             // Content
             when (uiState.selectedTabIndex) {
                 0 -> RecentFoodsTab(
-                    records = recentRecords
+                    foods = recentFoods,
+                    onFavoriteClick = { viewModel.toggleFavorite(it) }
                 )
                 1 -> CustomFoodsTab(
                     foods = customFoods,
@@ -94,23 +94,23 @@ fun FoodLibraryScreen(
 
 @Composable
 private fun RecentFoodsTab(
-    records: List<IntakeRecordEntity>
+    foods: List<FoodEntity>,
+    onFavoriteClick: (FoodEntity) -> Unit
 ) {
-    if (records.isEmpty()) {
-        EmptyState(message = "暂无最近摄入记录\n添加摄入后会显示在这里")
+    if (foods.isEmpty()) {
+        EmptyState(message = "暂无食物数据\n食物库中的食物将显示在这里")
     } else {
-        // 去重：同一个食物名称只显示一次
-        val uniqueRecords = records
-            .distinctBy { it.foodName }
-            .take(20)
-
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(uniqueRecords) { record ->
-                RecentFoodItem(record = record)
+            items(foods) { food ->
+                FoodItem(
+                    food = food,
+                    onFavoriteClick = { onFavoriteClick(food) },
+                    showFavoriteButton = true
+                )
             }
         }
     }
@@ -169,70 +169,18 @@ private fun FavoriteFoodsTab(
 }
 
 @Composable
-private fun RecentFoodItem(record: IntakeRecordEntity) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+private fun EmptyState(message: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // 食物图标
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = getCategoryEmoji(record.foodName),
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // 食物信息
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = record.foodName,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "${record.caloriesPer100g.toInt()} kcal/100g",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            // 营养素信息
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = "P ${record.proteinPer100g.toInt()}g",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-                Text(
-                    text = "C ${record.carbsPer100g.toInt()}g",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = "F ${record.fatPer100g.toInt()}g",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.tertiary
-                )
-            }
-        }
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -240,7 +188,8 @@ private fun RecentFoodItem(record: IntakeRecordEntity) {
 private fun FoodItem(
     food: FoodEntity,
     onFavoriteClick: () -> Unit,
-    onDeleteClick: (() -> Unit)? = null
+    onDeleteClick: (() -> Unit)? = null,
+    showFavoriteButton: Boolean = true
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -287,12 +236,14 @@ private fun FoodItem(
             }
 
             // 收藏按钮
-            IconButton(onClick = onFavoriteClick) {
-                Icon(
-                    imageVector = if (food.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                    contentDescription = if (food.isFavorite) "取消收藏" else "收藏",
-                    tint = if (food.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            if (showFavoriteButton) {
+                IconButton(onClick = onFavoriteClick) {
+                    Icon(
+                        imageVector = if (food.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = if (food.isFavorite) "取消收藏" else "收藏",
+                        tint = if (food.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             // 删除按钮（仅自定义食物显示）
@@ -306,22 +257,6 @@ private fun FoodItem(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun EmptyState(message: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 

@@ -1,5 +1,6 @@
 package com.example.healthtracker.data.repository
 
+import com.example.healthtracker.data.local.dao.FoodLastRecord
 import com.example.healthtracker.data.local.dao.IntakeRecordDao
 import com.example.healthtracker.data.local.entity.IntakeRecordEntity
 import kotlinx.coroutines.flow.Flow
@@ -47,4 +48,7 @@ class IntakeRecordRepository @Inject constructor(
 
     fun getRecentRecords(limit: Int = 50): Flow<List<IntakeRecordEntity>> =
         intakeRecordDao.getRecentRecords(limit)
+
+    suspend fun getFoodLastRecordTimes(): List<FoodLastRecord> =
+        intakeRecordDao.getFoodLastRecordTimes()
 }

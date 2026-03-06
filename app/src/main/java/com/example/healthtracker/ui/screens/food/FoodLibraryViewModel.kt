@@ -3,13 +3,13 @@ package com.example.healthtracker.ui.screens.food
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.healthtracker.data.local.entity.FoodEntity
-import com.example.healthtracker.data.local.entity.IntakeRecordEntity
 import com.example.healthtracker.data.repository.FoodRepository
 import com.example.healthtracker.data.repository.IntakeRecordRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -27,9 +27,24 @@ class FoodLibraryViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(FoodLibraryUiState())
     val uiState = _uiState.asStateFlow()
 
-    // 最近摄入的食物
-    val recentRecords = intakeRecordRepository.getRecentRecords(50)
+    // 所有食物
+    private val allFoods = foodRepository.getAllFoods()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    // 最近摄入的食物 - 按最近被记录的顺序排序的所有食物
+    val recentFoods = combine(
+        allFoods,
+        foodRepository.getAllFoods()
+    ) { foods, _ ->
+        // 获取每个食物的最近记录时间
+        val lastRecordTimes = intakeRecordRepository.getFoodLastRecordTimes()
+            .associate { it.foodName to it.lastRecordTime }
+
+        // 按最近记录时间排序
+        foods.sortedWith(compareByDescending<FoodEntity> { food ->
+            lastRecordTimes[food.name] ?: 0L
+        }.thenBy { it.name })
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     // 自定义食物
     val customFoods = foodRepository.getCustomFoods()
