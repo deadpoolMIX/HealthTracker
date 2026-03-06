@@ -221,32 +221,60 @@ fun HomeScreen(
                     }
                 }
             } else {
-                items(uiState.todayIntake, key = { it.id }) { record ->
-                    IntakeRecordItem(
-                        record = record,
-                        isSelected = selectedIds.contains(record.id),
-                        selectionMode = selectionMode,
-                        onClick = {
-                            if (selectionMode) {
-                                selectedIds = if (selectedIds.contains(record.id)) {
-                                    selectedIds - record.id
-                                } else {
-                                    selectedIds + record.id
-                                }
-                            } else {
-                                onNavigateToEditIntake(record.id)
+                // 按餐次分组显示
+                val mealTypes = listOf(0, 1, 2, 3) // 早餐、午餐、晚餐、加餐
+                mealTypes.forEach { mealType ->
+                    val recordsForMeal = uiState.todayIntake.filter { it.mealType == mealType }
+                    if (recordsForMeal.isNotEmpty()) {
+                        // 餐次标题
+                        item {
+                            Row(
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = getMealTypeEmoji(mealType),
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = getMealTypeName(mealType),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
                             }
-                        },
-                        onLongClick = {
-                            if (!selectionMode) {
-                                showContextMenu = record
-                            }
-                        },
-                        onSelect = {
-                            selectionMode = true
-                            selectedIds = setOf(record.id)
                         }
-                    )
+                        // 该餐次的食物
+                        items(recordsForMeal, key = { it.id }) { record ->
+                            IntakeRecordItem(
+                                record = record,
+                                isSelected = selectedIds.contains(record.id),
+                                selectionMode = selectionMode,
+                                showMealType = false, // 分组显示，不显示餐次
+                                onClick = {
+                                    if (selectionMode) {
+                                        selectedIds = if (selectedIds.contains(record.id)) {
+                                            selectedIds - record.id
+                                        } else {
+                                            selectedIds + record.id
+                                        }
+                                    } else {
+                                        onNavigateToEditIntake(record.id)
+                                    }
+                                },
+                                onLongClick = {
+                                    if (!selectionMode) {
+                                        showContextMenu = record
+                                    }
+                                },
+                                onSelect = {
+                                    selectionMode = true
+                                    selectedIds = setOf(record.id)
+                                }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -537,6 +565,7 @@ private fun IntakeRecordItem(
     record: IntakeRecordEntity,
     isSelected: Boolean = false,
     selectionMode: Boolean = false,
+    showMealType: Boolean = true,
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {},
     onSelect: () -> Unit = {}
@@ -597,8 +626,9 @@ private fun IntakeRecordItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                // 只在需要时显示餐次
                 Text(
-                    text = "${record.amount.toInt()}g · ${getMealTypeName(record.mealType)}",
+                    text = if (showMealType) "${record.amount.toInt()}g · ${getMealTypeName(record.mealType)}" else "${record.amount.toInt()}g",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
