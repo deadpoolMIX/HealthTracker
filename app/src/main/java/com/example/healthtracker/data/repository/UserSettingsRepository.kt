@@ -39,4 +39,14 @@ class UserSettingsRepository @Inject constructor(
 
     suspend fun updateThemeColor(color: Int) =
         userSettingsDao.upsertThemeColor(color)
+
+    suspend fun updateUserInfo(
+        gender: Int,
+        age: Int,
+        height: Double,
+        weight: Double,
+        activityLevel: Int,
+        bmr: Double,
+        tdee: Double
+    ) = userSettingsDao.updateUserInfo(gender, age, height, weight, activityLevel, bmr, tdee)
 }

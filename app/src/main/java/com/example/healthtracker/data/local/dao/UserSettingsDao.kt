@@ -64,4 +64,43 @@ interface UserSettingsDao {
             updateThemeColor(color)
         }
     }
+
+    @Transaction
+    suspend fun updateUserInfo(
+        gender: Int,
+        age: Int,
+        height: Double,
+        weight: Double,
+        activityLevel: Int,
+        bmr: Double,
+        tdee: Double
+    ) {
+        val settings = getSettings()
+        if (settings == null) {
+            insertSettings(
+                com.example.healthtracker.data.local.entity.UserSettingsEntity(
+                    gender = gender,
+                    age = age,
+                    height = height,
+                    weight = weight,
+                    activityLevel = activityLevel,
+                    bmr = bmr,
+                    tdee = tdee
+                )
+            )
+        } else {
+            // 更新所有字段
+            updateSettings(
+                settings.copy(
+                    gender = gender,
+                    age = age,
+                    height = height,
+                    weight = weight,
+                    activityLevel = activityLevel,
+                    bmr = bmr,
+                    tdee = tdee
+                )
+            )
+        }
+    }
 }

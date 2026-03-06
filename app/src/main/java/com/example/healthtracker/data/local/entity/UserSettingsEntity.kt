@@ -13,7 +13,9 @@ data class UserSettingsEntity(
     // 基本信息
     val gender: Int = 0,                 // 性别：0-男, 1-女
     val birthDate: Long? = null,         // 出生日期
+    val age: Int? = null,                // 年龄（直接存储，用于计算）
     val height: Double? = null,          // 身高 (cm)
+    val weight: Double? = null,          // 体重 (kg)，用于 BMR/TDEE 计算
     // 计算值
     val bmr: Double? = null,             // 基础代谢率
     val tdee: Double? = null,            // 每日总能量消耗

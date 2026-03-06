@@ -1,4 +1,4 @@
-package com.example.healthtracker.ui.screens
+package com.example.healthtracker.ui.screens.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -12,18 +12,59 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserProfileScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    viewModel: UserProfileViewModel = hiltViewModel()
 ) {
-    var gender by remember { mutableIntStateOf(0) }
-    var height by remember { mutableStateOf("") }
-    var weight by remember { mutableStateOf("") }
-    var age by remember { mutableStateOf("") }
-    var activityLevel by remember { mutableIntStateOf(1) }
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val saveSuccess by viewModel.saveSuccess.collectAsStateWithLifecycle()
+
+    // 初始化表单值
+    var gender by remember { mutableIntStateOf(settings?.gender ?: 0) }
+    var height by remember { mutableStateOf(settings?.height?.toString() ?: "") }
+    var weight by remember { mutableStateOf(settings?.weight?.toString() ?: "") }
+    var age by remember { mutableStateOf(settings?.age?.toString() ?: "") }
+    var activityLevel by remember { mutableIntStateOf(settings?.activityLevel ?: 1) }
+
+    // 当 settings 加载完成后更新表单值
+    LaunchedEffect(settings) {
+        settings?.let { s ->
+            gender = s.gender
+            height = s.height?.toString() ?: ""
+            weight = s.weight?.toString() ?: ""
+            age = s.age?.toString() ?: ""
+            activityLevel = s.activityLevel
+        }
+    }
+
+    // 保存成功后返回
+    LaunchedEffect(saveSuccess) {
+        if (saveSuccess) {
+            viewModel.resetSaveSuccess()
+            onNavigateBack()
+        }
+    }
+
     val activityLevels = listOf("久坐", "轻度活动", "中度活动", "重度活动", "极重度活动")
+
+    // 计算预览结果
+    val heightValue = height.toDoubleOrNull() ?: 0.0
+    val weightValue = weight.toDoubleOrNull() ?: 0.0
+    val ageValue = age.toIntOrNull() ?: 0
+
+    val bmr = if (heightValue > 0 && weightValue > 0 && ageValue > 0) {
+        HealthCalculator.calculateBMR(gender, weightValue, heightValue, ageValue)
+    } else null
+
+    val tdee = if (bmr != null) {
+        HealthCalculator.calculateTDEE(bmr, activityLevel)
+    } else null
 
     Scaffold(
         topBar = {
@@ -143,11 +184,19 @@ fun UserProfileScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "基础代谢率 (BMR): -- kcal",
+                        text = if (bmr != null) {
+                            "基础代谢率 (BMR): ${bmr.roundToInt()} kcal"
+                        } else {
+                            "基础代谢率 (BMR): -- kcal"
+                        },
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
-                        text = "每日总能量消耗 (TDEE): -- kcal",
+                        text = if (tdee != null) {
+                            "每日总能量消耗 (TDEE): ${tdee.roundToInt()} kcal"
+                        } else {
+                            "每日总能量消耗 (TDEE): -- kcal"
+                        },
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
@@ -156,11 +205,37 @@ fun UserProfileScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
-                onClick = onNavigateBack,
-                modifier = Modifier.fillMaxWidth()
+                onClick = {
+                    val h = height.toDoubleOrNull() ?: 0.0
+                    val w = weight.toDoubleOrNull() ?: 0.0
+                    val a = age.toIntOrNull() ?: 0
+
+                    if (h > 0 && w > 0 && a > 0) {
+                        viewModel.saveUserInfo(gender, a, h, w, activityLevel)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = heightValue > 0 && weightValue > 0 && ageValue > 0
             ) {
                 Text("保存")
             }
         }
+    }
+}
+
+// 引用 HealthCalculator
+private object HealthCalculator {
+    fun calculateBMR(gender: Int, weight: Double, height: Double, age: Int): Double {
+        return if (gender == 0) {
+            10 * weight + 6.25 * height - 5 * age + 5
+        } else {
+            10 * weight + 6.25 * height - 5 * age - 161
+        }
+    }
+
+    fun calculateTDEE(bmr: Double, activityLevel: Int): Double {
+        val multipliers = listOf(1.2, 1.375, 1.55, 1.725, 1.9)
+        val multiplier = multipliers.getOrElse(activityLevel) { 1.2 }
+        return bmr * multiplier
     }
 }

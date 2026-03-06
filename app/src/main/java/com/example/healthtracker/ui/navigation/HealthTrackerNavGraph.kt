@@ -11,7 +11,7 @@ import com.example.healthtracker.ui.screens.AddIntakeScreen
 import com.example.healthtracker.ui.screens.AddBodyDataScreen
 import com.example.healthtracker.ui.screens.AddSleepScreen
 import com.example.healthtracker.ui.screens.settings.SettingsScreen
-import com.example.healthtracker.ui.screens.UserProfileScreen
+import com.example.healthtracker.ui.screens.settings.UserProfileScreen
 import com.example.healthtracker.ui.screens.MealPlansScreen
 import com.example.healthtracker.ui.screens.FoodManagerScreen
 import com.example.healthtracker.ui.screens.settings.DataExportScreen
