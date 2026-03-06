@@ -162,6 +162,14 @@ fun HomeScreen(
             }
         }
     ) { paddingValues ->
+        // 在Composable上下文中预先定义餐次颜色
+        val mealColors = listOf(
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),  // 早餐
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f), // 午餐
+            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),  // 晚餐
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)      // 加餐
+        )
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -223,56 +231,61 @@ fun HomeScreen(
             } else {
                 // 按餐次分组显示
                 val mealTypes = listOf(0, 1, 2, 3) // 早餐、午餐、晚餐、加餐
-                mealTypes.forEach { mealType ->
+
+                mealTypes.forEachIndexed { index, mealType ->
                     val recordsForMeal = uiState.todayIntake.filter { it.mealType == mealType }
                     if (recordsForMeal.isNotEmpty()) {
-                        // 餐次标题
+                        // 餐次分组卡片
                         item {
-                            Row(
-                                modifier = Modifier.padding(vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = mealColors[index]
+                                ),
+                                shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text(
-                                    text = getMealTypeEmoji(mealType),
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = getMealTypeName(mealType),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                        // 该餐次的食物
-                        items(recordsForMeal, key = { it.id }) { record ->
-                            IntakeRecordItem(
-                                record = record,
-                                isSelected = selectedIds.contains(record.id),
-                                selectionMode = selectionMode,
-                                showMealType = false, // 分组显示，不显示餐次
-                                onClick = {
-                                    if (selectionMode) {
-                                        selectedIds = if (selectedIds.contains(record.id)) {
-                                            selectedIds - record.id
-                                        } else {
-                                            selectedIds + record.id
+                                Column(
+                                    modifier = Modifier.padding(12.dp)
+                                ) {
+                                    // 餐次标题
+                                    Text(
+                                        text = getMealTypeName(mealType),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    // 该餐次的食物列表
+                                    recordsForMeal.forEach { record ->
+                                        MealIntakeItem(
+                                            record = record,
+                                            isSelected = selectedIds.contains(record.id),
+                                            selectionMode = selectionMode,
+                                            onClick = {
+                                                if (selectionMode) {
+                                                    selectedIds = if (selectedIds.contains(record.id)) {
+                                                        selectedIds - record.id
+                                                    } else {
+                                                        selectedIds + record.id
+                                                    }
+                                                } else {
+                                                    onNavigateToEditIntake(record.id)
+                                                }
+                                            },
+                                            onLongClick = {
+                                                if (!selectionMode) {
+                                                    showContextMenu = record
+                                                }
+                                            }
+                                        )
+                                        if (record != recordsForMeal.last()) {
+                                            Spacer(modifier = Modifier.height(8.dp))
                                         }
-                                    } else {
-                                        onNavigateToEditIntake(record.id)
                                     }
-                                },
-                                onLongClick = {
-                                    if (!selectionMode) {
-                                        showContextMenu = record
-                                    }
-                                },
-                                onSelect = {
-                                    selectionMode = true
-                                    selectedIds = setOf(record.id)
                                 }
-                            )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
                 }
@@ -559,6 +572,88 @@ private fun NutrientItem(
     }
 }
 
+/**
+ * 餐次分组内的食物项（带食物对应的emoji）
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MealIntakeItem(
+    record: IntakeRecordEntity,
+    isSelected: Boolean = false,
+    selectionMode: Boolean = false,
+    onClick: () -> Unit = {},
+    onLongClick: () -> Unit = {}
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
+        color = if (isSelected)
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        else
+            MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 选中复选框或食物图标
+            if (selectionMode) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onClick() }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            } else {
+                // 食物对应的emoji图标
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surface),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = getFoodEmoji(record.foodName),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+            }
+
+            // 食物信息
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = record.foodName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${record.amount.toInt()}g",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // 热量
+            Text(
+                text = "${record.calories.toInt()} kcal",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun IntakeRecordItem(
@@ -610,7 +705,7 @@ private fun IntakeRecordItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = getMealTypeEmoji(record.mealType),
+                        text = getFoodEmoji(record.foodName),
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
@@ -861,6 +956,49 @@ private fun getMealTypeEmoji(mealType: Int): String {
         1 -> "☀️"
         2 -> "🌙"
         3 -> "🍎"
+        else -> "🍽️"
+    }
+}
+
+/**
+ * 根据食物名称返回对应的emoji
+ */
+private fun getFoodEmoji(name: String): String {
+    return when {
+        name.contains("饭") || name.contains("粥") -> "🍚"
+        name.contains("面") || name.contains("粉") -> "🍜"
+        name.contains("馒头") || name.contains("包子") -> "🥟"
+        name.contains("面包") -> "🍞"
+        name.contains("猪") -> "🥩"
+        name.contains("牛") -> "🥩"
+        name.contains("羊") -> "🍖"
+        name.contains("鸡") || name.contains("鸭") -> "🍗"
+        name.contains("鱼") -> "🐟"
+        name.contains("虾") || name.contains("蟹") -> "🦐"
+        name.contains("蛋") -> "🥚"
+        name.contains("奶") || name.contains("牛奶") -> "🥛"
+        name.contains("豆") || name.contains("豆腐") -> "🫘"
+        name.contains("蔬菜") || name.contains("白菜") || name.contains("青菜") -> "🥬"
+        name.contains("西红柿") || name.contains("番茄") -> "🍅"
+        name.contains("黄瓜") -> "🥒"
+        name.contains("土豆") -> "🥔"
+        name.contains("胡萝卜") -> "🥕"
+        name.contains("苹果") -> "🍎"
+        name.contains("香蕉") -> "🍌"
+        name.contains("橙") || name.contains("橘子") -> "🍊"
+        name.contains("葡萄") -> "🍇"
+        name.contains("草莓") -> "🍓"
+        name.contains("西瓜") -> "🍉"
+        name.contains("水果") -> "🍇"
+        name.contains("油") -> "🫒"
+        name.contains("坚果") || name.contains("花生") || name.contains("核桃") -> "🥜"
+        name.contains("零食") -> "🍪"
+        name.contains("饮料") || name.contains("可乐") || name.contains("汽水") -> "🥤"
+        name.contains("咖啡") -> "☕"
+        name.contains("茶") -> "🍵"
+        name.contains("酒") -> "🍺"
+        name.contains("汤") -> "🥣"
+        name.contains("水") -> "💧"
         else -> "🍽️"
     }
 }
