@@ -17,7 +17,7 @@ import com.example.healthtracker.data.local.entity.*
         MealPlanItemEntity::class,
         UserSettingsEntity::class
     ],
-    version = 2,
+    version = 5,
     exportSchema = false
 )
 abstract class HealthTrackerDatabase : RoomDatabase() {
@@ -41,6 +41,54 @@ abstract class HealthTrackerDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE intake_records ADD COLUMN amountInUnit REAL")
                 db.execSQL("ALTER TABLE intake_records ADD COLUMN gramsPerUnit REAL")
                 db.execSQL("ALTER TABLE intake_records ADD COLUMN note TEXT")
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 添加收藏字段
+                db.execSQL("ALTER TABLE foods ADD COLUMN isFavorite INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 修改 meal_plan_items 表，移除外键约束并添加新字段
+                // SQLite 不支持直接修改外键，需要重建表
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS meal_plan_items_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        planId INTEGER NOT NULL,
+                        foodId INTEGER,
+                        foodName TEXT NOT NULL,
+                        amount REAL NOT NULL,
+                        mealType INTEGER NOT NULL,
+                        dayOfWeek INTEGER,
+                        dayOfMonth INTEGER,
+                        caloriesPer100g REAL NOT NULL DEFAULT 0,
+                        carbsPer100g REAL NOT NULL DEFAULT 0,
+                        proteinPer100g REAL NOT NULL DEFAULT 0,
+                        fatPer100g REAL NOT NULL DEFAULT 0,
+                        createdAt INTEGER NOT NULL,
+                        FOREIGN KEY(planId) REFERENCES meal_plans(id) ON DELETE CASCADE
+                    )
+                """)
+                db.execSQL("""
+                    INSERT INTO meal_plan_items_new
+                    SELECT id, planId, foodId, foodName, amount, mealType, dayOfWeek, dayOfMonth, 0, 0, 0, 0, createdAt
+                    FROM meal_plan_items
+                """)
+                db.execSQL("DROP TABLE meal_plan_items")
+                db.execSQL("ALTER TABLE meal_plan_items_new RENAME TO meal_plan_items")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_meal_plan_items_planId ON meal_plan_items(planId)")
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 添加主题设置字段
+                db.execSQL("ALTER TABLE user_settings ADD COLUMN themeMode INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE user_settings ADD COLUMN themeColor INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

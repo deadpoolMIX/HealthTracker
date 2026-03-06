@@ -33,4 +33,10 @@ class UserSettingsRepository @Inject constructor(
 
     suspend fun updateBmrTdee(bmr: Double, tdee: Double) =
         userSettingsDao.updateBmrTdee(bmr, tdee)
+
+    suspend fun updateThemeMode(mode: Int) =
+        userSettingsDao.upsertThemeMode(mode)
+
+    suspend fun updateThemeColor(color: Int) =
+        userSettingsDao.upsertThemeColor(color)
 }

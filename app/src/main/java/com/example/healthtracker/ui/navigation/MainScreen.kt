@@ -3,7 +3,10 @@ package com.example.healthtracker.ui.navigation
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.RestaurantMenu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -14,10 +17,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.healthtracker.ui.screens.home.HomeScreen
 import com.example.healthtracker.ui.screens.ReportsScreen
+import com.example.healthtracker.ui.screens.food.FoodLibraryScreen
+import com.example.healthtracker.ui.screens.mealplan.MealPlanScreen
 
 /**
  * 主容器页面
- * 包含首页和报表两个同级页面，通过底部导航栏切换
+ * 包含首页、食物库、饮食计划、报表四个同级页面，通过底部导航栏切换
  */
 @Composable
 fun MainScreen(
@@ -27,7 +32,11 @@ fun MainScreen(
     onNavigateToAddSleep: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToUserProfile: () -> Unit,
-    onNavigateToDataExport: () -> Unit
+    onNavigateToDataExport: () -> Unit,
+    onNavigateToAddMealPlan: () -> Unit = {},
+    onNavigateToCalendar: () -> Unit = {},
+    onNavigateToCustomFood: () -> Unit = {},
+    onNavigateToEditIntake: (Long) -> Unit = {}
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -49,6 +58,36 @@ fun MainScreen(
                         Icon(Icons.Filled.Home, contentDescription = "首页")
                     },
                     label = { Text("首页") }
+                )
+                NavigationBarItem(
+                    selected = currentRoute == Screen.FoodLibrary.route,
+                    onClick = {
+                        if (currentRoute != Screen.FoodLibrary.route) {
+                            navController.navigate(Screen.FoodLibrary.route) {
+                                popUpTo(Screen.Home.route) { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        }
+                    },
+                    icon = {
+                        Icon(Icons.Filled.Restaurant, contentDescription = "食物库")
+                    },
+                    label = { Text("食物库") }
+                )
+                NavigationBarItem(
+                    selected = currentRoute == Screen.MealPlan.route,
+                    onClick = {
+                        if (currentRoute != Screen.MealPlan.route) {
+                            navController.navigate(Screen.MealPlan.route) {
+                                popUpTo(Screen.Home.route) { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        }
+                    },
+                    icon = {
+                        Icon(Icons.Filled.RestaurantMenu, contentDescription = "饮食计划")
+                    },
+                    label = { Text("计划") }
                 )
                 NavigationBarItem(
                     selected = currentRoute == Screen.Reports.route,
@@ -79,7 +118,19 @@ fun MainScreen(
                     onNavigateToAddBodyData = onNavigateToAddBodyData,
                     onNavigateToAddSleep = onNavigateToAddSleep,
                     onNavigateToSettings = onNavigateToSettings,
-                    onNavigateToUserProfile = onNavigateToUserProfile
+                    onNavigateToUserProfile = onNavigateToUserProfile,
+                    onNavigateToCalendar = onNavigateToCalendar,
+                    onNavigateToEditIntake = onNavigateToEditIntake
+                )
+            }
+            composable(Screen.FoodLibrary.route) {
+                FoodLibraryScreen(
+                    onNavigateToAddCustomFood = onNavigateToCustomFood
+                )
+            }
+            composable(Screen.MealPlan.route) {
+                MealPlanScreen(
+                    onNavigateToAddPlan = onNavigateToAddMealPlan
                 )
             }
             composable(Screen.Reports.route) {

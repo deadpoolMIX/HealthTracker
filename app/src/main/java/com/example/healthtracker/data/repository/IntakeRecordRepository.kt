@@ -41,4 +41,10 @@ class IntakeRecordRepository @Inject constructor(
 
     suspend fun deleteRecord(record: IntakeRecordEntity) =
         intakeRecordDao.deleteRecord(record)
+
+    suspend fun deleteRecordsByIds(ids: List<Long>) =
+        intakeRecordDao.deleteRecordsByIds(ids)
+
+    fun getRecentRecords(limit: Int = 50): Flow<List<IntakeRecordEntity>> =
+        intakeRecordDao.getRecentRecords(limit)
 }

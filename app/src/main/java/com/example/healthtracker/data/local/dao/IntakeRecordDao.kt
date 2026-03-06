@@ -51,6 +51,24 @@ interface IntakeRecordDao {
     @Delete
     suspend fun deleteRecord(record: IntakeRecordEntity)
 
+    @Delete
+    suspend fun deleteRecords(records: List<IntakeRecordEntity>)
+
+    @Query("DELETE FROM intake_records WHERE id IN (:ids)")
+    suspend fun deleteRecordsByIds(ids: List<Long>)
+
     @Query("DELETE FROM intake_records WHERE date < :beforeDate")
     suspend fun deleteRecordsBefore(beforeDate: Long)
+
+    // 获取最近摄入的食物名称（去重）
+    @Query("""
+        SELECT DISTINCT foodName FROM intake_records
+        ORDER BY createdAt DESC
+        LIMIT :limit
+    """)
+    fun getRecentFoodNames(limit: Int = 20): Flow<List<String>>
+
+    // 获取最近N条摄入记录（用于最近摄入的食物）
+    @Query("SELECT * FROM intake_records ORDER BY createdAt DESC LIMIT :limit")
+    fun getRecentRecords(limit: Int = 50): Flow<List<IntakeRecordEntity>>
 }

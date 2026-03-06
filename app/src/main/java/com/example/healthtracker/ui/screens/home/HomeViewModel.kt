@@ -110,4 +110,22 @@ class HomeViewModel @Inject constructor(
     fun refresh() {
         loadTodayData()
     }
+
+    fun deleteRecord(record: IntakeRecordEntity) {
+        viewModelScope.launch {
+            intakeRecordRepository.deleteRecord(record)
+        }
+    }
+
+    fun deleteRecordsByIds(ids: List<Long>) {
+        viewModelScope.launch {
+            intakeRecordRepository.deleteRecordsByIds(ids)
+        }
+    }
+
+    fun updateRecord(record: IntakeRecordEntity) {
+        viewModelScope.launch {
+            intakeRecordRepository.updateRecord(record)
+        }
+    }
 }

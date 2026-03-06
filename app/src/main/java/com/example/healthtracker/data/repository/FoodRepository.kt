@@ -20,7 +20,15 @@ class FoodRepository @Inject constructor(
 
     fun getAllFoods(): Flow<List<FoodEntity>> = foodDao.getAllFoods()
 
+    fun getCustomFoods(): Flow<List<FoodEntity>> = foodDao.getCustomFoods()
+
+    fun getFavoriteFoods(): Flow<List<FoodEntity>> = foodDao.getFavoriteFoods()
+
     suspend fun insertFood(food: FoodEntity): Long = foodDao.insertFood(food)
 
     suspend fun deleteCustomFood(id: Long) = foodDao.deleteCustomFood(id)
+
+    suspend fun toggleFavorite(id: Long) = foodDao.toggleFavorite(id)
+
+    suspend fun setFavorite(id: Long, isFavorite: Boolean) = foodDao.setFavorite(id, isFavorite)
 }

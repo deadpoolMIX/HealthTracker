@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- Splash Screen 主题 -->
+    <style name="Theme.HealthTracker.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@android:color/white</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenAnimationDuration">0</item>
+        <item name="postSplashScreenTheme">@style/Theme.HealthTracker</item>
+    </style>
+
+    <!-- 应用主主题 -->
     <style name="Theme.HealthTracker" parent="android:Theme.Material.Light.NoActionBar" />
 </resources>

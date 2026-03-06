@@ -19,5 +19,6 @@ data class FoodEntity(
     val fat: Double,                     // 脂肪 (g/100g)
     val icon: String,                    // 图标名称
     val isCustom: Boolean = false,       // 是否为用户自定义
+    val isFavorite: Boolean = false,     // 是否收藏
     val createdAt: Long = System.currentTimeMillis()
 )

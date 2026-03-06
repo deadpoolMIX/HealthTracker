@@ -30,6 +30,9 @@ data class UserSettingsEntity(
     val showBodyChart: Boolean = true,            // 显示身体数据图表
     val showSleepChart: Boolean = true,           // 显示睡眠图表
     val defaultChartPeriod: Int = 0,              // 默认周期：0-天, 1-周, 2-月, 3-年
+    // 主题设置
+    val themeMode: Int = 0,              // 主题模式：0-跟随系统, 1-浅色, 2-深色
+    val themeColor: Int = 0,             // 主题颜色：0-绿色, 1-蓝色, 2-紫色, 3-橙色, 4-红色
     // 首次使用标记
     val isFirstUse: Boolean = true,      // 是否首次使用
     val createdAt: Long = System.currentTimeMillis(),

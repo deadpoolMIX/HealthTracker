@@ -5,8 +5,10 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,6 +33,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.healthtracker.data.local.entity.IntakeRecordEntity
 import com.example.healthtracker.util.DateTimeUtils
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,34 +44,96 @@ fun HomeScreen(
     onNavigateToAddBodyData: () -> Unit,
     onNavigateToAddSleep: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onNavigateToUserProfile: () -> Unit
+    onNavigateToUserProfile: () -> Unit,
+    onNavigateToCalendar: () -> Unit = {},
+    onNavigateToEditIntake: (Long) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var fabExpanded by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf<IntakeRecordEntity?>(null) }
+    var showContextMenu by remember { mutableStateOf<IntakeRecordEntity?>(null) }
+    var selectionMode by remember { mutableStateOf(false) }
+    var selectedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = DateTimeUtils.formatDate(System.currentTimeMillis()),
-                        fontWeight = FontWeight.Medium
-                    )
+                    if (selectionMode) {
+                        Text(
+                            text = "已选择 ${selectedIds.size} 项",
+                            fontWeight = FontWeight.Medium
+                        )
+                    } else {
+                        Row(
+                            modifier = Modifier.clickable(onClick = onNavigateToCalendar),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = DateTimeUtils.formatDate(System.currentTimeMillis()),
+                                fontWeight = FontWeight.Medium
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ExpandMore,
+                                contentDescription = "查看日历",
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateToUserProfile) {
-                        Icon(
-                            imageVector = Icons.Outlined.AccountCircle,
-                            contentDescription = "用户资料"
-                        )
+                    if (selectionMode) {
+                        IconButton(onClick = {
+                            selectionMode = false
+                            selectedIds = emptySet()
+                        }) {
+                            Icon(Icons.Default.Close, contentDescription = "取消选择")
+                        }
+                    } else {
+                        IconButton(onClick = onNavigateToUserProfile) {
+                            Icon(
+                                imageVector = Icons.Outlined.AccountCircle,
+                                contentDescription = "用户资料"
+                            )
+                        }
                     }
                 },
                 actions = {
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = "设置"
-                        )
+                    if (selectionMode) {
+                        IconButton(onClick = {
+                            if (selectedIds.size == uiState.todayIntake.size) {
+                                selectedIds = emptySet()
+                            } else {
+                                selectedIds = uiState.todayIntake.map { it.id }.toSet()
+                            }
+                        }) {
+                            Icon(
+                                if (selectedIds.size == uiState.todayIntake.size)
+                                    Icons.Default.Deselect
+                                else
+                                    Icons.Default.SelectAll,
+                                contentDescription = "全选"
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                if (selectedIds.isNotEmpty()) {
+                                    viewModel.deleteRecordsByIds(selectedIds.toList())
+                                    selectionMode = false
+                                    selectedIds = emptySet()
+                                }
+                            },
+                            enabled = selectedIds.isNotEmpty()
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "删除选中")
+                        }
+                    } else {
+                        IconButton(onClick = onNavigateToSettings) {
+                            Icon(
+                                imageVector = Icons.Outlined.Settings,
+                                contentDescription = "设置"
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -76,22 +142,24 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            MultiActionFab(
-                expanded = fabExpanded,
-                onExpandChange = { fabExpanded = it },
-                onIntakeClick = {
-                    fabExpanded = false
-                    onNavigateToAddIntake()
-                },
-                onBodyClick = {
-                    fabExpanded = false
-                    onNavigateToAddBodyData()
-                },
-                onSleepClick = {
-                    fabExpanded = false
-                    onNavigateToAddSleep()
-                }
-            )
+            if (!selectionMode) {
+                MultiActionFab(
+                    expanded = fabExpanded,
+                    onExpandChange = { fabExpanded = it },
+                    onIntakeClick = {
+                        fabExpanded = false
+                        onNavigateToAddIntake()
+                    },
+                    onBodyClick = {
+                        fabExpanded = false
+                        onNavigateToAddBodyData()
+                    },
+                    onSleepClick = {
+                        fabExpanded = false
+                        onNavigateToAddSleep()
+                    }
+                )
+            }
         }
     ) { paddingValues ->
         LazyColumn(
@@ -153,8 +221,32 @@ fun HomeScreen(
                     }
                 }
             } else {
-                items(uiState.todayIntake) { record ->
-                    IntakeRecordItem(record = record)
+                items(uiState.todayIntake, key = { it.id }) { record ->
+                    IntakeRecordItem(
+                        record = record,
+                        isSelected = selectedIds.contains(record.id),
+                        selectionMode = selectionMode,
+                        onClick = {
+                            if (selectionMode) {
+                                selectedIds = if (selectedIds.contains(record.id)) {
+                                    selectedIds - record.id
+                                } else {
+                                    selectedIds + record.id
+                                }
+                            } else {
+                                onNavigateToEditIntake(record.id)
+                            }
+                        },
+                        onLongClick = {
+                            if (!selectionMode) {
+                                showContextMenu = record
+                            }
+                        },
+                        onSelect = {
+                            selectionMode = true
+                            selectedIds = setOf(record.id)
+                        }
+                    )
                 }
             }
 
@@ -197,6 +289,88 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(80.dp))
             }
         }
+    }
+
+    // 删除确认对话框
+    showDeleteDialog?.let { record ->
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = null },
+            title = { Text("删除记录") },
+            text = { Text("确定要删除 \"${record.foodName}\" 吗？") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteRecord(record)
+                        showDeleteDialog = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("删除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = null }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    // 长按菜单
+    showContextMenu?.let { record ->
+        AlertDialog(
+            onDismissRequest = { showContextMenu = null },
+            title = { Text(record.foodName) },
+            text = {
+                Column {
+                    TextButton(
+                        onClick = {
+                            showContextMenu = null
+                            onNavigateToEditIntake(record.id)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("编辑")
+                    }
+                    TextButton(
+                        onClick = {
+                            showContextMenu = null
+                            showDeleteDialog = record
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("删除")
+                    }
+                    HorizontalDivider()
+                    TextButton(
+                        onClick = {
+                            showContextMenu = null
+                            selectionMode = true
+                            selectedIds = setOf(record.id)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Checklist, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("批量选择")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showContextMenu = null }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }
 
@@ -357,13 +531,33 @@ private fun NutrientItem(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun IntakeRecordItem(record: IntakeRecordEntity) {
+private fun IntakeRecordItem(
+    record: IntakeRecordEntity,
+    isSelected: Boolean = false,
+    selectionMode: Boolean = false,
+    onClick: () -> Unit = {},
+    onLongClick: () -> Unit = {},
+    onSelect: () -> Unit = {}
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+            else
+                MaterialTheme.colorScheme.surface
+        ),
+        border = if (isSelected)
+            androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        else
+            null
     ) {
         Row(
             modifier = Modifier
@@ -371,21 +565,28 @@ private fun IntakeRecordItem(record: IntakeRecordEntity) {
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 食物图标
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = getMealTypeEmoji(record.mealType),
-                    style = MaterialTheme.typography.titleMedium
+            // 选中复选框或食物图标
+            if (selectionMode) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onClick() }
                 )
+                Spacer(modifier = Modifier.width(8.dp))
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = getMealTypeEmoji(record.mealType),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
             }
-
-            Spacer(modifier = Modifier.width(12.dp))
 
             // 食物信息
             Column(modifier = Modifier.weight(1f)) {

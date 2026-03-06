@@ -10,10 +10,16 @@ interface UserSettingsDao {
     suspend fun getSettings(): UserSettingsEntity?
 
     @Query("SELECT * FROM user_settings WHERE id = 1")
+    suspend fun getSettingsSync(): UserSettingsEntity?
+
+    @Query("SELECT * FROM user_settings WHERE id = 1")
     fun getSettingsFlow(): Flow<UserSettingsEntity?>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun saveSettings(settings: UserSettingsEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSettings(settings: UserSettingsEntity)
 
     @Update
     suspend fun updateSettings(settings: UserSettingsEntity)
@@ -32,4 +38,30 @@ interface UserSettingsDao {
 
     @Query("UPDATE user_settings SET bmr = :bmr, tdee = :tdee WHERE id = 1")
     suspend fun updateBmrTdee(bmr: Double, tdee: Double)
+
+    @Query("UPDATE user_settings SET themeMode = :mode WHERE id = 1")
+    suspend fun updateThemeMode(mode: Int)
+
+    @Query("UPDATE user_settings SET themeColor = :color WHERE id = 1")
+    suspend fun updateThemeColor(color: Int)
+
+    @Transaction
+    suspend fun upsertThemeMode(mode: Int) {
+        val settings = getSettings()
+        if (settings == null) {
+            insertSettings(com.example.healthtracker.data.local.entity.UserSettingsEntity(themeMode = mode))
+        } else {
+            updateThemeMode(mode)
+        }
+    }
+
+    @Transaction
+    suspend fun upsertThemeColor(color: Int) {
+        val settings = getSettings()
+        if (settings == null) {
+            insertSettings(com.example.healthtracker.data.local.entity.UserSettingsEntity(themeColor = color))
+        } else {
+            updateThemeColor(color)
+        }
+    }
 }
