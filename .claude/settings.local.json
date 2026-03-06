@@ -1,26 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git config:*)",
-      "Bash(./gradlew build:*)",
-      "Bash(where java)",
-      "Read(//c/Program Files/Android/Android Studio/jbr/bin/**)",
-      "Read(//c/Program Files/Android/Android Studio/jre/bin/**)",
-      "Read(//c/Program Files/**)",
       "Bash(export:*)",
-      "Bash(adb logcat:*)",
-      "Read(//c/Users/MIX/AppData/Local/Android/Sdk/platform-tools/**)",
-      "Bash(\"/c/Users/MIX/AppData/Local/Android/Sdk/platform-tools/adb.exe\" logcat -d)",
-      "Bash(\"/c/Users/MIX/AppData/Local/Android/Sdk/platform-tools/adb.exe\" logcat:*)",
-      "Bash(head:*)",
-      "Bash(./gradlew assembleDebug:*)",
-      "Bash(ls:*)",
-      "Bash(JAVA_HOME=\"C:/Program Files/Android/Android Studio/jbr\" ./gradlew assembleDebug:*)",
-      "Read(//c/Users/MIX/AppData/Local/Temp/**)",
-      "Read(//c/Users/MIX/AppData/Local/Temp/claude-code/cli-tmp-6aYBeb/cli-tmp-lYyUpM/**)",
-      "Bash(JAVA_HOME=\"C:/Program Files/Android/Android Studio/jbr\" ./gradlew:*)",
-      "Bash(python:*)",
-      "Bash(ffmpeg:*)",
       "Bash(\"D:/Projects/HealthTracker/README.txt\":*)"
     ]
   }

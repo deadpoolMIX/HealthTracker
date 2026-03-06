@@ -169,7 +169,8 @@ fun HealthTrackerNavGraph(
 
         composable(Screen.FoodManager.route) {
             FoodManagerScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToAddCustomFood = { navController.navigate("custom_food_input?isFromFoodLibrary=true") }
             )
         }
 
