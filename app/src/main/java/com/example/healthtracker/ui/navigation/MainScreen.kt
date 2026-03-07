@@ -15,7 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.healthtracker.ui.screens.home.HomeScreen
-import com.example.healthtracker.ui.screens.ReportsScreen
+import com.example.healthtracker.ui.screens.reports.ReportsScreen
 import com.example.healthtracker.ui.screens.food.FoodLibraryScreen
 import com.example.healthtracker.ui.screens.mealplan.MealPlanScreen
 
