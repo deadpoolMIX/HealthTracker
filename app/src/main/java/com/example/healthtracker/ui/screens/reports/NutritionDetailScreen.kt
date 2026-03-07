@@ -164,26 +164,24 @@ private fun NutritionChartCard(
 
             // 柱状图
             if (data.isNotEmpty()) {
-                val maxValue = data.maxOf {
-                    maxOf(it.carbs, it.protein, it.fat)
-                }.toFloat().coerceAtLeast(1f)
-
                 Canvas(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp)
+                        .clip(RoundedCornerShape(8.dp))
                 ) {
-                    val barWidth = size.width / data.size * 0.6f
-                    val spacing = size.width / data.size * 0.4f
+                    val totalWidth = size.width
+                    val barWidth = totalWidth / data.size * 0.6f
+                    val spacing = totalWidth / data.size * 0.4f
 
                     data.forEachIndexed { index, day ->
                         val x = index * (barWidth + spacing) + spacing / 2
 
-                        // 堆叠柱状图
-                        val totalHeight = ((day.carbs + day.protein + day.fat) / maxValue * size.height).toFloat()
-                        val carbsHeight = (day.carbs / maxValue * size.height).toFloat()
-                        val proteinHeight = (day.protein / maxValue * size.height).toFloat()
-                        val fatHeight = (day.fat / maxValue * size.height).toFloat()
+                        // 堆叠柱状图 - 使用总和计算高度
+                        val totalValue = day.carbs + day.protein + day.fat
+                        val carbsHeight = if (totalValue > 0) (day.carbs / totalValue * size.height).toFloat() else 0f
+                        val proteinHeight = if (totalValue > 0) (day.protein / totalValue * size.height).toFloat() else 0f
+                        val fatHeight = if (totalValue > 0) (day.fat / totalValue * size.height).toFloat() else 0f
 
                         // 绘制脂肪（底部）
                         drawRect(
@@ -278,25 +276,24 @@ private fun NutritionWeeklyChartCard(
 
             // 柱状图
             if (data.isNotEmpty()) {
-                val maxValue = data.maxOf {
-                    maxOf(it.carbs, it.protein, it.fat)
-                }.toFloat().coerceAtLeast(1f)
-
                 Canvas(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp)
+                        .clip(RoundedCornerShape(8.dp))
                 ) {
-                    val barWidth = size.width / data.size * 0.5f
-                    val spacing = size.width / data.size * 0.5f
+                    val totalWidth = size.width
+                    val barWidth = totalWidth / data.size * 0.5f
+                    val spacing = totalWidth / data.size * 0.5f
 
                     data.forEachIndexed { index, week ->
                         val x = index * (barWidth + spacing) + spacing / 2
 
-                        // 堆叠柱状图
-                        val carbsHeight = (week.carbs / maxValue * size.height).toFloat()
-                        val proteinHeight = (week.protein / maxValue * size.height).toFloat()
-                        val fatHeight = (week.fat / maxValue * size.height).toFloat()
+                        // 堆叠柱状图 - 使用比例计算高度
+                        val totalValue = week.carbs + week.protein + week.fat
+                        val carbsHeight = if (totalValue > 0) (week.carbs / totalValue * size.height).toFloat() else 0f
+                        val proteinHeight = if (totalValue > 0) (week.protein / totalValue * size.height).toFloat() else 0f
+                        val fatHeight = if (totalValue > 0) (week.fat / totalValue * size.height).toFloat() else 0f
 
                         // 绘制脂肪（底部）
                         drawRect(
@@ -481,17 +478,20 @@ private fun StatItem(
     color: Color = MaterialTheme.colorScheme.primary
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-        Text(
-            text = unit,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+            Spacer(modifier = Modifier.width(2.dp))
+            Text(
+                text = unit,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
