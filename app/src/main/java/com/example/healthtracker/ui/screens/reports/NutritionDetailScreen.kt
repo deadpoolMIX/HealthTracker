@@ -15,14 +15,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.healthtracker.util.DateTimeUtils
 import java.util.Calendar
 import java.util.Locale
 
@@ -181,10 +177,11 @@ private fun NutritionChartCard(
                         val x = index * (barWidth + spacing) + spacing / 2
 
                         // 堆叠柱状图 - 按实际数值等比例缩放
-                        val totalHeight = ((day.carbs + day.protein + day.fat) / maxValue * size.height).toFloat()
-                        val carbsHeight = if (day.carbs + day.protein + day.fat > 0) (day.carbs / (day.carbs + day.protein + day.fat) * totalHeight) else 0f
-                        val proteinHeight = if (day.carbs + day.protein + day.fat > 0) (day.protein / (day.carbs + day.protein + day.fat) * totalHeight) else 0f
-                        val fatHeight = if (day.carbs + day.protein + day.fat > 0) (day.fat / (day.carbs + day.protein + day.fat) * totalHeight) else 0f
+                        val dayTotal = day.carbs + day.protein + day.fat
+                        val totalHeight = (dayTotal / maxValue * size.height).toFloat()
+                        val carbsHeight: Float = if (dayTotal > 0) (day.carbs / dayTotal * totalHeight).toFloat() else 0f
+                        val proteinHeight: Float = if (dayTotal > 0) (day.protein / dayTotal * totalHeight).toFloat() else 0f
+                        val fatHeight: Float = if (dayTotal > 0) (day.fat / dayTotal * totalHeight).toFloat() else 0f
 
                         // 绘制脂肪（底部）
                         drawRect(
@@ -296,10 +293,11 @@ private fun NutritionWeeklyChartCard(
                         val x = index * (barWidth + spacing) + spacing / 2
 
                         // 堆叠柱状图 - 按实际数值等比例缩放
-                        val totalHeight = ((week.carbs + week.protein + week.fat) / maxValue * size.height).toFloat()
-                        val carbsHeight = if (week.carbs + week.protein + week.fat > 0) (week.carbs / (week.carbs + week.protein + week.fat) * totalHeight) else 0f
-                        val proteinHeight = if (week.carbs + week.protein + week.fat > 0) (week.protein / (week.carbs + week.protein + week.fat) * totalHeight) else 0f
-                        val fatHeight = if (week.carbs + week.protein + week.fat > 0) (week.fat / (week.carbs + week.protein + week.fat) * totalHeight) else 0f
+                        val weekTotal = week.carbs + week.protein + week.fat
+                        val totalHeight = (weekTotal / maxValue * size.height).toFloat()
+                        val carbsHeight: Float = if (weekTotal > 0) (week.carbs / weekTotal * totalHeight).toFloat() else 0f
+                        val proteinHeight: Float = if (weekTotal > 0) (week.protein / weekTotal * totalHeight).toFloat() else 0f
+                        val fatHeight: Float = if (weekTotal > 0) (week.fat / weekTotal * totalHeight).toFloat() else 0f
 
                         // 绘制脂肪（底部）
                         drawRect(
