@@ -9,6 +9,7 @@ import com.example.healthtracker.data.repository.IntakeRecordRepository
 import com.example.healthtracker.util.DateTimeUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -42,8 +43,8 @@ class AddIntakeViewModel @Inject constructor(
     private val _isSaving = MutableStateFlow(false)
     val isSaving = _isSaving.asStateFlow()
 
-    var saveCompleted = false
-        private set
+    private val _saveCompleted = MutableStateFlow(false)
+    val saveCompleted: StateFlow<Boolean> = _saveCompleted.asStateFlow()
 
     init {
         loadAllFoods()
@@ -141,7 +142,7 @@ class AddIntakeViewModel @Inject constructor(
 
             _pendingItems.value = emptyList()
             _isSaving.value = false
-            saveCompleted = true
+            _saveCompleted.value = true
         }
     }
 
@@ -205,7 +206,7 @@ class AddIntakeViewModel @Inject constructor(
             }
 
             _isSaving.value = false
-            saveCompleted = true
+            _saveCompleted.value = true
         }
     }
 }

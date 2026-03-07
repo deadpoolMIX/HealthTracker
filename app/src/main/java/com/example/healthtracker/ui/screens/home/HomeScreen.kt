@@ -1158,14 +1158,17 @@ private fun EditIntakeDialog(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                // 使用 FlowRow 确保所有选项大小一致
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
                 ) {
                     mealTypes.forEachIndexed { index, type ->
                         FilterChip(
                             selected = selectedMealType == index,
                             onClick = { selectedMealType = index },
-                            label = { Text(type) }
+                            label = { Text(type) },
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
