@@ -2,7 +2,7 @@
   "permissions": {
     "allow": [
       "Bash(export:*)",
-      "Bash(\"D:/Projects/HealthTracker/README.txt\":*)"
+      "Bash(*)"
     ]
   }
 }

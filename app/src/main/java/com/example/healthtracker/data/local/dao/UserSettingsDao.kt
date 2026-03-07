@@ -45,6 +45,9 @@ interface UserSettingsDao {
     @Query("UPDATE user_settings SET themeColor = :color WHERE id = 1")
     suspend fun updateThemeColor(color: Int)
 
+    @Query("UPDATE user_settings SET navBarOrder = :order WHERE id = 1")
+    suspend fun updateNavBarOrder(order: String)
+
     @Transaction
     suspend fun upsertThemeMode(mode: Int) {
         val settings = getSettings()

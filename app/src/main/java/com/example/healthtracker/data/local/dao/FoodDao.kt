@@ -15,6 +15,9 @@ interface FoodDao {
     @Query("SELECT * FROM foods WHERE name LIKE '%' || :keyword || '%' ORDER BY name")
     fun searchFoods(keyword: String): Flow<List<FoodEntity>>
 
+    @Query("SELECT * FROM foods WHERE name LIKE '%' || :keyword || '%' ORDER BY name LIMIT 20")
+    suspend fun searchFoodsSync(keyword: String): List<FoodEntity>
+
     @Query("SELECT * FROM foods WHERE category = :category ORDER BY name")
     fun getFoodsByCategory(category: String): Flow<List<FoodEntity>>
 

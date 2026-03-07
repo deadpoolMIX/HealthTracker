@@ -10,7 +10,13 @@ import javax.inject.Singleton
 class FoodRepository @Inject constructor(
     private val foodDao: FoodDao
 ) {
-    fun getFoodById(id: Long) = suspend { foodDao.getFoodById(id) }
+    suspend fun getFoodById(id: Long): FoodEntity? = foodDao.getFoodById(id)
+
+    suspend fun updateFood(food: FoodEntity) = foodDao.updateFood(food)
+
+    suspend fun deleteFood(food: FoodEntity) = foodDao.deleteFood(food)
+
+    suspend fun searchFoodsSync(keyword: String): List<FoodEntity> = foodDao.searchFoodsSync(keyword)
 
     fun searchFoods(keyword: String): Flow<List<FoodEntity>> = foodDao.searchFoods(keyword)
 

@@ -45,7 +45,7 @@ fun CalendarScreen(
 
     // 用于控制滑动方向和动画
     var slideDirection by remember { mutableStateOf(0) } // -1 向左, 1 向右
-    var canSwipe by remember { mutableStateOf(true) }
+    var totalDrag by remember { mutableFloatStateOf(0f) }
 
     Scaffold(
         topBar = {
@@ -65,30 +65,31 @@ fun CalendarScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .pointerInput(canSwipe) {
+                .pointerInput(Unit) {
                     // 左右滑动切换月份
+                    // 从左向右滑动(totalDrag > 0) -> 上个月
+                    // 从右向左滑动(totalDrag < 0) -> 下个月
                     detectHorizontalDragGestures(
+                        onDragStart = {
+                            totalDrag = 0f
+                        },
                         onDragEnd = {
-                            // 滑动结束后重新启用滑动
-                            canSwipe = true
-                        }
-                    ) { change, dragAmount ->
-                        if (canSwipe) {
                             when {
-                                dragAmount > 80 -> {
-                                    // 向右滑动 - 下个月（内容从右边进入）
-                                    slideDirection = 1
-                                    viewModel.nextMonth()
-                                    canSwipe = false
-                                }
-                                dragAmount < -80 -> {
-                                    // 向左滑动 - 上个月（内容从左边进入）
+                                totalDrag > 100 -> {
+                                    // 从左向右滑动 - 上个月
                                     slideDirection = -1
                                     viewModel.previousMonth()
-                                    canSwipe = false
+                                }
+                                totalDrag < -100 -> {
+                                    // 从右向左滑动 - 下个月
+                                    slideDirection = 1
+                                    viewModel.nextMonth()
                                 }
                             }
+                            totalDrag = 0f
                         }
+                    ) { change, dragAmount ->
+                        totalDrag += dragAmount
                     }
                 }
         ) {
@@ -458,8 +459,9 @@ private fun IntakeRecordItem(record: IntakeRecordEntity) {
 }
 
 /**
- * 年月选择对话框
+ * 年月选择对话框 - 简洁版
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MonthYearPickerDialog(
     currentMonth: Long,
@@ -473,53 +475,76 @@ private fun MonthYearPickerDialog(
     var selectedMonth by remember { mutableIntStateOf(calendar.get(Calendar.MONTH) + 1) }
 
     val currentYear = Calendar.getInstance().get(Calendar.YEAR)
-    val years = (currentYear - 10..currentYear + 10).toList()
-    val months = (1..12).toList()
+    val years = (currentYear - 5..currentYear + 5).toList()
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("选择年月") },
         text = {
             Column {
-                // 年份选择
-                Text(
-                    text = "年份",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // 年份下拉选择
+                var yearExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = yearExpanded,
+                    onExpandedChange = { yearExpanded = it }
                 ) {
-                    years.take(5).forEach { year ->
-                        FilterChip(
-                            selected = selectedYear == year,
-                            onClick = { selectedYear = year },
-                            label = { Text("$year") }
-                        )
+                    OutlinedTextField(
+                        value = "${selectedYear}年",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("年份") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = yearExpanded,
+                        onDismissRequest = { yearExpanded = false }
+                    ) {
+                        years.forEach { year ->
+                            DropdownMenuItem(
+                                text = { Text("${year}年") },
+                                onClick = {
+                                    selectedYear = year
+                                    yearExpanded = false
+                                }
+                            )
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // 月份选择
-                Text(
-                    text = "月份",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // 月份下拉选择
+                var monthExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = monthExpanded,
+                    onExpandedChange = { monthExpanded = it }
                 ) {
-                    months.forEach { month ->
-                        FilterChip(
-                            selected = selectedMonth == month,
-                            onClick = { selectedMonth = month },
-                            label = { Text("${month}月") }
-                        )
+                    OutlinedTextField(
+                        value = "${selectedMonth}月",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("月份") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = monthExpanded,
+                        onDismissRequest = { monthExpanded = false }
+                    ) {
+                        (1..12).forEach { month ->
+                            DropdownMenuItem(
+                                text = { Text("${month}月") },
+                                onClick = {
+                                    selectedMonth = month
+                                    monthExpanded = false
+                                }
+                            )
+                        }
                     }
                 }
             }

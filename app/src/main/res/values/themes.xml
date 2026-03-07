@@ -10,5 +10,8 @@
     </style>
 
     <!-- 应用主主题 -->
-    <style name="Theme.HealthTracker" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.HealthTracker" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+    </style>
 </resources>

@@ -54,6 +54,7 @@ fun HomeScreen(
     var showContextMenu by remember { mutableStateOf<IntakeRecordEntity?>(null) }
     var selectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    var showTargetCaloriesDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -178,7 +179,8 @@ fun HomeScreen(
                     consumed = uiState.totalCalories,
                     target = uiState.targetCalories,
                     bmr = uiState.bmr,
-                    percentage = uiState.caloriePercentage
+                    percentage = uiState.caloriePercentage,
+                    onLongClick = { showTargetCaloriesDialog = true }
                 )
             }
 
@@ -408,17 +410,36 @@ fun HomeScreen(
             }
         )
     }
+
+    // 设置目标卡路里对话框
+    if (showTargetCaloriesDialog) {
+        TargetCaloriesDialog(
+            currentTarget = uiState.targetCalories,
+            onDismiss = { showTargetCaloriesDialog = false },
+            onConfirm = { newTarget ->
+                viewModel.updateTargetCalories(newTarget)
+                showTargetCaloriesDialog = false
+            }
+        )
+    }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CalorieArcCard(
     consumed: Double,
     target: Double,
     bmr: Double,
-    percentage: Int
+    percentage: Int,
+    onLongClick: () -> Unit = {}
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = {},
+                onLongClick = onLongClick
+            ),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
         )
@@ -740,13 +761,17 @@ private fun BodyDataCard(
     bodyRecord: com.example.healthtracker.data.local.entity.BodyRecordEntity?,
     onClick: () -> Unit
 ) {
+    // 使用主题色，比背景浅一点
+    val cardColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+            containerColor = cardColor
+        ),
+        shape = RoundedCornerShape(12.dp)
     ) {
         if (bodyRecord == null) {
             Box(
@@ -787,13 +812,17 @@ private fun SleepDataCard(
     sleepRecord: com.example.healthtracker.data.local.entity.SleepRecordEntity?,
     onClick: () -> Unit
 ) {
+    // 使用主题色，比背景浅一点
+    val cardColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+            containerColor = cardColor
+        ),
+        shape = RoundedCornerShape(12.dp)
     ) {
         if (sleepRecord == null) {
             Box(
@@ -996,4 +1025,56 @@ private fun getFoodEmoji(name: String): String {
         name.contains("水") -> "💧"
         else -> "🍽️"
     }
+}
+
+/**
+ * 设置目标卡路里对话框
+ */
+@Composable
+private fun TargetCaloriesDialog(
+    currentTarget: Double,
+    onDismiss: () -> Unit,
+    onConfirm: (Double) -> Unit
+) {
+    var targetValue by remember { mutableStateOf(currentTarget.toInt().toString()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("设置每日目标热量") },
+        text = {
+            Column {
+                Text(
+                    text = "请输入每日目标摄入热量（kcal）",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = targetValue,
+                    onValueChange = { targetValue = it.filter { c -> c.isDigit() } },
+                    label = { Text("目标热量") },
+                    suffix = { Text("kcal") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val target = targetValue.toDoubleOrNull()
+                    if (target != null && target > 0) {
+                        onConfirm(target)
+                    }
+                }
+            ) {
+                Text("确定")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
 }

@@ -35,6 +35,8 @@ data class UserSettingsEntity(
     // 主题设置
     val themeMode: Int = 0,              // 主题模式：0-跟随系统, 1-浅色, 2-深色
     val themeColor: Int = 0,             // 主题颜色：0-绿色, 1-蓝色, 2-紫色, 3-橙色, 4-红色
+    // 导航栏设置
+    val navBarOrder: String = "0,1,2,3", // 底部导航栏顺序：首页固定为0，其他可拖拽排序
     // 首次使用标记
     val isFirstUse: Boolean = true,      // 是否首次使用
     val createdAt: Long = System.currentTimeMillis(),

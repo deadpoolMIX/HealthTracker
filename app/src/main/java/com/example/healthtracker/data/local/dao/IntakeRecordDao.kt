@@ -45,6 +45,9 @@ interface IntakeRecordDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecord(record: IntakeRecordEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRecords(records: List<IntakeRecordEntity>)
+
     @Update
     suspend fun updateRecord(record: IntakeRecordEntity)
 

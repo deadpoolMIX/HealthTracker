@@ -14,6 +14,19 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 待添加的食物项
+ */
+data class PendingFoodItem(
+    val food: FoodEntity,
+    val amount: Double,  // 克数
+    val unit: String,
+    val calories: Double,
+    val carbohydrates: Double,
+    val protein: Double,
+    val fat: Double
+)
+
 @HiltViewModel
 class AddIntakeViewModel @Inject constructor(
     private val intakeRecordRepository: IntakeRecordRepository,
@@ -23,11 +36,16 @@ class AddIntakeViewModel @Inject constructor(
     private val _searchResults = MutableStateFlow<List<FoodEntity>>(emptyList())
     val searchResults = _searchResults.asStateFlow()
 
+    private val _pendingItems = MutableStateFlow<List<PendingFoodItem>>(emptyList())
+    val pendingItems = _pendingItems.asStateFlow()
+
     private val _isSaving = MutableStateFlow(false)
     val isSaving = _isSaving.asStateFlow()
 
+    var saveCompleted = false
+        private set
+
     init {
-        // 初始加载所有食物
         loadAllFoods()
     }
 
@@ -53,6 +71,80 @@ class AddIntakeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 添加待保存的食物项
+     */
+    fun addPendingItem(food: FoodEntity, amount: Double, unit: String) {
+        // 计算营养值
+        val calories = (amount / 100.0) * food.calories
+        val carbs = (amount / 100.0) * food.carbohydrates
+        val protein = (amount / 100.0) * food.protein
+        val fat = (amount / 100.0) * food.fat
+
+        val item = PendingFoodItem(
+            food = food,
+            amount = amount,
+            unit = unit,
+            calories = calories,
+            carbohydrates = carbs,
+            protein = protein,
+            fat = fat
+        )
+
+        _pendingItems.value = _pendingItems.value + item
+    }
+
+    /**
+     * 移除待保存的食物项
+     */
+    fun removePendingItem(index: Int) {
+        val currentList = _pendingItems.value.toMutableList()
+        if (index in currentList.indices) {
+            currentList.removeAt(index)
+            _pendingItems.value = currentList
+        }
+    }
+
+    /**
+     * 批量保存所有记录
+     */
+    fun saveAllRecords(dateMillis: Long, mealType: Int) {
+        viewModelScope.launch {
+            _isSaving.value = true
+
+            val date = DateTimeUtils.getStartOfDay(dateMillis)
+
+            val records = _pendingItems.value.map { item ->
+                IntakeRecordEntity(
+                    foodName = item.food.name,
+                    date = date,
+                    amount = item.amount,
+                    calories = item.calories,
+                    carbohydrates = item.carbohydrates,
+                    protein = item.protein,
+                    fat = item.fat,
+                    mealType = mealType,
+                    caloriesPer100g = item.food.calories,
+                    carbsPer100g = item.food.carbohydrates,
+                    proteinPer100g = item.food.protein,
+                    fatPer100g = item.food.fat,
+                    unit = item.unit,
+                    amountInUnit = null,
+                    gramsPerUnit = null,
+                    note = null,
+                    foodId = item.food.id
+                )
+            }
+
+            intakeRecordRepository.insertRecords(records)
+
+            _pendingItems.value = emptyList()
+            _isSaving.value = false
+            saveCompleted = true
+        }
+    }
+
+    // 兼容旧的方法（自定义食物输入页面使用）
     fun saveRecord(
         foodName: String,
         amount: Double,
@@ -65,12 +157,12 @@ class AddIntakeViewModel @Inject constructor(
         amountInUnit: Double?,
         gramsPerUnit: Double?,
         note: String?,
-        saveAsCustomFood: Boolean = false
+        saveAsCustomFood: Boolean = false,
+        icon: String = "🍽️"
     ) {
         viewModelScope.launch {
             _isSaving.value = true
 
-            // 计算实际营养值
             val actualCalories = (amount / 100.0) * caloriesPer100g
             val actualCarbs = (amount / 100.0) * carbsPer100g
             val actualProtein = (amount / 100.0) * proteinPer100g
@@ -97,7 +189,6 @@ class AddIntakeViewModel @Inject constructor(
 
             intakeRecordRepository.insertRecord(record)
 
-            // 如果需要保存为自定义食物
             if (saveAsCustomFood) {
                 val customFood = FoodEntity(
                     name = foodName,
@@ -106,13 +197,14 @@ class AddIntakeViewModel @Inject constructor(
                     carbohydrates = carbsPer100g,
                     protein = proteinPer100g,
                     fat = fatPer100g,
-                    icon = "custom",
+                    icon = icon,
                     isCustom = true
                 )
                 foodRepository.insertFood(customFood)
             }
 
             _isSaving.value = false
+            saveCompleted = true
         }
     }
 }

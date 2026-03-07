@@ -1,4 +1,4 @@
-package com.example.healthtracker.ui.screens
+package com.example.healthtracker.ui.screens.intake
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -15,35 +16,53 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.healthtracker.data.local.entity.FoodEntity
-import com.example.healthtracker.ui.screens.intake.AddIntakeViewModel
-import kotlinx.coroutines.FlowPreview
+import com.example.healthtracker.util.FoodEmojiUtils
+import java.text.SimpleDateFormat
+import java.util.*
 
 /**
- * 搜索食物页面
- * 从首页加号进入，显示食物库搜索 + 添加自定义食物按钮
+ * 添加摄入页面 - 功能 #24
+ * 1. 选择餐次、日期
+ * 2. 搜索食物库中的食物
+ * 3. 点击食物弹出对话框输入份量
+ * 4. 添加多个食物到临时列表
+ * 5. 底部保存按钮批量保存
  */
-@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddIntakeScreen(
     viewModel: AddIntakeViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
-    onNavigateToCustomFood: (Long?) -> Unit = {},
-    onNavigateToFoodDetail: (String, Double, Double, Double, Double, Int) -> Unit = { _, _, _, _, _, _ -> }
+    onNavigateToCustomFood: (Long?) -> Unit = {}
 ) {
     val searchResults by viewModel.searchResults.collectAsState()
+    val pendingItems by viewModel.pendingItems.collectAsState()
+    val isSaving by viewModel.isSaving.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedMealType by remember { mutableIntStateOf(0) }
-    var showSearchResults by remember { mutableStateOf(true) }
+    var selectedDate by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showAddDialog by remember { mutableStateOf<FoodEntity?>(null) }
 
     val mealTypes = listOf("早餐", "午餐", "晚餐", "加餐")
+    val dateFormat = remember { SimpleDateFormat("MM月dd日 E", Locale.CHINA) }
 
     // 搜索防抖
     LaunchedEffect(searchQuery) {
         viewModel.searchFoods(searchQuery)
+    }
+
+    // 保存成功后返回
+    LaunchedEffect(viewModel.saveCompleted) {
+        if (viewModel.saveCompleted) {
+            onNavigateBack()
+        }
     }
 
     Scaffold(
@@ -56,20 +75,99 @@ fun AddIntakeScreen(
                     }
                 }
             )
+        },
+        bottomBar = {
+            if (pendingItems.isNotEmpty()) {
+                BottomAppBar(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ) {
+                    Button(
+                        onClick = { viewModel.saveAllRecords(selectedDate, selectedMealType) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        enabled = !isSaving
+                    ) {
+                        if (isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(Icons.Default.Save, contentDescription = null)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("保存记录 (${pendingItems.size})")
+                    }
+                }
+            }
         }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 餐次选择
-            Text(
-                text = "选择餐次",
-                style = MaterialTheme.typography.titleSmall
-            )
+            // 日期和餐次选择
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // 日期选择
+                OutlinedCard(
+                    modifier = Modifier.weight(1f),
+                    onClick = { showDatePicker = true }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Default.CalendarMonth,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = dateFormat.format(Date(selectedDate)),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+
+                // 餐次选择
+                OutlinedCard(
+                    modifier = Modifier.weight(1f),
+                    onClick = { /* 显示餐次选择 */ }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Restaurant,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = mealTypes[selectedMealType],
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+
+            // 餐次快速切换
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -82,7 +180,43 @@ fun AddIntakeScreen(
                 }
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+            // 已添加的食物列表
+            if (pendingItems.isNotEmpty()) {
+                Text(
+                    text = "已添加的食物",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        pendingItems.forEachIndexed { index, item ->
+                            PendingFoodItem(
+                                item = item,
+                                onRemove = { viewModel.removePendingItem(index) }
+                            )
+                            if (index < pendingItems.lastIndex) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(vertical = 4.dp),
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            }
 
             // 搜索食物
             Text(
@@ -92,10 +226,7 @@ fun AddIntakeScreen(
 
             OutlinedTextField(
                 value = searchQuery,
-                onValueChange = {
-                    searchQuery = it
-                    showSearchResults = true
-                },
+                onValueChange = { searchQuery = it },
                 label = { Text("搜索食物名称") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -104,10 +235,7 @@ fun AddIntakeScreen(
                 },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = {
-                            searchQuery = ""
-                            showSearchResults = true
-                        }) {
+                        IconButton(onClick = { searchQuery = "" }) {
                             Icon(Icons.Default.Clear, contentDescription = "清除")
                         }
                     }
@@ -115,102 +243,134 @@ fun AddIntakeScreen(
             )
 
             // 搜索结果列表
-            if (showSearchResults && searchResults.isNotEmpty()) {
-                Text(
-                    text = "搜索结果 (${searchResults.size})",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(searchResults.take(20)) { food ->
-                        FoodSearchResultItem(
-                            food = food,
-                            onClick = {
-                                // 点击食物，跳转到详细录入页面
-                                onNavigateToFoodDetail(
-                                    food.name,
-                                    food.calories,
-                                    food.carbohydrates,
-                                    food.protein,
-                                    food.fat,
-                                    selectedMealType
-                                )
-                            }
-                        )
-                    }
-                }
-            } else if (searchQuery.isNotEmpty() && searchResults.isEmpty()) {
-                // 无搜索结果
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.SearchOff,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "未找到 \"$searchQuery\"",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "点击下方按钮添加自定义食物",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            } else {
-                // 初始状态
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.Restaurant,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "搜索食物库中的食物",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-
-            // 添加自定义食物按钮
-            Button(
-                onClick = { onNavigateToCustomFood(null) },
-                modifier = Modifier.fillMaxWidth()
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("添加自定义食物")
+                items(searchResults.take(30)) { food ->
+                    FoodSearchResultItem(
+                        food = food,
+                        onClick = { showAddDialog = food }
+                    )
+                }
+
+                // 底部添加自定义食物按钮
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { onNavigateToCustomFood(null) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("添加自定义食物")
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
+        }
+    }
+
+    // 日期选择对话框
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDate
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let {
+                            selectedDate = it
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("确定")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("取消")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    // 添加食物对话框
+    showAddDialog?.let { food ->
+        AddFoodDialog(
+            food = food,
+            onDismiss = { showAddDialog = null },
+            onConfirm = { amount, unit ->
+                viewModel.addPendingItem(food, amount, unit)
+                showAddDialog = null
+            }
+        )
+    }
+}
+
+/**
+ * 已添加的食物项
+ */
+@Composable
+private fun PendingFoodItem(
+    item: PendingFoodItem,
+    onRemove: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // 食物图标
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.secondaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = getFoodEmoji(item.food),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        // 食物信息
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = item.food.name,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = "${item.amount.toInt()}${item.unit} · ${item.calories.toInt()} kcal",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // 删除按钮
+        IconButton(onClick = onRemove) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "移除",
+                tint = MaterialTheme.colorScheme.error
+            )
         }
     }
 }
 
+/**
+ * 食物搜索结果项
+ */
 @Composable
 private fun FoodSearchResultItem(
     food: FoodEntity,
@@ -239,7 +399,7 @@ private fun FoodSearchResultItem(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = getCategoryEmoji(food.category),
+                    text = getFoodEmoji(food),
                     style = MaterialTheme.typography.titleSmall
                 )
             }
@@ -254,33 +414,196 @@ private fun FoodSearchResultItem(
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "${food.calories.toInt()} kcal/100g · ${food.category}",
+                    text = "${food.calories.toInt()} kcal/100g",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            // 箭头
+            // 添加图标
             Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = "选择",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                imageVector = Icons.Default.AddCircleOutline,
+                contentDescription = "添加",
+                tint = MaterialTheme.colorScheme.primary
             )
         }
     }
 }
 
-private fun getCategoryEmoji(category: String): String {
-    return when (category) {
-        "主食" -> "🍚"
-        "肉类" -> "🥩"
-        "蔬菜" -> "🥬"
-        "水果" -> "🍎"
-        "蛋奶" -> "🥚"
-        "豆类" -> "🫘"
-        "坚果" -> "🥜"
-        "海鲜" -> "🐟"
-        "油脂" -> "🫒"
-        else -> "🍽️"
+/**
+ * 添加食物对话框
+ */
+@Composable
+private fun AddFoodDialog(
+    food: FoodEntity,
+    onDismiss: () -> Unit,
+    onConfirm: (amount: Double, unit: String) -> Unit
+) {
+    var amountText by remember { mutableStateOf("") }
+    var selectedUnitIndex by remember { mutableIntStateOf(0) }
+    var amountError by remember { mutableStateOf<String?>(null) }
+
+    // 单位选项
+    val units = listOf("克", "毫升", "个", "杯", "勺", "份")
+    val unitGrams = listOf(1.0, 1.0, 100.0, 200.0, 15.0, 100.0) // 每单位对应的克数
+
+    // 计算预览数据
+    val amount = amountText.toDoubleOrNull() ?: 0.0
+    val grams = amount * unitGrams[selectedUnitIndex]
+    val calories = (grams / 100.0) * food.calories
+    val carbs = (grams / 100.0) * food.carbohydrates
+    val protein = (grams / 100.0) * food.protein
+    val fat = (grams / 100.0) * food.fat
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // 标题
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = getFoodEmoji(food), style = MaterialTheme.typography.titleMedium)
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = food.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                // 数值输入
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = {
+                        if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) {
+                            amountText = it
+                            amountError = null
+                        }
+                    },
+                    label = { Text("输入数值") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    isError = amountError != null,
+                    supportingText = amountError?.let { { Text(it) } },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+                    )
+                )
+
+                // 单位选择
+                Text(
+                    text = "选择单位",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // 单位选择器（横向滚动）
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    units.forEachIndexed { index, unit ->
+                        FilterChip(
+                            selected = selectedUnitIndex == index,
+                            onClick = { selectedUnitIndex = index },
+                            label = { Text(unit) }
+                        )
+                    }
+                }
+
+                // 营养预览
+                if (amount > 0) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            Text(
+                                text = "营养预览 (${grams.toInt()}克)",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                NutrientPreviewItem("热量", "${calories.toInt()} kcal")
+                                NutrientPreviewItem("碳水", "${carbs.toInt()}g")
+                                NutrientPreviewItem("蛋白质", "${protein.toInt()}g")
+                                NutrientPreviewItem("脂肪", "${fat.toInt()}g")
+                            }
+                        }
+                    }
+                }
+
+                // 按钮
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("取消")
+                    }
+                    Button(
+                        onClick = {
+                            if (amount <= 0) {
+                                amountError = "请输入有效数值"
+                            } else {
+                                onConfirm(amount * unitGrams[selectedUnitIndex], units[selectedUnitIndex])
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("确认")
+                    }
+                }
+            }
+        }
     }
+}
+
+@Composable
+private fun NutrientPreviewItem(
+    label: String,
+    value: String
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+private fun getFoodEmoji(food: FoodEntity): String {
+    if (food.icon.isNotEmpty() && food.icon != "custom") {
+        return food.icon
+    }
+    return FoodEmojiUtils.getDefaultEmojiForFood(food.name)
 }

@@ -2,17 +2,19 @@ package com.example.healthtracker.ui.screens.mealplan
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.healthtracker.data.local.entity.FoodEntity
 import com.example.healthtracker.data.local.entity.MealPlanItemEntity
+import com.example.healthtracker.data.repository.FoodRepository
 import com.example.healthtracker.data.repository.MealPlanRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class AddMealPlanUiState(
     val planName: String = "",
-    val planType: Int = 1, // 默认单日计划
+    val planType: Int = 1,
     val items: List<MealPlanItemEntity> = emptyList(),
     val currentMealType: Int = 0,
     val currentDayOfWeek: Int? = null
@@ -20,11 +22,26 @@ data class AddMealPlanUiState(
 
 @HiltViewModel
 class AddMealPlanViewModel @Inject constructor(
-    private val mealPlanRepository: MealPlanRepository
+    private val mealPlanRepository: MealPlanRepository,
+    private val foodRepository: FoodRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddMealPlanUiState())
     val uiState = _uiState.asStateFlow()
+
+    private val _searchQuery = MutableStateFlow("")
+
+    @OptIn(FlowPreview::class)
+    val searchResults: StateFlow<List<FoodEntity>> = _searchQuery
+        .debounce(300)
+        .mapLatest { query ->
+            if (query.isBlank()) {
+                emptyList()
+            } else {
+                foodRepository.searchFoodsSync(query)
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     fun setPlanName(name: String) {
         _uiState.value = _uiState.value.copy(planName = name)
@@ -40,6 +57,10 @@ class AddMealPlanViewModel @Inject constructor(
 
     fun setCurrentDayOfWeek(day: Int?) {
         _uiState.value = _uiState.value.copy(currentDayOfWeek = day)
+    }
+
+    fun searchFoods(query: String) {
+        _searchQuery.value = query
     }
 
     fun addItem(item: MealPlanItemEntity) {

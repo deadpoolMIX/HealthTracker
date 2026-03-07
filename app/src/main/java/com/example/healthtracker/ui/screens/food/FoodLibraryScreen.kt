@@ -21,12 +21,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.healthtracker.data.local.entity.FoodEntity
+import com.example.healthtracker.util.FoodEmojiUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FoodLibraryScreen(
     viewModel: FoodLibraryViewModel = hiltViewModel(),
-    onNavigateToAddCustomFood: () -> Unit = {}
+    onNavigateToAddCustomFood: () -> Unit = {},
+    onNavigateToEditFood: (Long) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val recentFoods by viewModel.recentFoods.collectAsState()
@@ -80,6 +82,7 @@ fun FoodLibraryScreen(
                 )
                 1 -> CustomFoodsTab(
                     foods = customFoods,
+                    onFoodClick = { food -> onNavigateToEditFood(food.id) },
                     onFavoriteClick = { viewModel.toggleFavorite(it) },
                     onDeleteClick = { viewModel.deleteCustomFood(it) }
                 )
@@ -119,6 +122,7 @@ private fun RecentFoodsTab(
 @Composable
 private fun CustomFoodsTab(
     foods: List<FoodEntity>,
+    onFoodClick: (FoodEntity) -> Unit,
     onFavoriteClick: (FoodEntity) -> Unit,
     onDeleteClick: (FoodEntity) -> Unit
 ) {
@@ -133,6 +137,7 @@ private fun CustomFoodsTab(
             items(foods) { food ->
                 FoodItem(
                     food = food,
+                    onClick = { onFoodClick(food) },
                     onFavoriteClick = { onFavoriteClick(food) },
                     onDeleteClick = { onDeleteClick(food) }
                 )
@@ -187,12 +192,17 @@ private fun EmptyState(message: String) {
 @Composable
 private fun FoodItem(
     food: FoodEntity,
+    onClick: (() -> Unit)? = null,
     onFavoriteClick: () -> Unit,
     onDeleteClick: (() -> Unit)? = null,
     showFavoriteButton: Boolean = true
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+            ),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
@@ -212,7 +222,7 @@ private fun FoodItem(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = getCategoryEmoji(food.name),
+                    text = getFoodEmoji(food),
                     style = MaterialTheme.typography.titleMedium
                 )
             }
@@ -256,23 +266,24 @@ private fun FoodItem(
                     )
                 }
             }
+
+            // 点击编辑指示（仅自定义食物显示）
+            if (onClick != null && onDeleteClick != null) {
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = "编辑",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
 
-private fun getCategoryEmoji(name: String): String {
-    return when {
-        name.contains("饭") || name.contains("面") || name.contains("粥") -> "🍚"
-        name.contains("猪") || name.contains("牛") || name.contains("羊") -> "🥩"
-        name.contains("鸡") || name.contains("鸭") -> "🍗"
-        name.contains("鱼") || name.contains("虾") || name.contains("蟹") -> "🐟"
-        name.contains("蛋") -> "🥚"
-        name.contains("奶") || name.contains("牛奶") -> "🥛"
-        name.contains("豆") -> "🫘"
-        name.contains("蔬菜") || name.contains("菜") -> "🥬"
-        name.contains("水果") || name.contains("苹果") || name.contains("香蕉") || name.contains("橙") -> "🍎"
-        name.contains("油") -> "🫒"
-        name.contains("坚果") || name.contains("花生") -> "🥜"
-        else -> "🍽️"
+private fun getFoodEmoji(food: FoodEntity): String {
+    // 如果食物有自定义图标，使用自定义图标
+    if (food.icon.isNotEmpty() && food.icon != "custom") {
+        return food.icon
     }
+    // 否则根据名称推断
+    return FoodEmojiUtils.getDefaultEmojiForFood(food.name)
 }

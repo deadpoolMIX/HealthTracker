@@ -1,7 +1,13 @@
 package com.example.healthtracker.ui.screens.intake
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -11,10 +17,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.healthtracker.util.FoodEmojiUtils
 
 /**
  * 详细录入页面
@@ -49,6 +59,8 @@ fun CustomFoodInputScreen(
     var note by remember { mutableStateOf("") }
     var selectedMealType by remember { mutableIntStateOf(initialMealType) }
     var saveAsCustomFood by remember { mutableStateOf(isFromFoodLibrary) }
+    var selectedEmoji by remember { mutableStateOf(FoodEmojiUtils.getDefaultEmojiForFood(initialFoodName)) }
+    var showEmojiPicker by remember { mutableStateOf(false) }
 
     val mealTypes = listOf("早餐", "午餐", "晚餐", "加餐")
     val commonUnits = listOf("克", "毫升", "个", "杯", "瓶", "份", "块", "片", "勺", "包")
@@ -118,12 +130,49 @@ fun CustomFoodInputScreen(
             // 食物名称
             OutlinedTextField(
                 value = foodName,
-                onValueChange = { foodName = it },
+                onValueChange = {
+                    foodName = it
+                    // 自动更新 emoji
+                    if (selectedEmoji == "🍽️" || selectedEmoji.isEmpty()) {
+                        selectedEmoji = FoodEmojiUtils.getDefaultEmojiForFood(it)
+                    }
+                },
                 label = { Text("食物名称 *") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 enabled = !hasPrefilledData
             )
+
+            // Emoji 选择（仅在保存到食物库时显示）
+            if (saveAsCustomFood || isFromFoodLibrary) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "图标",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .clickable { showEmojiPicker = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = selectedEmoji,
+                            fontSize = 24.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(onClick = { showEmojiPicker = true }) {
+                        Text("更换")
+                    }
+                }
+            }
 
             // 重量和单位
             Row(
@@ -326,7 +375,8 @@ fun CustomFoodInputScreen(
                             amountInUnit = amountInUnit.toDoubleOrNull(),
                             gramsPerUnit = gramsPerUnit.toDoubleOrNull(),
                             note = note.takeIf { it.isNotBlank() },
-                            saveAsCustomFood = saveAsCustomFood
+                            saveAsCustomFood = saveAsCustomFood,
+                            icon = selectedEmoji
                         )
                         onNavigateBack()
                     }
@@ -348,4 +398,78 @@ fun CustomFoodInputScreen(
             }
         }
     }
+
+    // Emoji 选择对话框
+    if (showEmojiPicker) {
+        EmojiPickerDialog(
+            selectedEmoji = selectedEmoji,
+            onEmojiSelected = { emoji ->
+                selectedEmoji = emoji
+                showEmojiPicker = false
+            },
+            onDismiss = { showEmojiPicker = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EmojiPickerDialog(
+    selectedEmoji: String,
+    onEmojiSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("选择图标") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(400.dp)
+            ) {
+                FoodEmojiUtils.foodEmojisByCategory.forEach { (category, emojis) ->
+                    Text(
+                        text = category,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(6),
+                        modifier = Modifier.height(80.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(emojis) { (emoji, description) ->
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (emoji == selectedEmoji)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                    .clickable { onEmojiSelected(emoji) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = emoji,
+                                    fontSize = 24.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("完成")
+            }
+        }
+    )
 }

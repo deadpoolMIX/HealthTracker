@@ -6,7 +6,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.outlined.BarChart
-import androidx.compose.material.icons.outlined.RestaurantMenu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -36,6 +35,7 @@ fun MainScreen(
     onNavigateToAddMealPlan: () -> Unit = {},
     onNavigateToCalendar: () -> Unit = {},
     onNavigateToCustomFood: () -> Unit = {},
+    onNavigateToEditFood: (Long) -> Unit = {},
     onNavigateToEditIntake: (Long) -> Unit = {}
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -105,12 +105,13 @@ fun MainScreen(
                     label = { Text("报表") }
                 )
             }
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         NavHost(
             navController = navController,
             startDestination = Screen.Home.route,
-            modifier = Modifier.padding(paddingValues)
+            modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding())
         ) {
             composable(Screen.Home.route) {
                 HomeScreen(
@@ -125,7 +126,8 @@ fun MainScreen(
             }
             composable(Screen.FoodLibrary.route) {
                 FoodLibraryScreen(
-                    onNavigateToAddCustomFood = onNavigateToCustomFood
+                    onNavigateToAddCustomFood = onNavigateToCustomFood,
+                    onNavigateToEditFood = onNavigateToEditFood
                 )
             }
             composable(Screen.MealPlan.route) {

@@ -37,6 +37,9 @@ class IntakeRecordRepository @Inject constructor(
     suspend fun insertRecord(record: IntakeRecordEntity): Long =
         intakeRecordDao.insertRecord(record)
 
+    suspend fun insertRecords(records: List<IntakeRecordEntity>) =
+        intakeRecordDao.insertRecords(records)
+
     suspend fun updateRecord(record: IntakeRecordEntity) =
         intakeRecordDao.updateRecord(record)
 

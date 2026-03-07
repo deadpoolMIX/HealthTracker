@@ -7,7 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.healthtracker.ui.screens.AddIntakeScreen
+import com.example.healthtracker.ui.screens.intake.AddIntakeScreen
 import com.example.healthtracker.ui.screens.AddBodyDataScreen
 import com.example.healthtracker.ui.screens.AddSleepScreen
 import com.example.healthtracker.ui.screens.settings.SettingsScreen
@@ -46,6 +46,9 @@ fun HealthTrackerNavGraph(
                 onNavigateToAddMealPlan = { navController.navigate(Screen.AddMealPlan.route) },
                 onNavigateToCalendar = { navController.navigate(Screen.Calendar.route) },
                 onNavigateToCustomFood = { navController.navigate("custom_food_input?isFromFoodLibrary=true") },
+                onNavigateToEditFood = { foodId ->
+                    navController.navigate("edit_food/$foodId")
+                },
                 onNavigateToEditIntake = { recordId ->
                     navController.navigate("edit_intake/$recordId")
                 }
@@ -65,12 +68,6 @@ fun HealthTrackerNavGraph(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToCustomFood = { _ ->
                     navController.navigate("custom_food_input?isFromFoodLibrary=true")
-                },
-                onNavigateToFoodDetail = { foodName, calories, carbs, protein, fat, mealType ->
-                    val encodedName = URLEncoder.encode(foodName, StandardCharsets.UTF_8.toString())
-                    navController.navigate(
-                        "custom_food_input?foodName=$encodedName&calories=$calories&carbs=$carbs&protein=$protein&fat=$fat&mealType=$mealType&isFromFoodLibrary=false"
-                    )
                 }
             )
         }
@@ -124,6 +121,20 @@ fun HealthTrackerNavGraph(
             )
         }
 
+        // 编辑自定义食物页面
+        composable(
+            route = "edit_food/{foodId}",
+            arguments = listOf(
+                navArgument("foodId") { type = NavType.LongType }
+            )
+        ) { backStackEntry ->
+            val foodId = backStackEntry.arguments?.getLong("foodId") ?: 0L
+            com.example.healthtracker.ui.screens.food.EditFoodScreen(
+                foodId = foodId,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
         composable(Screen.AddBodyData.route) {
             AddBodyDataScreen(
                 onNavigateBack = { navController.popBackStack() }
@@ -139,7 +150,8 @@ fun HealthTrackerNavGraph(
         // 饮食计划
         composable(Screen.AddMealPlan.route) {
             AddMealPlanScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToCustomFood = { navController.navigate("custom_food_input?isFromFoodLibrary=true") }
             )
         }
 

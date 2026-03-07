@@ -26,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.healthtracker.data.local.entity.FoodEntity
 import com.example.healthtracker.ui.screens.settings.FoodManagerViewModel
+import com.example.healthtracker.util.FoodEmojiUtils
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -186,7 +187,7 @@ private fun FoodManagerItem(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = getCategoryEmoji(food.name),
+                    text = getFoodEmoji(food),
                     style = MaterialTheme.typography.titleMedium
                 )
             }
@@ -266,19 +267,11 @@ private fun AlphabetIndexBar(
     }
 }
 
-private fun getCategoryEmoji(name: String): String {
-    return when {
-        name.contains("饭") || name.contains("面") || name.contains("粥") -> "🍚"
-        name.contains("猪") || name.contains("牛") || name.contains("羊") -> "🥩"
-        name.contains("鸡") || name.contains("鸭") -> "🍗"
-        name.contains("鱼") || name.contains("虾") || name.contains("蟹") -> "🐟"
-        name.contains("蛋") -> "🥚"
-        name.contains("奶") || name.contains("牛奶") -> "🥛"
-        name.contains("豆") -> "🫘"
-        name.contains("蔬菜") || name.contains("菜") -> "🥬"
-        name.contains("水果") || name.contains("苹果") || name.contains("香蕉") || name.contains("橙") -> "🍎"
-        name.contains("油") -> "🫒"
-        name.contains("坚果") || name.contains("花生") -> "🥜"
-        else -> "🍽️"
+private fun getFoodEmoji(food: FoodEntity): String {
+    // 如果食物有自定义图标，使用自定义图标
+    if (food.icon.isNotEmpty() && food.icon != "custom") {
+        return food.icon
     }
+    // 否则根据名称推断
+    return FoodEmojiUtils.getDefaultEmojiForFood(food.name)
 }

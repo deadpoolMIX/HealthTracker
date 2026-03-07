@@ -128,4 +128,18 @@ class HomeViewModel @Inject constructor(
             intakeRecordRepository.updateRecord(record)
         }
     }
+
+    fun updateTargetCalories(calories: Double) {
+        viewModelScope.launch {
+            userSettingsRepository.updateTargetCalories(calories)
+            // 更新 UI 状态
+            val caloriePercentage = HealthCalculator.calculateCaloriePercentage(
+                _uiState.value.totalCalories, calories
+            )
+            _uiState.value = _uiState.value.copy(
+                targetCalories = calories,
+                caloriePercentage = caloriePercentage
+            )
+        }
+    }
 }
