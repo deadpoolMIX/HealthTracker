@@ -117,6 +117,7 @@ class AddIntakeViewModel @Inject constructor(
             val records = _pendingItems.value.map { item ->
                 IntakeRecordEntity(
                     foodName = item.food.name,
+                    foodIcon = item.food.icon.ifEmpty { null },
                     date = date,
                     amount = item.amount,
                     calories = item.calories,

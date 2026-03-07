@@ -28,32 +28,32 @@ class TestDataViewModel @Inject constructor(
     private val _state = MutableStateFlow(TestDataState())
     val state = _state.asStateFlow()
 
-    fun generateTestData(days: Int = 10) {
+    fun generateTestData() {
         viewModelScope.launch {
             _state.value = TestDataState(isGenerating = true)
 
             try {
-                // 生成摄入数据
-                val intakeRecords = TestDataGenerator.generateIntakeRecords(days)
+                // 生成最近一周的摄入数据
+                val intakeRecords = TestDataGenerator.generateIntakeRecords()
                 intakeRecords.forEach { record ->
                     intakeRecordRepository.insertRecord(record)
                 }
 
-                // 生成身体数据
-                val bodyRecords = TestDataGenerator.generateBodyRecords(days)
+                // 生成最近一周的身体数据
+                val bodyRecords = TestDataGenerator.generateBodyRecords()
                 bodyRecords.forEach { record ->
                     bodyRecordRepository.insertRecord(record)
                 }
 
-                // 生成睡眠数据
-                val sleepRecords = TestDataGenerator.generateSleepRecords(days)
+                // 生成最近一周的睡眠数据
+                val sleepRecords = TestDataGenerator.generateSleepRecords()
                 sleepRecords.forEach { record ->
                     sleepRecordRepository.insertRecord(record)
                 }
 
                 _state.value = TestDataState(
                     isGenerating = false,
-                    message = "成功生成 ${days} 天的测试数据！\n" +
+                    message = "成功生成最近一周的测试数据！\n" +
                             "- 摄入记录：${intakeRecords.size} 条\n" +
                             "- 身体数据：${bodyRecords.size} 条\n" +
                             "- 睡眠记录：${sleepRecords.size} 条",

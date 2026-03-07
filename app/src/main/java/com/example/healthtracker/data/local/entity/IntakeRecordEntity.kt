@@ -25,6 +25,7 @@ data class IntakeRecordEntity(
     val id: Long = 0,
     val foodId: Long? = null,             // 食品ID（可空，支持自定义输入）
     val foodName: String,                 // 食品名称
+    val foodIcon: String? = null,         // 食品图标（emoji）
     val date: Long,                       // 记录日期（时间戳，仅日期部分）
     val amount: Double,                   // 摄入量 (g 或 ml)
     val calories: Double,                 // 实际热量 (kcal)

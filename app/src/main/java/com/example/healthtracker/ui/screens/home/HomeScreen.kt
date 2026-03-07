@@ -649,7 +649,7 @@ private fun MealIntakeItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = getFoodEmoji(record.foodName),
+                        text = getFoodEmoji(record),
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
@@ -734,7 +734,7 @@ private fun IntakeRecordItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = getFoodEmoji(record.foodName),
+                        text = getFoodEmoji(record),
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
@@ -998,6 +998,19 @@ private fun getMealTypeEmoji(mealType: Int): String {
 }
 
 /**
+ * 根据摄入记录获取食物图标
+ * 优先使用记录中存储的图标，否则根据名称推断
+ */
+private fun getFoodEmoji(record: IntakeRecordEntity): String {
+    // 如果记录中有存储的图标，直接使用
+    if (!record.foodIcon.isNullOrEmpty()) {
+        return record.foodIcon
+    }
+    // 否则根据名称推断
+    return getFoodEmoji(record.foodName)
+}
+
+/**
  * 根据食物名称返回对应的emoji
  */
 private fun getFoodEmoji(name: String): String {
@@ -1129,7 +1142,7 @@ private fun EditIntakeDialog(
                         .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = getFoodEmoji(record.foodName), fontSize = 16.sp)
+                    Text(text = getFoodEmoji(record), fontSize = 16.sp)
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(record.foodName, fontWeight = FontWeight.Medium)

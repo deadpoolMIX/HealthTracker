@@ -145,12 +145,17 @@ fun FoodManagerScreen(
                     AlphabetIndexBar(
                         letters = groupedFoods.keys.toList(),
                         onLetterClick = { letter ->
-                            // 滚动到对应字母位置
-                            val index = groupedFoods.keys.indexOf(letter)
-                            if (index >= 0) {
-                                scope.launch {
-                                    listState.animateScrollToItem(index * 2) // 每组有一个标题 + 食物列表
+                            // 计算正确的滚动位置
+                            var targetIndex = 0
+                            for ((key, foodsInGroup) in groupedFoods) {
+                                if (key == letter) {
+                                    break
                                 }
+                                // 每组有：1个标题 + N个食物项
+                                targetIndex += 1 + foodsInGroup.size
+                            }
+                            scope.launch {
+                                listState.animateScrollToItem(targetIndex)
                             }
                         }
                     )
