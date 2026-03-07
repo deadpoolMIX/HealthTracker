@@ -432,8 +432,15 @@ private fun BodyDataChartCard(
     data: List<BodyRecordEntity>,
     period: Int
 ) {
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val errorColor = MaterialTheme.colorScheme.error
+    // 数据类型选择：0=体重体脂肌肉，1=三围
+    var dataType by remember { mutableIntStateOf(0) }
+
+    val weightColor = MaterialTheme.colorScheme.primary
+    val bodyFatColor = MaterialTheme.colorScheme.error
+    val muscleColor = MaterialTheme.colorScheme.tertiary
+    val chestColor = MaterialTheme.colorScheme.primary
+    val waistColor = MaterialTheme.colorScheme.secondary
+    val hipColor = MaterialTheme.colorScheme.tertiary
 
     Card(
         modifier = Modifier.fillMaxWidth()
@@ -441,6 +448,7 @@ private fun BodyDataChartCard(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
+            // 标题行
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -451,11 +459,37 @@ private fun BodyDataChartCard(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    LegendItem("体重", primaryColor)
-                    LegendItem("体脂", errorColor)
+                // 数据类型切换
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    FilterChip(
+                        selected = dataType == 0,
+                        onClick = { dataType = 0 },
+                        label = { Text("体重体脂", fontSize = 12.sp) },
+                        modifier = Modifier.height(28.dp)
+                    )
+                    FilterChip(
+                        selected = dataType == 1,
+                        onClick = { dataType = 1 },
+                        label = { Text("三围", fontSize = 12.sp) },
+                        modifier = Modifier.height(28.dp)
+                    )
+                }
+            }
+
+            // 图例
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (dataType == 0) {
+                    LegendItem("体重", weightColor)
+                    LegendItem("体脂", bodyFatColor)
+                    LegendItem("肌肉", muscleColor)
+                } else {
+                    LegendItem("胸围", chestColor)
+                    LegendItem("腰围", waistColor)
+                    LegendItem("臀围", hipColor)
                 }
             }
 
@@ -463,96 +497,234 @@ private fun BodyDataChartCard(
 
             // 折线图
             val sortedData = data.sortedBy { it.date }
-            val weights = sortedData.mapNotNull { it.weight }
-            val bodyFats = sortedData.mapNotNull { it.bodyFatRate }
 
-            if (weights.isEmpty() && bodyFats.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("暂无身体数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (dataType == 0) {
+                // 体重、体脂、肌肉量
+                val weights = sortedData.mapNotNull { it.weight }
+                val bodyFats = sortedData.mapNotNull { it.bodyFatRate }
+                val muscles = sortedData.mapNotNull { it.muscleMass }
+
+                if (weights.isEmpty() && bodyFats.isEmpty() && muscles.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("暂无身体数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    // 计算范围
+                    val minWeight = (weights.minOrNull() ?: 50.0) - 2
+                    val maxWeight = (weights.maxOrNull() ?: 80.0) + 2
+                    val minBodyFat = (bodyFats.minOrNull() ?: 15.0) - 2
+                    val maxBodyFat = (bodyFats.maxOrNull() ?: 25.0) + 2
+                    val minMuscle = (muscles.minOrNull() ?: 30.0) - 2
+                    val maxMuscle = (muscles.maxOrNull() ?: 50.0) + 2
+
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                    ) {
+                        val chartHeight = size.height - 40f
+                        val chartWidth = size.width
+
+                        // 绘制平滑曲线
+                        // 体重折线
+                        if (weights.size >= 2) {
+                            drawSmoothLine(
+                                points = weights.mapIndexed { index, weight ->
+                                    val x = (index.toFloat() / (weights.size - 1)) * chartWidth
+                                    val y = chartHeight - ((weight - minWeight) / (maxWeight - minWeight) * chartHeight).toFloat() + 20
+                                    Offset(x, y)
+                                },
+                                color = weightColor
+                            )
+                            // 绘制数据点
+                            weights.forEachIndexed { index, weight ->
+                                val x = (index.toFloat() / (weights.size - 1)) * chartWidth
+                                val y = chartHeight - ((weight - minWeight) / (maxWeight - minWeight) * chartHeight).toFloat() + 20
+                                drawCircle(color = weightColor, radius = 4f, center = Offset(x, y))
+                            }
+                        }
+
+                        // 体脂折线
+                        if (bodyFats.size >= 2) {
+                            drawSmoothLine(
+                                points = bodyFats.mapIndexed { index, bodyFat ->
+                                    val x = (index.toFloat() / (bodyFats.size - 1)) * chartWidth
+                                    val y = chartHeight - ((bodyFat - minBodyFat) / (maxBodyFat - minBodyFat) * chartHeight).toFloat() + 20
+                                    Offset(x, y)
+                                },
+                                color = bodyFatColor
+                            )
+                            bodyFats.forEachIndexed { index, bodyFat ->
+                                val x = (index.toFloat() / (bodyFats.size - 1)) * chartWidth
+                                val y = chartHeight - ((bodyFat - minBodyFat) / (maxBodyFat - minBodyFat) * chartHeight).toFloat() + 20
+                                drawCircle(color = bodyFatColor, radius = 4f, center = Offset(x, y))
+                            }
+                        }
+
+                        // 肌肉量折线
+                        if (muscles.size >= 2) {
+                            drawSmoothLine(
+                                points = muscles.mapIndexed { index, muscle ->
+                                    val x = (index.toFloat() / (muscles.size - 1)) * chartWidth
+                                    val y = chartHeight - ((muscle - minMuscle) / (maxMuscle - minMuscle) * chartHeight).toFloat() + 20
+                                    Offset(x, y)
+                                },
+                                color = muscleColor
+                            )
+                            muscles.forEachIndexed { index, muscle ->
+                                val x = (index.toFloat() / (muscles.size - 1)) * chartWidth
+                                val y = chartHeight - ((muscle - minMuscle) / (maxMuscle - minMuscle) * chartHeight).toFloat() + 20
+                                drawCircle(color = muscleColor, radius = 4f, center = Offset(x, y))
+                            }
+                        }
+                    }
+
+                    // 统计信息
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        weights.lastOrNull()?.let { StatItem("体重", "${String.format("%.1f", it)} kg") }
+                        bodyFats.lastOrNull()?.let { StatItem("体脂", "${String.format("%.1f", it)}%") }
+                        muscles.lastOrNull()?.let { StatItem("肌肉", "${String.format("%.1f", it)} kg") }
+                    }
                 }
             } else {
-                val minWeight = weights.minOrNull() ?: 0.0
-                val maxWeight = weights.maxOrNull() ?: 100.0
-                val minBodyFat = bodyFats.minOrNull() ?: 0.0
-                val maxBodyFat = bodyFats.maxOrNull() ?: 30.0
+                // 三围数据
+                val chests = sortedData.mapNotNull { it.chest }
+                val waists = sortedData.mapNotNull { it.waist }
+                val hips = sortedData.mapNotNull { it.hip }
 
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                ) {
-                    // 体重折线
-                    if (weights.isNotEmpty()) {
-                        val path = Path()
-                        weights.forEachIndexed { index, weight ->
-                            val x = (index.toFloat() / (weights.size - 1).coerceAtLeast(1)) * size.width
-                            val y = size.height - ((weight - minWeight) / (maxWeight - minWeight).coerceAtLeast(1.0) * (size.height - 40)).toFloat() - 20
-                            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                        }
-                        drawPath(
-                            path = path,
-                            color = primaryColor,
-                            style = Stroke(width = 3f)
-                        )
-                        // 绘制点
-                        weights.forEachIndexed { index, weight ->
-                            val x = (index.toFloat() / (weights.size - 1).coerceAtLeast(1)) * size.width
-                            val y = size.height - ((weight - minWeight) / (maxWeight - minWeight).coerceAtLeast(1.0) * (size.height - 40)).toFloat() - 20
-                            drawCircle(
-                                color = primaryColor,
-                                radius = 4f,
-                                center = Offset(x, y)
+                if (chests.isEmpty() && waists.isEmpty() && hips.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("暂无三围数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    // 计算范围（三围使用统一范围）
+                    val allMeasurements = chests + waists + hips
+                    val minMeasure = (allMeasurements.minOrNull() ?: 60.0) - 5
+                    val maxMeasure = (allMeasurements.maxOrNull() ?: 100.0) + 5
+
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                    ) {
+                        val chartHeight = size.height - 40f
+                        val chartWidth = size.width
+
+                        // 胸围折线
+                        if (chests.size >= 2) {
+                            drawSmoothLine(
+                                points = chests.mapIndexed { index, chest ->
+                                    val x = (index.toFloat() / (chests.size - 1)) * chartWidth
+                                    val y = chartHeight - ((chest - minMeasure) / (maxMeasure - minMeasure) * chartHeight).toFloat() + 20
+                                    Offset(x, y)
+                                },
+                                color = chestColor
                             )
+                            chests.forEachIndexed { index, chest ->
+                                val x = (index.toFloat() / (chests.size - 1)) * chartWidth
+                                val y = chartHeight - ((chest - minMeasure) / (maxMeasure - minMeasure) * chartHeight).toFloat() + 20
+                                drawCircle(color = chestColor, radius = 4f, center = Offset(x, y))
+                            }
                         }
-                    }
 
-                    // 体脂折线
-                    if (bodyFats.isNotEmpty()) {
-                        val path = Path()
-                        bodyFats.forEachIndexed { index, bodyFat ->
-                            val x = (index.toFloat() / (bodyFats.size - 1).coerceAtLeast(1)) * size.width
-                            val y = size.height - ((bodyFat - minBodyFat) / (maxBodyFat - minBodyFat).coerceAtLeast(1.0) * (size.height - 40)).toFloat() - 20
-                            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                        }
-                        drawPath(
-                            path = path,
-                            color = errorColor,
-                            style = Stroke(width = 3f)
-                        )
-                        // 绘制点
-                        bodyFats.forEachIndexed { index, bodyFat ->
-                            val x = (index.toFloat() / (bodyFats.size - 1).coerceAtLeast(1)) * size.width
-                            val y = size.height - ((bodyFat - minBodyFat) / (maxBodyFat - minBodyFat).coerceAtLeast(1.0) * (size.height - 40)).toFloat() - 20
-                            drawCircle(
-                                color = errorColor,
-                                radius = 4f,
-                                center = Offset(x, y)
+                        // 腰围折线
+                        if (waists.size >= 2) {
+                            drawSmoothLine(
+                                points = waists.mapIndexed { index, waist ->
+                                    val x = (index.toFloat() / (waists.size - 1)) * chartWidth
+                                    val y = chartHeight - ((waist - minMeasure) / (maxMeasure - minMeasure) * chartHeight).toFloat() + 20
+                                    Offset(x, y)
+                                },
+                                color = waistColor
                             )
+                            waists.forEachIndexed { index, waist ->
+                                val x = (index.toFloat() / (waists.size - 1)) * chartWidth
+                                val y = chartHeight - ((waist - minMeasure) / (maxMeasure - minMeasure) * chartHeight).toFloat() + 20
+                                drawCircle(color = waistColor, radius = 4f, center = Offset(x, y))
+                            }
+                        }
+
+                        // 臀围折线
+                        if (hips.size >= 2) {
+                            drawSmoothLine(
+                                points = hips.mapIndexed { index, hip ->
+                                    val x = (index.toFloat() / (hips.size - 1)) * chartWidth
+                                    val y = chartHeight - ((hip - minMeasure) / (maxMeasure - minMeasure) * chartHeight).toFloat() + 20
+                                    Offset(x, y)
+                                },
+                                color = hipColor
+                            )
+                            hips.forEachIndexed { index, hip ->
+                                val x = (index.toFloat() / (hips.size - 1)) * chartWidth
+                                val y = chartHeight - ((hip - minMeasure) / (maxMeasure - minMeasure) * chartHeight).toFloat() + 20
+                                drawCircle(color = hipColor, radius = 4f, center = Offset(x, y))
+                            }
                         }
                     }
-                }
 
-                // 统计信息
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    weights.lastOrNull()?.let {
-                        StatItem("当前体重", "${String.format("%.1f", it)} kg")
-                    }
-                    bodyFats.lastOrNull()?.let {
-                        StatItem("当前体脂", "${String.format("%.1f", it)}%")
+                    // 统计信息
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        chests.lastOrNull()?.let { StatItem("胸围", "${String.format("%.1f", it)} cm") }
+                        waists.lastOrNull()?.let { StatItem("腰围", "${String.format("%.1f", it)} cm") }
+                        hips.lastOrNull()?.let { StatItem("臀围", "${String.format("%.1f", it)} cm") }
                     }
                 }
             }
         }
     }
+}
+
+/**
+ * 绘制平滑曲线（贝塞尔曲线）
+ */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSmoothLine(
+    points: List<Offset>,
+    color: Color
+) {
+    if (points.size < 2) return
+
+    val path = Path()
+    path.moveTo(points[0].x, points[0].y)
+
+    for (i in 1 until points.size) {
+        val prevPoint = points[i - 1]
+        val currentPoint = points[i]
+
+        // 使用二次贝塞尔曲线
+        val midX = (prevPoint.x + currentPoint.x) / 2
+        path.quadraticTo(
+            prevPoint.x, prevPoint.y,
+            midX, (prevPoint.y + currentPoint.y) / 2
+        )
+        path.quadraticTo(
+            currentPoint.x, currentPoint.y,
+            currentPoint.x, currentPoint.y
+        )
+    }
+
+    drawPath(
+        path = path,
+        color = color,
+        style = Stroke(width = 2.5f)
+    )
 }
 
 @Composable
