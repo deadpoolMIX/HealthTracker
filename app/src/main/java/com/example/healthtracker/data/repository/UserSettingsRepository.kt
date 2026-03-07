@@ -49,4 +49,29 @@ class UserSettingsRepository @Inject constructor(
         bmr: Double,
         tdee: Double
     ) = userSettingsDao.updateUserInfo(gender, age, height, weight, activityLevel, bmr, tdee)
+
+    // 报表设置
+    suspend fun updateShowNutritionChart(show: Boolean) =
+        userSettingsDao.updateShowNutritionChart(show)
+
+    suspend fun updateShowBodyChart(show: Boolean) =
+        userSettingsDao.updateShowBodyChart(show)
+
+    suspend fun updateShowSleepChart(show: Boolean) =
+        userSettingsDao.updateShowSleepChart(show)
+
+    suspend fun updateDefaultChartPeriod(period: Int) =
+        userSettingsDao.updateDefaultChartPeriod(period)
+
+    suspend fun updateReportSettings(
+        showNutritionChart: Boolean,
+        showBodyChart: Boolean,
+        showSleepChart: Boolean,
+        defaultChartPeriod: Int
+    ) = userSettingsDao.updateReportSettings(
+        showNutritionChart,
+        showBodyChart,
+        showSleepChart,
+        defaultChartPeriod
+    )
 }

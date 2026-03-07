@@ -17,7 +17,7 @@ import com.example.healthtracker.data.local.entity.*
         MealPlanItemEntity::class,
         UserSettingsEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class HealthTrackerDatabase : RoomDatabase() {
@@ -119,6 +119,16 @@ abstract class HealthTrackerDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // 添加摄入记录的食物图标字段
                 db.execSQL("ALTER TABLE intake_records ADD COLUMN foodIcon TEXT")
+            }
+        }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 添加报表设置字段
+                db.execSQL("ALTER TABLE user_settings ADD COLUMN showNutritionChart INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE user_settings ADD COLUMN showBodyChart INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE user_settings ADD COLUMN showSleepChart INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE user_settings ADD COLUMN defaultChartPeriod INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

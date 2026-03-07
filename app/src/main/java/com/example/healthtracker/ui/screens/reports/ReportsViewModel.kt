@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.example.healthtracker.data.local.entity.BodyRecordEntity
 import com.example.healthtracker.data.local.entity.IntakeRecordEntity
 import com.example.healthtracker.data.local.entity.SleepRecordEntity
+import com.example.healthtracker.data.local.entity.UserSettingsEntity
 import com.example.healthtracker.data.repository.BodyRecordRepository
 import com.example.healthtracker.data.repository.IntakeRecordRepository
 import com.example.healthtracker.data.repository.SleepRecordRepository
+import com.example.healthtracker.data.repository.UserSettingsRepository
 import com.example.healthtracker.util.DateTimeUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -20,7 +22,13 @@ data class ReportsUiState(
     val intakeData: List<DailyNutrition> = emptyList(),
     val bodyData: List<BodyRecordEntity> = emptyList(),
     val sleepData: List<SleepRecordEntity> = emptyList(),
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    // 报表设置
+    val showNutritionChart: Boolean = true,
+    val showBodyChart: Boolean = true,
+    val showSleepChart: Boolean = true,
+    val defaultChartPeriod: Int = 0,
+    val showSettingsDialog: Boolean = false
 )
 
 // 每日营养汇总
@@ -36,19 +44,70 @@ data class DailyNutrition(
 class ReportsViewModel @Inject constructor(
     private val intakeRecordRepository: IntakeRecordRepository,
     private val bodyRecordRepository: BodyRecordRepository,
-    private val sleepRecordRepository: SleepRecordRepository
+    private val sleepRecordRepository: SleepRecordRepository,
+    private val userSettingsRepository: UserSettingsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReportsUiState())
     val uiState = _uiState.asStateFlow()
 
     init {
-        loadData()
+        loadSettingsAndData()
+    }
+
+    private fun loadSettingsAndData() {
+        viewModelScope.launch {
+            // 加载设置
+            val settings = userSettingsRepository.getSettings()
+            if (settings != null) {
+                _uiState.value = _uiState.value.copy(
+                    showNutritionChart = settings.showNutritionChart,
+                    showBodyChart = settings.showBodyChart,
+                    showSleepChart = settings.showSleepChart,
+                    defaultChartPeriod = settings.defaultChartPeriod,
+                    selectedPeriod = settings.defaultChartPeriod
+                )
+            }
+            loadData()
+        }
     }
 
     fun setPeriod(period: Int) {
         _uiState.value = _uiState.value.copy(selectedPeriod = period)
         loadData()
+    }
+
+    fun showSettingsDialog() {
+        _uiState.value = _uiState.value.copy(showSettingsDialog = true)
+    }
+
+    fun hideSettingsDialog() {
+        _uiState.value = _uiState.value.copy(showSettingsDialog = false)
+    }
+
+    fun updateReportSettings(
+        showNutritionChart: Boolean,
+        showBodyChart: Boolean,
+        showSleepChart: Boolean,
+        defaultChartPeriod: Int
+    ) {
+        viewModelScope.launch {
+            userSettingsRepository.updateReportSettings(
+                showNutritionChart,
+                showBodyChart,
+                showSleepChart,
+                defaultChartPeriod
+            )
+            _uiState.value = _uiState.value.copy(
+                showNutritionChart = showNutritionChart,
+                showBodyChart = showBodyChart,
+                showSleepChart = showSleepChart,
+                defaultChartPeriod = defaultChartPeriod,
+                selectedPeriod = defaultChartPeriod,
+                showSettingsDialog = false
+            )
+            loadData()
+        }
     }
 
     private fun loadData() {

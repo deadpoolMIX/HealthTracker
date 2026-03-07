@@ -106,4 +106,46 @@ interface UserSettingsDao {
             )
         }
     }
+
+    // 报表设置
+    @Query("UPDATE user_settings SET showNutritionChart = :show WHERE id = 1")
+    suspend fun updateShowNutritionChart(show: Boolean)
+
+    @Query("UPDATE user_settings SET showBodyChart = :show WHERE id = 1")
+    suspend fun updateShowBodyChart(show: Boolean)
+
+    @Query("UPDATE user_settings SET showSleepChart = :show WHERE id = 1")
+    suspend fun updateShowSleepChart(show: Boolean)
+
+    @Query("UPDATE user_settings SET defaultChartPeriod = :period WHERE id = 1")
+    suspend fun updateDefaultChartPeriod(period: Int)
+
+    @Transaction
+    suspend fun updateReportSettings(
+        showNutritionChart: Boolean,
+        showBodyChart: Boolean,
+        showSleepChart: Boolean,
+        defaultChartPeriod: Int
+    ) {
+        val settings = getSettings()
+        if (settings == null) {
+            insertSettings(
+                com.example.healthtracker.data.local.entity.UserSettingsEntity(
+                    showNutritionChart = showNutritionChart,
+                    showBodyChart = showBodyChart,
+                    showSleepChart = showSleepChart,
+                    defaultChartPeriod = defaultChartPeriod
+                )
+            )
+        } else {
+            updateSettings(
+                settings.copy(
+                    showNutritionChart = showNutritionChart,
+                    showBodyChart = showBodyChart,
+                    showSleepChart = showSleepChart,
+                    defaultChartPeriod = defaultChartPeriod
+                )
+            )
+        }
+    }
 }

@@ -38,11 +38,28 @@ fun ReportsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val periods = listOf("天", "周", "月", "年")
 
+    // 报表设置对话框
+    if (uiState.showSettingsDialog) {
+        ReportSettingsDialog(
+            showNutritionChart = uiState.showNutritionChart,
+            showBodyChart = uiState.showBodyChart,
+            showSleepChart = uiState.showSleepChart,
+            defaultChartPeriod = uiState.defaultChartPeriod,
+            onDismiss = { viewModel.hideSettingsDialog() },
+            onSave = { showNutrition, showBody, showSleep, defaultPeriod ->
+                viewModel.updateReportSettings(showNutrition, showBody, showSleep, defaultPeriod)
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("数据报表", fontWeight = FontWeight.Medium) },
                 actions = {
+                    IconButton(onClick = { viewModel.showSettingsDialog() }) {
+                        Icon(Icons.Default.Settings, contentDescription = "报表设置")
+                    }
                     IconButton(onClick = onNavigateToDataExport) {
                         Icon(Icons.Default.Download, contentDescription = "导出数据")
                     }
@@ -111,15 +128,17 @@ fun ReportsScreen(
                 }
 
                 // 营养素堆叠柱状图
-                item {
-                    NutritionChartCard(
-                        data = uiState.intakeData,
-                        period = uiState.selectedPeriod
-                    )
+                if (uiState.showNutritionChart) {
+                    item {
+                        NutritionChartCard(
+                            data = uiState.intakeData,
+                            period = uiState.selectedPeriod
+                        )
+                    }
                 }
 
                 // 身体数据折线图
-                if (uiState.bodyData.isNotEmpty()) {
+                if (uiState.showBodyChart && uiState.bodyData.isNotEmpty()) {
                     item {
                         BodyDataChartCard(
                             data = uiState.bodyData,
@@ -129,7 +148,7 @@ fun ReportsScreen(
                 }
 
                 // 睡眠范围条形图
-                if (uiState.sleepData.isNotEmpty()) {
+                if (uiState.showSleepChart && uiState.sleepData.isNotEmpty()) {
                     item {
                         SleepChartCard(
                             data = uiState.sleepData,
@@ -148,6 +167,114 @@ fun ReportsScreen(
             }
         }
     }
+}
+
+/**
+ * 报表设置对话框
+ */
+@Composable
+private fun ReportSettingsDialog(
+    showNutritionChart: Boolean,
+    showBodyChart: Boolean,
+    showSleepChart: Boolean,
+    defaultChartPeriod: Int,
+    onDismiss: () -> Unit,
+    onSave: (Boolean, Boolean, Boolean, Int) -> Unit
+) {
+    var showNutrition by remember { mutableStateOf(showNutritionChart) }
+    var showBody by remember { mutableStateOf(showBodyChart) }
+    var showSleep by remember { mutableStateOf(showSleepChart) }
+    var selectedPeriod by remember { mutableIntStateOf(defaultChartPeriod) }
+    val periods = listOf("天", "周", "月", "年")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("报表设置") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "显示报表",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showNutrition = !showNutrition },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = showNutrition,
+                        onCheckedChange = { showNutrition = it }
+                    )
+                    Text("营养素图表")
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showBody = !showBody },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = showBody,
+                        onCheckedChange = { showBody = it }
+                    )
+                    Text("身体数据图表")
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showSleep = !showSleep },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = showSleep,
+                        onCheckedChange = { showSleep = it }
+                    )
+                    Text("睡眠图表")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "默认周期",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    periods.forEachIndexed { index, period ->
+                        FilterChip(
+                            selected = selectedPeriod == index,
+                            onClick = { selectedPeriod = index },
+                            label = { Text(period) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSave(showNutrition, showBody, showSleep, selectedPeriod) }
+            ) {
+                Text("保存")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
 }
 
 /**
