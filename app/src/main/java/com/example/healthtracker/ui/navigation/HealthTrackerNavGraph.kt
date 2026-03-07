@@ -53,6 +53,9 @@ fun HealthTrackerNavGraph(
                 },
                 onNavigateToEditIntake = { recordId ->
                     navController.navigate("edit_intake/$recordId")
+                },
+                onNavigateToEditMealPlan = { planId ->
+                    navController.navigate("edit_meal_plan/$planId")
                 }
             )
         }
@@ -156,6 +159,17 @@ fun HealthTrackerNavGraph(
 
         // 饮食计划
         composable(Screen.AddMealPlan.route) {
+            AddMealPlanScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToCustomFood = { navController.navigate(Screen.AddCustomFood.route) }
+            )
+        }
+
+        // 编辑饮食计划
+        composable(
+            route = Screen.EditMealPlan.route,
+            arguments = listOf(navArgument("planId") { type = NavType.LongType })
+        ) {
             AddMealPlanScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToCustomFood = { navController.navigate(Screen.AddCustomFood.route) }

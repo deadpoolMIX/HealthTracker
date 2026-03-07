@@ -32,4 +32,7 @@ interface MealPlanDao {
 
     @Query("UPDATE meal_plans SET isActive = 1 WHERE id = :id")
     suspend fun activatePlan(id: Long)
+
+    @Query("SELECT * FROM meal_plans ORDER BY createdAt DESC")
+    suspend fun getAllPlansSync(): List<MealPlanEntity>
 }

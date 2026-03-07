@@ -1,8 +1,10 @@
 package com.example.healthtracker.ui.screens.mealplan
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.healthtracker.data.local.entity.FoodEntity
+import com.example.healthtracker.data.local.entity.MealPlanEntity
 import com.example.healthtracker.data.local.entity.MealPlanItemEntity
 import com.example.healthtracker.data.repository.FoodRepository
 import com.example.healthtracker.data.repository.MealPlanRepository
@@ -13,18 +15,24 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class AddMealPlanUiState(
+    val planId: Long? = null,
     val planName: String = "",
     val planType: Int = 1,
     val items: List<MealPlanItemEntity> = emptyList(),
     val currentMealType: Int = 0,
-    val currentDayOfWeek: Int? = null
+    val currentDayOfWeek: Int? = null,
+    val isLoading: Boolean = false,
+    val isEditing: Boolean = false
 )
 
 @HiltViewModel
 class AddMealPlanViewModel @Inject constructor(
     private val mealPlanRepository: MealPlanRepository,
-    private val foodRepository: FoodRepository
+    private val foodRepository: FoodRepository,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+
+    private val planId: Long? = savedStateHandle.get<String>("planId")?.toLongOrNull()
 
     private val _uiState = MutableStateFlow(AddMealPlanUiState())
     val uiState = _uiState.asStateFlow()
@@ -42,6 +50,36 @@ class AddMealPlanViewModel @Inject constructor(
             }
         }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    init {
+        if (planId != null && planId > 0) {
+            loadPlanForEditing(planId)
+        }
+    }
+
+    private fun loadPlanForEditing(id: Long) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, isEditing = true, planId = id)
+
+            // 加载计划信息
+            val plans = mealPlanRepository.getAllPlansSync()
+            val plan = plans.find { it.id == id }
+
+            if (plan != null) {
+                // 加载计划项目
+                val items = mealPlanRepository.getItemsByPlanIdSync(id)
+
+                _uiState.value = _uiState.value.copy(
+                    planName = plan.name,
+                    planType = plan.planType,
+                    items = items,
+                    isLoading = false
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(isLoading = false)
+            }
+        }
+    }
 
     fun setPlanName(name: String) {
         _uiState.value = _uiState.value.copy(planName = name)
@@ -91,14 +129,30 @@ class AddMealPlanViewModel @Inject constructor(
             return false
         }
 
-        val plan = com.example.healthtracker.data.local.entity.MealPlanEntity(
-            name = state.planName,
-            planType = state.planType
-        )
-        val planId = mealPlanRepository.insertPlan(plan)
+        if (state.isEditing && state.planId != null) {
+            // 更新现有计划
+            val plan = MealPlanEntity(
+                id = state.planId,
+                name = state.planName,
+                planType = state.planType
+            )
+            mealPlanRepository.updatePlan(plan)
 
-        val itemsWithPlanId = state.items.map { it.copy(planId = planId) }
-        mealPlanRepository.insertItems(itemsWithPlanId)
+            // 删除旧的项目，插入新的
+            mealPlanRepository.deleteItemsByPlanId(state.planId)
+            val itemsWithPlanId = state.items.map { it.copy(planId = state.planId) }
+            mealPlanRepository.insertItems(itemsWithPlanId)
+        } else {
+            // 创建新计划
+            val plan = MealPlanEntity(
+                name = state.planName,
+                planType = state.planType
+            )
+            val planId = mealPlanRepository.insertPlan(plan)
+
+            val itemsWithPlanId = state.items.map { it.copy(planId = planId) }
+            mealPlanRepository.insertItems(itemsWithPlanId)
+        }
 
         return true
     }

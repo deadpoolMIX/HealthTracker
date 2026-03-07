@@ -36,7 +36,8 @@ fun MainScreen(
     onNavigateToCalendar: () -> Unit = {},
     onNavigateToCustomFood: () -> Unit = {},
     onNavigateToEditFood: (Long) -> Unit = {},
-    onNavigateToEditIntake: (Long) -> Unit = {}
+    onNavigateToEditIntake: (Long) -> Unit = {},
+    onNavigateToEditMealPlan: (Long) -> Unit = {}
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -132,7 +133,8 @@ fun MainScreen(
             }
             composable(Screen.MealPlan.route) {
                 MealPlanScreen(
-                    onNavigateToAddPlan = onNavigateToAddMealPlan
+                    onNavigateToAddPlan = onNavigateToAddMealPlan,
+                    onNavigateToEditPlan = onNavigateToEditMealPlan
                 )
             }
             composable(Screen.Reports.route) {

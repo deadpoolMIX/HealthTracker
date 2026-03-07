@@ -20,6 +20,7 @@ sealed class Screen(val route: String) {
 
     // 饮食计划
     object AddMealPlan : Screen("add_meal_plan")
+    object EditMealPlan : Screen("edit_meal_plan/{planId}")
 
     // 设置页面
     object Settings : Screen("settings")

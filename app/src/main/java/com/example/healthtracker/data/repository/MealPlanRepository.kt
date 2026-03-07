@@ -52,4 +52,6 @@ class MealPlanRepository @Inject constructor(
     suspend fun deleteItem(item: MealPlanItemEntity) = mealPlanItemDao.deleteItem(item)
 
     suspend fun deleteItemsByPlanId(planId: Long) = mealPlanItemDao.deleteItemsByPlanId(planId)
+
+    suspend fun getAllPlansSync(): List<MealPlanEntity> = mealPlanDao.getAllPlansSync()
 }

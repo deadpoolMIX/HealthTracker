@@ -25,7 +25,8 @@ import com.example.healthtracker.data.local.entity.MealPlanItemEntity
 @Composable
 fun MealPlanScreen(
     viewModel: MealPlanViewModel = hiltViewModel(),
-    onNavigateToAddPlan: () -> Unit = {}
+    onNavigateToAddPlan: () -> Unit = {},
+    onNavigateToEditPlan: (Long) -> Unit = {}
 ) {
     val allPlans by viewModel.allPlans.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
@@ -98,19 +99,13 @@ fun MealPlanScreen(
                             isSelected = selectedPlanId == plan.id,
                             planTypeName = viewModel.getPlanTypeName(plan.planType),
                             onClick = {
-                                viewModel.selectPlan(
-                                    if (selectedPlanId == plan.id) null else plan.id
-                                )
+                                // 点击计划跳转到编辑页面
+                                onNavigateToEditPlan(plan.id)
                             },
                             onToggleActive = { viewModel.togglePlanActive(plan) },
                             onDelete = { showDeleteDialog = plan }
                         )
                     }
-                }
-
-                // 展开的计划详情
-                if (selectedPlanId != null && selectedPlanItems.isNotEmpty()) {
-                    PlanItemsList(items = selectedPlanItems)
                 }
             }
         }
