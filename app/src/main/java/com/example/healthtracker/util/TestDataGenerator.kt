@@ -10,13 +10,13 @@ import kotlin.random.Random
 /**
  * 测试数据生成器
  * 用于生成模拟的用户数据，方便测试报表功能
- * 生成最近一周的所有数据（摄入、体重、睡眠）
+ * 生成最近一个月（30天）的所有数据（摄入、体重、睡眠）
  * 从食物库中选择食物生成摄入记录
  */
 object TestDataGenerator {
 
     /**
-     * 生成最近一周（7天）的摄入记录
+     * 生成最近一个月（30天）的摄入记录
      * @param foods 食物库中的食物列表
      */
     fun generateIntakeRecords(foods: List<FoodEntity>): List<IntakeRecordEntity> {
@@ -25,7 +25,7 @@ object TestDataGenerator {
         val records = mutableListOf<IntakeRecordEntity>()
         val today = System.currentTimeMillis()
 
-        for (dayOffset in 0..6) {
+        for (dayOffset in 0..29) {
             val date = getStartOfDay(today, -dayOffset)
 
             // 每天三餐 + 可能的加餐

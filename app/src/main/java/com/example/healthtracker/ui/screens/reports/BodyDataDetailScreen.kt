@@ -548,6 +548,7 @@ private fun LegendItem(label: String, color: Color) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DatePickerDialog(
     onDismissRequest: () -> Unit,

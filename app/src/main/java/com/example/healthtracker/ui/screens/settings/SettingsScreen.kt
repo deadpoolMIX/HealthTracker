@@ -97,7 +97,7 @@ fun SettingsScreen(
             onDismissRequest = { showGenerateDialog = false },
             icon = { Icon(Icons.Default.BugReport, contentDescription = null) },
             title = { Text("生成测试数据") },
-            text = { Text("将生成最近一周（7天）的模拟数据（摄入、身体、睡眠记录），用于测试报表功能。\n\n注意：已存在的数据不会被覆盖。") },
+            text = { Text("将生成最近一个月（30天）的模拟数据（摄入、身体、睡眠记录），用于测试报表功能。\n\n注意：已存在的数据不会被覆盖。") },
             confirmButton = {
                 Button(
                     onClick = {

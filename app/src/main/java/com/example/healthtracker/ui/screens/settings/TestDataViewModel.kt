@@ -47,19 +47,19 @@ class TestDataViewModel @Inject constructor(
                     return@launch
                 }
 
-                // 生成最近一周的摄入数据（使用食物库数据）
+                // 生成最近一个月的摄入数据（使用食物库数据）
                 val intakeRecords = TestDataGenerator.generateIntakeRecords(foods)
                 intakeRecords.forEach { record ->
                     intakeRecordRepository.insertRecord(record)
                 }
 
-                // 生成最近一周的身体数据
+                // 生成最近一个月的身体数据
                 val bodyRecords = TestDataGenerator.generateBodyRecords()
                 bodyRecords.forEach { record ->
                     bodyRecordRepository.insertRecord(record)
                 }
 
-                // 生成最近一周的睡眠数据
+                // 生成最近一个月的睡眠数据
                 val sleepRecords = TestDataGenerator.generateSleepRecords()
                 sleepRecords.forEach { record ->
                     sleepRecordRepository.insertRecord(record)
@@ -67,7 +67,7 @@ class TestDataViewModel @Inject constructor(
 
                 _state.value = TestDataState(
                     isGenerating = false,
-                    message = "成功生成最近一周的测试数据！\n" +
+                    message = "成功生成最近一个月（30天）的测试数据！\n" +
                             "- 使用食物库：${foods.size} 种食物\n" +
                             "- 摄入记录：${intakeRecords.size} 条\n" +
                             "- 身体数据：${bodyRecords.size} 条\n" +
