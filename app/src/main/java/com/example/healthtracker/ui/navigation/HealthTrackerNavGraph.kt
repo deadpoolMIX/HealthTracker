@@ -19,6 +19,8 @@ import com.example.healthtracker.ui.screens.settings.DataImportScreen
 import com.example.healthtracker.ui.screens.settings.ThemeSettingsScreen
 import com.example.healthtracker.ui.screens.mealplan.AddMealPlanScreen
 import com.example.healthtracker.ui.screens.calendar.CalendarScreen
+import com.example.healthtracker.ui.screens.food.AddCustomFoodScreen
+import com.example.healthtracker.ui.screens.food.EditFoodScreen
 import com.example.healthtracker.ui.screens.intake.CustomFoodInputScreen
 import com.example.healthtracker.ui.screens.intake.EditIntakeScreen
 import java.net.URLDecoder
@@ -45,7 +47,7 @@ fun HealthTrackerNavGraph(
                 onNavigateToDataExport = { navController.navigate(Screen.DataExport.route) },
                 onNavigateToAddMealPlan = { navController.navigate(Screen.AddMealPlan.route) },
                 onNavigateToCalendar = { navController.navigate(Screen.Calendar.route) },
-                onNavigateToCustomFood = { navController.navigate("custom_food_input?isFromFoodLibrary=true") },
+                onNavigateToCustomFood = { navController.navigate(Screen.AddCustomFood.route) },
                 onNavigateToEditFood = { foodId ->
                     navController.navigate("edit_food/$foodId")
                 },
@@ -67,7 +69,7 @@ fun HealthTrackerNavGraph(
             AddIntakeScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToCustomFood = { _ ->
-                    navController.navigate("custom_food_input?isFromFoodLibrary=true")
+                    navController.navigate(Screen.AddCustomFood.route)
                 }
             )
         }
@@ -151,7 +153,7 @@ fun HealthTrackerNavGraph(
         composable(Screen.AddMealPlan.route) {
             AddMealPlanScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToCustomFood = { navController.navigate("custom_food_input?isFromFoodLibrary=true") }
+                onNavigateToCustomFood = { navController.navigate(Screen.AddCustomFood.route) }
             )
         }
 
@@ -182,7 +184,14 @@ fun HealthTrackerNavGraph(
         composable(Screen.FoodManager.route) {
             FoodManagerScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToAddCustomFood = { navController.navigate("custom_food_input?isFromFoodLibrary=true") }
+                onNavigateToAddCustomFood = { navController.navigate(Screen.AddCustomFood.route) }
+            )
+        }
+
+        // 添加自定义食物页面
+        composable(Screen.AddCustomFood.route) {
+            AddCustomFoodScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

@@ -14,6 +14,7 @@ sealed class Screen(val route: String) {
     object AddIntake : Screen("add_intake")
     object EditIntake : Screen("edit_intake/{recordId}")
     object CustomFoodInput : Screen("custom_food_input?foodName={foodName}&calories={calories}&carbs={carbs}&protein={protein}&fat={fat}&mealType={mealType}&isFromFoodLibrary={isFromFoodLibrary}")
+    object AddCustomFood : Screen("add_custom_food")
     object AddBodyData : Screen("add_body_data")
     object AddSleep : Screen("add_sleep")
 
