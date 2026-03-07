@@ -12,6 +12,7 @@ import com.example.healthtracker.data.repository.SleepRecordRepository
 import com.example.healthtracker.data.repository.UserSettingsRepository
 import com.example.healthtracker.util.DateTimeUtils
 import com.example.healthtracker.util.HealthCalculator
+import com.example.healthtracker.util.SelectedDateManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,6 +23,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class HomeUiState(
+    val selectedDate: Long = System.currentTimeMillis(),
     val todayIntake: List<IntakeRecordEntity> = emptyList(),
     val todayBodyRecord: BodyRecordEntity? = null,
     val todaySleepRecord: SleepRecordEntity? = null,
@@ -52,18 +54,21 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     init {
-        loadTodayData()
+        // 观察选中日期的变化
+        viewModelScope.launch {
+            SelectedDateManager.selectedDate.collect { date ->
+                _uiState.value = _uiState.value.copy(selectedDate = date)
+                loadDataForDate(date)
+            }
+        }
     }
 
-    private fun loadTodayData() {
+    private fun loadDataForDate(date: Long) {
         viewModelScope.launch {
-            val today = DateTimeUtils.getStartOfDay()
-
-            // 加载用户设置
             val settings = userSettingsRepository.getSettings()
 
-            // 加载今日摄入记录
-            intakeRecordRepository.getRecordsByDate(today).collect { records ->
+            // 加载指定日期的摄入记录
+            intakeRecordRepository.getRecordsByDate(date).collect { records ->
                 val totalCalories = records.sumOf { it.calories }
                 val totalCarbs = records.sumOf { it.carbohydrates }
                 val totalProtein = records.sumOf { it.protein }
@@ -89,26 +94,22 @@ class HomeViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            val today = DateTimeUtils.getStartOfDay()
-
-            // 加载今日身体数据
-            bodyRecordRepository.getRecordByDateFlow(today).collect { record ->
+            // 加载指定日期的身体数据
+            bodyRecordRepository.getRecordByDateFlow(date).collect { record ->
                 _uiState.value = _uiState.value.copy(todayBodyRecord = record)
             }
         }
 
         viewModelScope.launch {
-            val today = DateTimeUtils.getStartOfDay()
-
-            // 加载今日睡眠数据
-            sleepRecordRepository.getRecordByDateFlow(today).collect { record ->
+            // 加载指定日期的睡眠数据
+            sleepRecordRepository.getRecordByDateFlow(date).collect { record ->
                 _uiState.value = _uiState.value.copy(todaySleepRecord = record)
             }
         }
     }
 
     fun refresh() {
-        loadTodayData()
+        loadDataForDate(SelectedDateManager.getSelectedDate())
     }
 
     fun deleteRecord(record: IntakeRecordEntity) {

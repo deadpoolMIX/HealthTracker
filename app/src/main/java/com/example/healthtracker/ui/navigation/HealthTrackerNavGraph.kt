@@ -8,8 +8,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.healthtracker.ui.screens.intake.AddIntakeScreen
-import com.example.healthtracker.ui.screens.AddBodyDataScreen
-import com.example.healthtracker.ui.screens.AddSleepScreen
+import com.example.healthtracker.ui.screens.body.AddBodyDataScreen
+import com.example.healthtracker.ui.screens.sleep.AddSleepScreen
 import com.example.healthtracker.ui.screens.settings.SettingsScreen
 import com.example.healthtracker.ui.screens.settings.UserProfileScreen
 import com.example.healthtracker.ui.screens.MealPlansScreen

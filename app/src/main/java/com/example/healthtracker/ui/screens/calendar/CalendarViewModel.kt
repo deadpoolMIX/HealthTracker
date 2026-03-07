@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.healthtracker.data.local.entity.IntakeRecordEntity
 import com.example.healthtracker.data.repository.IntakeRecordRepository
 import com.example.healthtracker.util.DateTimeUtils
+import com.example.healthtracker.util.SelectedDateManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -34,6 +35,8 @@ class CalendarViewModel @Inject constructor(
     fun selectDate(date: Long) {
         _uiState.value = _uiState.value.copy(selectedDate = date)
         loadDayRecords(date)
+        // 同步到全局状态，首页会显示选中日期的数据
+        SelectedDateManager.setSelectedDate(date)
     }
 
     fun selectMonth(month: Long) {

@@ -1,4 +1,4 @@
-package com.example.healthtracker.ui.screens
+package com.example.healthtracker.ui.screens.sleep
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -8,23 +8,33 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import java.util.Calendar
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.healthtracker.util.DateTimeUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddSleepScreen(
+    viewModel: SleepDataViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
-    val calendar = Calendar.getInstance()
-    var sleepHour by remember { mutableIntStateOf(23) }
-    var sleepMinute by remember { mutableIntStateOf(0) }
-    var wakeHour by remember { mutableIntStateOf(7) }
-    var wakeMinute by remember { mutableIntStateOf(0) }
+    val uiState by viewModel.uiState.collectAsState()
+
+    // 保存成功后返回
+    LaunchedEffect(uiState.saveSuccess) {
+        if (uiState.saveSuccess) {
+            onNavigateBack()
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("记录睡眠", fontWeight = FontWeight.Medium) },
+                title = {
+                    Text(
+                        if (uiState.existingRecord != null) "编辑睡眠记录" else "记录睡眠",
+                        fontWeight = FontWeight.Medium
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -39,6 +49,15 @@ fun AddSleepScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
+            // 日期显示
+            Text(
+                text = DateTimeUtils.formatDate(uiState.date),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // 入睡时间
             Text(
                 text = "入睡时间",
@@ -60,7 +79,7 @@ fun AddSleepScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     OutlinedTextField(
-                        value = String.format("%02d", sleepHour),
+                        value = String.format("%02d", uiState.sleepHour),
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("时") },
@@ -75,7 +94,7 @@ fun AddSleepScreen(
                             DropdownMenuItem(
                                 text = { Text(String.format("%02d", hour)) },
                                 onClick = {
-                                    sleepHour = hour
+                                    viewModel.setSleepHour(hour)
                                     sleepHourExpanded = false
                                 }
                             )
@@ -91,7 +110,7 @@ fun AddSleepScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     OutlinedTextField(
-                        value = String.format("%02d", sleepMinute),
+                        value = String.format("%02d", uiState.sleepMinute),
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("分") },
@@ -106,7 +125,7 @@ fun AddSleepScreen(
                             DropdownMenuItem(
                                 text = { Text(String.format("%02d", minute)) },
                                 onClick = {
-                                    sleepMinute = minute
+                                    viewModel.setSleepMinute(minute)
                                     sleepMinuteExpanded = false
                                 }
                             )
@@ -138,7 +157,7 @@ fun AddSleepScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     OutlinedTextField(
-                        value = String.format("%02d", wakeHour),
+                        value = String.format("%02d", uiState.wakeHour),
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("时") },
@@ -153,7 +172,7 @@ fun AddSleepScreen(
                             DropdownMenuItem(
                                 text = { Text(String.format("%02d", hour)) },
                                 onClick = {
-                                    wakeHour = hour
+                                    viewModel.setWakeHour(hour)
                                     wakeHourExpanded = false
                                 }
                             )
@@ -169,7 +188,7 @@ fun AddSleepScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     OutlinedTextField(
-                        value = String.format("%02d", wakeMinute),
+                        value = String.format("%02d", uiState.wakeMinute),
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("分") },
@@ -184,7 +203,7 @@ fun AddSleepScreen(
                             DropdownMenuItem(
                                 text = { Text(String.format("%02d", minute)) },
                                 onClick = {
-                                    wakeMinute = minute
+                                    viewModel.setWakeMinute(minute)
                                     wakeMinuteExpanded = false
                                 }
                             )
@@ -196,7 +215,10 @@ fun AddSleepScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             // 睡眠时长显示
-            val sleepMinutes = calculateSleepDuration(sleepHour, sleepMinute, wakeHour, wakeMinute)
+            val sleepMinutes = calculateSleepDuration(
+                uiState.sleepHour, uiState.sleepMinute,
+                uiState.wakeHour, uiState.wakeMinute
+            )
             Text(
                 text = "预计睡眠时长: ${sleepMinutes / 60}小时${sleepMinutes % 60}分钟",
                 style = MaterialTheme.typography.bodyLarge,
@@ -204,10 +226,21 @@ fun AddSleepScreen(
             )
 
             Button(
-                onClick = onNavigateBack,
-                modifier = Modifier.fillMaxWidth()
+                onClick = { viewModel.save() },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isSaving
             ) {
-                Text("保存记录")
+                if (uiState.isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("保存中...")
+                } else {
+                    Text(if (uiState.existingRecord != null) "更新记录" else "保存记录")
+                }
             }
         }
     }

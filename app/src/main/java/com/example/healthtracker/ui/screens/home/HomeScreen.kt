@@ -71,7 +71,7 @@ fun HomeScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = DateTimeUtils.formatDate(System.currentTimeMillis()),
+                                text = DateTimeUtils.formatDate(uiState.selectedDate),
                                 fontWeight = FontWeight.Medium
                             )
                             Icon(

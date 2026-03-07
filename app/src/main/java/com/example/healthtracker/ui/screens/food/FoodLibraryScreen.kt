@@ -280,10 +280,22 @@ private fun FoodItem(
 }
 
 private fun getFoodEmoji(food: FoodEntity): String {
-    // 如果食物有自定义图标，使用自定义图标
-    if (food.icon.isNotEmpty() && food.icon != "custom") {
+    // 如果食物有自定义图标且是emoji格式，使用自定义图标
+    if (food.icon.isNotEmpty() && food.icon != "custom" && isEmoji(food.icon)) {
         return food.icon
     }
     // 否则根据名称推断
     return FoodEmojiUtils.getDefaultEmojiForFood(food.name)
+}
+
+/**
+ * 检查字符串是否为emoji
+ */
+private fun isEmoji(text: String): Boolean {
+    if (text.isEmpty()) return false
+    val firstChar = text[0]
+    // Emoji 的 Unicode 范围检查
+    return firstChar.code in 0x1F300..0x1F9FF ||
+            firstChar.code in 0x2600..0x26FF ||
+            firstChar.code in 0x2700..0x27BF
 }
