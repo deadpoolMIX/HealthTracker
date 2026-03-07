@@ -388,13 +388,43 @@ private fun SelectedDayRecords(
                 )
             }
         } else {
-            // 使用 Column 替代 LazyColumn，因为外层已有滚动
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                records.forEach { record ->
-                    IntakeRecordItem(record = record)
+            // 按餐次分组显示（与首页一致）
+            val mealTypes = listOf(0, 1, 2, 3) // 早餐、午餐、晚餐、加餐
+            val mealCardColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+
+            mealTypes.forEach { mealType ->
+                val recordsForMeal = records.filter { it.mealType == mealType }
+                if (recordsForMeal.isNotEmpty()) {
+                    // 餐次分组卡片
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = mealCardColor
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            // 餐次标题
+                            Text(
+                                text = getMealTypeName(mealType),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // 该餐次的食物列表
+                            recordsForMeal.forEach { record ->
+                                IntakeRecordItem(record = record)
+                                if (record != recordsForMeal.last()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
@@ -403,58 +433,51 @@ private fun SelectedDayRecords(
 
 @Composable
 private fun IntakeRecordItem(record: IntakeRecordEntity) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
+        // 食物图标（与首页一致）
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surface),
+            contentAlignment = Alignment.Center
         ) {
-            // 食物图标
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = getMealTypeEmoji(record.mealType),
-                    style = MaterialTheme.typography.titleSmall
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // 食物信息
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = record.foodName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "${record.amount.toInt()}g · ${getMealTypeName(record.mealType)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            // 热量
             Text(
-                text = "${record.calories.toInt()} kcal",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                text = getFoodEmoji(record),
+                style = MaterialTheme.typography.titleMedium
             )
         }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        // 食物信息
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = record.foodName,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = "${record.amount.toInt()}g",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // 热量
+        Text(
+            text = "${record.calories.toInt()} kcal",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }
 
@@ -577,12 +600,87 @@ private fun getMealTypeName(mealType: Int): String {
     }
 }
 
-private fun getMealTypeEmoji(mealType: Int): String {
-    return when (mealType) {
-        0 -> "🌅"
-        1 -> "☀️"
-        2 -> "🌙"
-        3 -> "🍎"
+/**
+ * 获取摄入记录的食物图标（与首页一致）
+ */
+private fun getFoodEmoji(record: IntakeRecordEntity): String {
+    // 如果记录中有存储的图标且是emoji格式，直接使用
+    if (!record.foodIcon.isNullOrEmpty() && isEmoji(record.foodIcon)) {
+        return record.foodIcon
+    }
+    // 否则根据名称推断
+    return getFoodEmojiByName(record.foodName)
+}
+
+/**
+ * 检查字符串是否为emoji
+ */
+private fun isEmoji(text: String): Boolean {
+    if (text.isEmpty()) return false
+    val firstChar = text[0]
+    // Emoji 的 Unicode 范围检查
+    return firstChar.code in 0x1F300..0x1F9FF ||
+            firstChar.code in 0x2600..0x26FF ||
+            firstChar.code in 0x2700..0x27BF
+}
+
+/**
+ * 根据食物名称返回对应的emoji
+ */
+private fun getFoodEmojiByName(name: String): String {
+    return when {
+        name.contains("饭") || name.contains("粥") -> "🍚"
+        name.contains("面") || name.contains("粉") -> "🍜"
+        name.contains("馒头") || name.contains("包子") -> "🥟"
+        name.contains("面包") -> "🍞"
+        name.contains("猪") -> "🥩"
+        name.contains("牛") -> "🥩"
+        name.contains("羊") -> "🍖"
+        name.contains("鸡") || name.contains("鸭") -> "🍗"
+        name.contains("鱼") -> "🐟"
+        name.contains("虾") || name.contains("蟹") -> "🦐"
+        name.contains("蛋") -> "🥚"
+        name.contains("奶") || name.contains("牛奶") -> "🥛"
+        name.contains("豆") || name.contains("豆腐") -> "🫘"
+        name.contains("蔬菜") || name.contains("白菜") || name.contains("青菜") -> "🥬"
+        name.contains("西红柿") || name.contains("番茄") -> "🍅"
+        name.contains("黄瓜") -> "🥒"
+        name.contains("土豆") -> "🥔"
+        name.contains("胡萝卜") -> "🥕"
+        name.contains("苹果") -> "🍎"
+        name.contains("香蕉") -> "🍌"
+        name.contains("橙") || name.contains("橘子") -> "🍊"
+        name.contains("葡萄") -> "🍇"
+        name.contains("草莓") -> "🍓"
+        name.contains("西瓜") -> "🍉"
+        name.contains("饮料") || name.contains("可乐") || name.contains("汽水") -> "🥤"
+        name.contains("茶") -> "🍵"
+        name.contains("咖啡") -> "☕"
+        name.contains("酒") -> "🍺"
+        name.contains("蛋糕") -> "🎂"
+        name.contains("饼干") -> "🍪"
+        name.contains("巧克力") -> "🍫"
+        name.contains("糖") -> "🍬"
+        name.contains("坚果") || name.contains("花生") || name.contains("核桃") -> "🥜"
+        name.contains("油") -> "🫒"
+        name.contains("汤") -> "🥣"
+        name.contains("沙拉") -> "🥗"
+        name.contains("薯条") -> "🍟"
+        name.contains("汉堡") -> "🍔"
+        name.contains("披萨") -> "🍕"
+        name.contains("三明治") -> "🥪"
+        name.contains("饺子") -> "🥟"
+        name.contains("寿司") -> "🍣"
+        name.contains("rice", ignoreCase = true) -> "🍚"
+        name.contains("bread", ignoreCase = true) -> "🍞"
+        name.contains("egg", ignoreCase = true) -> "🥚"
+        name.contains("milk", ignoreCase = true) -> "🥛"
+        name.contains("chicken", ignoreCase = true) -> "🍗"
+        name.contains("beef", ignoreCase = true) -> "🥩"
+        name.contains("fish", ignoreCase = true) -> "🐟"
+        name.contains("apple", ignoreCase = true) -> "🍎"
+        name.contains("banana", ignoreCase = true) -> "🍌"
+        name.contains("orange", ignoreCase = true) -> "🍊"
         else -> "🍽️"
     }
 }
