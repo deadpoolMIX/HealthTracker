@@ -73,7 +73,7 @@ fun BodyDataDetailScreen(
 @Composable
 private fun BodyDataOverview(data: List<BodyRecordEntity>) {
     val avgWeight = if (data.isNotEmpty()) data.mapNotNull { it.weight }.average() else 0.0
-    val avgBodyFat = if (data.isNotEmpty()) data.mapNotNull { it.bodyFat }.average() else 0.0
+    val avgBodyFat = if (data.isNotEmpty()) data.mapNotNull { it.bodyFatRate }.average() else 0.0
     val avgMuscle = if (data.isNotEmpty()) data.mapNotNull { it.muscleMass }.average() else 0.0
 
     val latestWeight = data.firstOrNull()?.weight
@@ -174,7 +174,7 @@ private fun BodyDataItem(data: BodyRecordEntity) {
                 data.weight?.let {
                     DataChip(label = "体重", value = String.format("%.1f kg", it))
                 }
-                data.bodyFat?.let {
+                data.bodyFatRate?.let {
                     DataChip(label = "体脂", value = String.format("%.1f%%", it))
                 }
                 data.muscleMass?.let {
