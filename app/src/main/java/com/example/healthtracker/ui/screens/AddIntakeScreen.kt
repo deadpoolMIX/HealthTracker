@@ -245,30 +245,39 @@ fun AddIntakeScreen(
                 }
             )
 
-            // 搜索结果列表
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            // 搜索结果列表 - 限制高度为4行食物
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(280.dp), // 约4行食物的高度
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             ) {
-                items(searchResults.take(30)) { food ->
-                    FoodSearchResultItem(
-                        food = food,
-                        onClick = { showAddDialog = food }
-                    )
-                }
-
-                // 底部添加自定义食物按钮
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = { onNavigateToCustomFood(null) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("添加自定义食物")
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    contentPadding = PaddingValues(8.dp)
+                ) {
+                    items(searchResults.take(30)) { food ->
+                        FoodSearchResultItem(
+                            food = food,
+                            onClick = { showAddDialog = food }
+                        )
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 底部添加自定义食物按钮
+                    item {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        OutlinedButton(
+                            onClick = { onNavigateToCustomFood(null) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("添加自定义食物")
+                        }
+                    }
                 }
             }
         }

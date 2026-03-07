@@ -51,30 +51,38 @@ fun AddCustomFoodScreen(
     var unit by remember { mutableStateOf("") }
     var gramsPerUnit by remember { mutableStateOf("") }
 
-    // 每百克营养数据
-    var caloriesPer100g by remember { mutableStateOf("") }
-    var carbsPer100g by remember { mutableStateOf("") }
-    var proteinPer100g by remember { mutableStateOf("") }
-    var fatPer100g by remember { mutableStateOf("") }
+    // 每n克营养数据
+    var perAmount by remember { mutableStateOf("100") }
+    var perUnit by remember { mutableStateOf("克") }
+    var expandedPerUnit by remember { mutableStateOf(false) }
+
+    // 每n克营养数据
+    var caloriesPerN by remember { mutableStateOf("") }
+    var carbsPerN by remember { mutableStateOf("") }
+    var proteinPerN by remember { mutableStateOf("") }
+    var fatPerN by remember { mutableStateOf("") }
 
     val commonUnits = listOf("个", "杯", "瓶", "份", "块", "片", "勺", "包", "碗", "袋")
     var expandedUnit by remember { mutableStateOf(false) }
 
-    // 计算每单位的营养值（用于预览）
-    val caloriesValue = caloriesPer100g.toDoubleOrNull() ?: 0.0
-    val carbsValue = carbsPer100g.toDoubleOrNull() ?: 0.0
-    val proteinValue = proteinPer100g.toDoubleOrNull() ?: 0.0
-    val fatValue = fatPer100g.toDoubleOrNull() ?: 0.0
-    val gramsPerUnitValue = gramsPerUnit.toDoubleOrNull() ?: 0.0
+    // 计算每百克的营养值（用于内部存储）
+    val perAmountValue = perAmount.toDoubleOrNull() ?: 100.0
+    val caloriesPerNValue = caloriesPerN.toDoubleOrNull() ?: 0.0
+    val carbsPerNValue = carbsPerN.toDoubleOrNull() ?: 0.0
+    val proteinPerNValue = proteinPerN.toDoubleOrNull() ?: 0.0
+    val fatPerNValue = fatPerN.toDoubleOrNull() ?: 0.0
 
-    val unitCalories = if (hasUnit && gramsPerUnitValue > 0) caloriesValue * gramsPerUnitValue / 100 else 0.0
-    val unitCarbs = if (hasUnit && gramsPerUnitValue > 0) carbsValue * gramsPerUnitValue / 100 else 0.0
-    val unitProtein = if (hasUnit && gramsPerUnitValue > 0) proteinValue * gramsPerUnitValue / 100 else 0.0
-    val unitFat = if (hasUnit && gramsPerUnitValue > 0) fatValue * gramsPerUnitValue / 100 else 0.0
+    // 计算每百克营养值
+    val caloriesValue = if (perAmountValue > 0) caloriesPerNValue * 100.0 / perAmountValue else 0.0
+    val carbsValue = if (perAmountValue > 0) carbsPerNValue * 100.0 / perAmountValue else 0.0
+    val proteinValue = if (perAmountValue > 0) proteinPerNValue * 100.0 / perAmountValue else 0.0
+    val fatValue = if (perAmountValue > 0) fatPerNValue * 100.0 / perAmountValue else 0.0
+    val gramsPerUnitValue = gramsPerUnit.toDoubleOrNull() ?: 0.0
 
     // 验证输入
     val isValid = foodName.isNotBlank() &&
-            caloriesValue > 0 &&
+            caloriesPerNValue > 0 &&
+            perAmountValue > 0 &&
             (!hasUnit || (unit.isNotBlank() && gramsPerUnitValue > 0))
 
     Scaffold(
@@ -143,15 +151,59 @@ fun AddCustomFoodScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            // 每百克营养数据
+            // 每n克营养数据
             Text(
-                text = "每百克营养数据 *",
+                text = "营养数据 *",
                 style = MaterialTheme.typography.titleSmall
             )
 
+            // 每 n 克/毫升 输入行
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("每", style = MaterialTheme.typography.bodyMedium)
+                OutlinedTextField(
+                    value = perAmount,
+                    onValueChange = { perAmount = it.filter { c -> c.isDigit() } },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+                ExposedDropdownMenuBox(
+                    expanded = expandedPerUnit,
+                    onExpandedChange = { expandedPerUnit = it },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = perUnit,
+                        onValueChange = {},
+                        modifier = Modifier.menuAnchor(),
+                        singleLine = true,
+                        readOnly = true
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expandedPerUnit,
+                        onDismissRequest = { expandedPerUnit = false }
+                    ) {
+                        listOf("克", "毫升").forEach { u ->
+                            DropdownMenuItem(
+                                text = { Text(u) },
+                                onClick = {
+                                    perUnit = u
+                                    expandedPerUnit = false
+                                }
+                            )
+                        }
+                    }
+                }
+                Text("含", style = MaterialTheme.typography.bodyMedium)
+            }
+
             OutlinedTextField(
-                value = caloriesPer100g,
-                onValueChange = { caloriesPer100g = it },
+                value = caloriesPerN,
+                onValueChange = { caloriesPerN = it },
                 label = { Text("热量 (kcal)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -163,16 +215,16 @@ fun AddCustomFoodScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedTextField(
-                    value = carbsPer100g,
-                    onValueChange = { carbsPer100g = it },
+                    value = carbsPerN,
+                    onValueChange = { carbsPerN = it },
                     label = { Text("碳水 (g)") },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
                 OutlinedTextField(
-                    value = proteinPer100g,
-                    onValueChange = { proteinPer100g = it },
+                    value = proteinPerN,
+                    onValueChange = { proteinPerN = it },
                     label = { Text("蛋白质 (g)") },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
@@ -181,8 +233,8 @@ fun AddCustomFoodScreen(
             }
 
             OutlinedTextField(
-                value = fatPer100g,
-                onValueChange = { fatPer100g = it },
+                value = fatPerN,
+                onValueChange = { fatPerN = it },
                 label = { Text("脂肪 (g)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -214,7 +266,7 @@ fun AddCustomFoodScreen(
                     OutlinedTextField(
                         value = gramsPerUnit,
                         onValueChange = { gramsPerUnit = it },
-                        label = { Text("数值 *") },
+                        label = { Text("克/毫升 *") },
                         modifier = Modifier.weight(1f),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
@@ -251,6 +303,12 @@ fun AddCustomFoodScreen(
 
                 // 每单位营养预览
                 if (gramsPerUnitValue > 0 && caloriesValue > 0) {
+                    // 计算每单位的营养值
+                    val unitCalories = caloriesValue * gramsPerUnitValue / 100
+                    val unitCarbs = carbsValue * gramsPerUnitValue / 100
+                    val unitProtein = proteinValue * gramsPerUnitValue / 100
+                    val unitFat = fatValue * gramsPerUnitValue / 100
+
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(

@@ -1002,12 +1002,24 @@ private fun getMealTypeEmoji(mealType: Int): String {
  * 优先使用记录中存储的图标，否则根据名称推断
  */
 private fun getFoodEmoji(record: IntakeRecordEntity): String {
-    // 如果记录中有存储的图标，直接使用
-    if (!record.foodIcon.isNullOrEmpty()) {
+    // 如果记录中有存储的图标且是emoji格式，直接使用
+    if (!record.foodIcon.isNullOrEmpty() && isEmoji(record.foodIcon)) {
         return record.foodIcon
     }
     // 否则根据名称推断
     return getFoodEmoji(record.foodName)
+}
+
+/**
+ * 检查字符串是否为emoji
+ */
+private fun isEmoji(text: String): Boolean {
+    if (text.isEmpty()) return false
+    val firstChar = text[0]
+    // Emoji 的 Unicode 范围检查
+    return firstChar.code in 0x1F300..0x1F9FF ||
+            firstChar.code in 0x2600..0x26FF ||
+            firstChar.code in 0x2700..0x27BF
 }
 
 /**
@@ -1158,17 +1170,19 @@ private fun EditIntakeDialog(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                // 使用 FlowRow 确保所有选项大小一致
+                // 使用固定宽度确保所有选项等高等宽，且在同一行
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
                 ) {
                     mealTypes.forEachIndexed { index, type ->
                         FilterChip(
                             selected = selectedMealType == index,
                             onClick = { selectedMealType = index },
-                            label = { Text(type) },
-                            modifier = Modifier.weight(1f)
+                            label = { Text(type, maxLines = 1) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .defaultMinSize(minWidth = 56.dp)
                         )
                     }
                 }
