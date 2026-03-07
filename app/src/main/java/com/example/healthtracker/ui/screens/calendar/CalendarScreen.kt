@@ -47,6 +47,11 @@ fun CalendarScreen(
     var slideDirection by remember { mutableStateOf(0) } // -1 向左, 1 向右
     var totalDrag by remember { mutableFloatStateOf(0f) }
 
+    // 进入页面时同步全局状态
+    LaunchedEffect(Unit) {
+        viewModel.syncWithGlobalState()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(

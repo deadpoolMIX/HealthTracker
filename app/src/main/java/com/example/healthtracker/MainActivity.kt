@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import com.example.healthtracker.data.repository.UserSettingsRepository
 import com.example.healthtracker.ui.navigation.HealthTrackerNavGraph
 import com.example.healthtracker.ui.theme.HealthTrackerTheme
+import com.example.healthtracker.util.SelectedDateManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -27,6 +28,9 @@ class MainActivity : ComponentActivity() {
         actionBar?.hide()
 
         super.onCreate(savedInstanceState)
+
+        // 应用启动时重置选中日期为今天
+        SelectedDateManager.resetToToday()
 
         setContent {
             val settings by userSettingsRepository.getSettingsFlow().collectAsState(initial = null)

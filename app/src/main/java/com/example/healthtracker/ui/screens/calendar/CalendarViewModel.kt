@@ -29,6 +29,12 @@ class CalendarViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
     init {
+        // 初始化时读取全局选中日期
+        val globalSelectedDate = SelectedDateManager.getSelectedDate()
+        _uiState.value = _uiState.value.copy(
+            selectedDate = globalSelectedDate,
+            selectedMonth = globalSelectedDate
+        )
         loadMonthData()
     }
 
@@ -39,9 +45,16 @@ class CalendarViewModel @Inject constructor(
         SelectedDateManager.setSelectedDate(date)
     }
 
-    fun selectMonth(month: Long) {
-        _uiState.value = _uiState.value.copy(selectedMonth = month)
-        loadMonthData()
+    fun syncWithGlobalState() {
+        // 同步全局状态到当前页面
+        val globalDate = SelectedDateManager.getSelectedDate()
+        if (DateTimeUtils.getStartOfDay(globalDate) != DateTimeUtils.getStartOfDay(_uiState.value.selectedDate)) {
+            _uiState.value = _uiState.value.copy(
+                selectedDate = globalDate,
+                selectedMonth = globalDate
+            )
+            loadMonthData()
+        }
     }
 
     fun previousMonth() {
@@ -118,5 +131,10 @@ class CalendarViewModel @Inject constructor(
     // 设置月份（用于年月选择对话框）
     fun setMonth(month: Long) {
         selectMonth(month)
+    }
+
+    private fun selectMonth(month: Long) {
+        _uiState.value = _uiState.value.copy(selectedMonth = month)
+        loadMonthData()
     }
 }
