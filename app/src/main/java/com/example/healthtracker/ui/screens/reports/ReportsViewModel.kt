@@ -18,7 +18,7 @@ import java.util.Calendar
 import javax.inject.Inject
 
 data class ReportsUiState(
-    val selectedPeriod: Int = 0, // 0=天, 1=周, 2=月, 3=年
+    val selectedPeriod: Int = 0, // 0=周, 1=月
     val intakeData: List<DailyNutrition> = emptyList(),
     val bodyData: List<BodyRecordEntity> = emptyList(),
     val sleepData: List<SleepRecordEntity> = emptyList(),
@@ -140,12 +140,7 @@ class ReportsViewModel @Inject constructor(
         val calendar = Calendar.getInstance()
 
         return when (_uiState.value.selectedPeriod) {
-            0 -> { // 天 - 最近7天
-                val end = DateTimeUtils.getEndOfDay(now)
-                val start = DateTimeUtils.getStartOfDay(DateTimeUtils.getNDaysAgo(6, now))
-                Pair(start, end)
-            }
-            1 -> { // 周 - 最近4周
+            0 -> { // 周 - 最近4周
                 val end = DateTimeUtils.getEndOfDay(now)
                 calendar.timeInMillis = now
                 calendar.add(Calendar.WEEK_OF_YEAR, -3)
@@ -155,7 +150,7 @@ class ReportsViewModel @Inject constructor(
                 calendar.set(Calendar.SECOND, 0)
                 Pair(calendar.timeInMillis, end)
             }
-            2 -> { // 月 - 最近6个月
+            1 -> { // 月 - 最近6个月
                 val end = DateTimeUtils.getEndOfDay(now)
                 calendar.timeInMillis = now
                 calendar.add(Calendar.MONTH, -5)
@@ -164,11 +159,6 @@ class ReportsViewModel @Inject constructor(
                 calendar.set(Calendar.MINUTE, 0)
                 calendar.set(Calendar.SECOND, 0)
                 Pair(calendar.timeInMillis, end)
-            }
-            3 -> { // 年 - 最近2年
-                val end = DateTimeUtils.getEndOfDay(now)
-                val start = DateTimeUtils.getStartOfYear(DateTimeUtils.getNYearsAgo(1, now))
-                Pair(start, end)
             }
             else -> {
                 Pair(DateTimeUtils.getStartOfDay(now), DateTimeUtils.getEndOfDay(now))

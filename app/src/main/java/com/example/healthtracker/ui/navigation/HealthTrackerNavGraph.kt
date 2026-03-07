@@ -23,6 +23,9 @@ import com.example.healthtracker.ui.screens.food.AddCustomFoodScreen
 import com.example.healthtracker.ui.screens.food.EditFoodScreen
 import com.example.healthtracker.ui.screens.intake.CustomFoodInputScreen
 import com.example.healthtracker.ui.screens.intake.EditIntakeScreen
+import com.example.healthtracker.ui.screens.reports.NutritionDetailScreen
+import com.example.healthtracker.ui.screens.reports.BodyDataDetailScreen
+import com.example.healthtracker.ui.screens.reports.SleepDetailScreen
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -56,7 +59,29 @@ fun HealthTrackerNavGraph(
                 },
                 onNavigateToEditMealPlan = { planId ->
                     navController.navigate("edit_meal_plan/$planId")
-                }
+                },
+                onNavigateToNutritionDetail = { navController.navigate(Screen.NutritionDetail.route) },
+                onNavigateToBodyDataDetail = { navController.navigate(Screen.BodyDataDetail.route) },
+                onNavigateToSleepDetail = { navController.navigate(Screen.SleepDetail.route) }
+            )
+        }
+
+        // 报表详情页面
+        composable(Screen.NutritionDetail.route) {
+            NutritionDetailScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.BodyDataDetail.route) {
+            BodyDataDetailScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.SleepDetail.route) {
+            SleepDetailScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

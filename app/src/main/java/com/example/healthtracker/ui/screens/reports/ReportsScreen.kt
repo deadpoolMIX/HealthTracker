@@ -40,10 +40,13 @@ import kotlin.math.sqrt
 @Composable
 fun ReportsScreen(
     viewModel: ReportsViewModel = hiltViewModel(),
-    onNavigateToDataExport: () -> Unit
+    onNavigateToDataExport: () -> Unit,
+    onNavigateToNutritionDetail: () -> Unit = {},
+    onNavigateToBodyDataDetail: () -> Unit = {},
+    onNavigateToSleepDetail: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val periods = listOf("天", "周", "月", "年")
+    val periods = listOf("周", "月")
 
     // 报表设置对话框
     if (uiState.showSettingsDialog) {
@@ -88,7 +91,7 @@ fun ReportsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    repeat(4) {
+                    repeat(2) {
                         Box(
                             modifier = Modifier
                                 .height(32.dp)
@@ -159,7 +162,8 @@ fun ReportsScreen(
                     item {
                         NutritionChartCard(
                             data = uiState.intakeData,
-                            period = uiState.selectedPeriod
+                            period = uiState.selectedPeriod,
+                            onClick = onNavigateToNutritionDetail
                         )
                     }
                 }
@@ -169,7 +173,8 @@ fun ReportsScreen(
                     item {
                         BodyDataChartCard(
                             data = uiState.bodyData,
-                            period = uiState.selectedPeriod
+                            period = uiState.selectedPeriod,
+                            onClick = onNavigateToBodyDataDetail
                         )
                     }
                 }
@@ -182,7 +187,8 @@ fun ReportsScreen(
                             period = uiState.selectedPeriod,
                             avgSleepTime = viewModel.getAverageSleepTime(),
                             avgWakeTime = viewModel.getAverageWakeTime(),
-                            avgDuration = viewModel.getAverageSleepDuration()
+                            avgDuration = viewModel.getAverageSleepDuration(),
+                            onClick = onNavigateToSleepDetail
                         )
                     }
                 }
@@ -311,7 +317,8 @@ private fun ReportSettingsDialog(
 @Composable
 private fun NutritionChartCard(
     data: List<DailyNutrition>,
-    period: Int
+    period: Int,
+    onClick: () -> Unit = {}
 ) {
     // 图表类型：0=堆叠柱状图，1=并排柱状图
     var chartType by remember { mutableIntStateOf(0) }
@@ -324,7 +331,9 @@ private fun NutritionChartCard(
     val caloriesColor = MaterialTheme.colorScheme.error
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -587,7 +596,8 @@ private fun LegendItem(text: String, color: Color, isLine: Boolean = false) {
 @Composable
 private fun BodyDataChartCard(
     data: List<BodyRecordEntity>,
-    period: Int
+    period: Int,
+    onClick: () -> Unit = {}
 ) {
     // 数据类型选择：0=体重体脂肌肉，1=三围
     var dataType by remember { mutableIntStateOf(0) }
@@ -600,7 +610,9 @@ private fun BodyDataChartCard(
     val hipColor = MaterialTheme.colorScheme.tertiary
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -916,13 +928,16 @@ private fun SleepChartCard(
     period: Int,
     avgSleepTime: String,
     avgWakeTime: String,
-    avgDuration: Long
+    avgDuration: Long,
+    onClick: () -> Unit = {}
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(16.dp)
     ) {

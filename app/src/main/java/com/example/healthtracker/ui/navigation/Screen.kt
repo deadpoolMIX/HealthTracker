@@ -10,6 +10,11 @@ sealed class Screen(val route: String) {
     object Reports : Screen("reports")
     object Calendar : Screen("calendar")
 
+    // 报表详情页面
+    object NutritionDetail : Screen("nutrition_detail")
+    object BodyDataDetail : Screen("body_data_detail")
+    object SleepDetail : Screen("sleep_detail")
+
     // 记录页面
     object AddIntake : Screen("add_intake")
     object EditIntake : Screen("edit_intake/{recordId}")
