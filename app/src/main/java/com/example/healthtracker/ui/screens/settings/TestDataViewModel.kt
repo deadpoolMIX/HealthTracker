@@ -3,6 +3,7 @@ package com.example.healthtracker.ui.screens.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.healthtracker.data.repository.BodyRecordRepository
+import com.example.healthtracker.data.repository.FoodRepository
 import com.example.healthtracker.data.repository.IntakeRecordRepository
 import com.example.healthtracker.data.repository.SleepRecordRepository
 import com.example.healthtracker.util.TestDataGenerator
@@ -22,7 +23,8 @@ data class TestDataState(
 class TestDataViewModel @Inject constructor(
     private val intakeRecordRepository: IntakeRecordRepository,
     private val bodyRecordRepository: BodyRecordRepository,
-    private val sleepRecordRepository: SleepRecordRepository
+    private val sleepRecordRepository: SleepRecordRepository,
+    private val foodRepository: FoodRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(TestDataState())
@@ -33,8 +35,20 @@ class TestDataViewModel @Inject constructor(
             _state.value = TestDataState(isGenerating = true)
 
             try {
-                // 生成最近一周的摄入数据
-                val intakeRecords = TestDataGenerator.generateIntakeRecords()
+                // 从食物库获取所有食物
+                val foods = foodRepository.getAllFoodsOnce()
+
+                if (foods.isEmpty()) {
+                    _state.value = TestDataState(
+                        isGenerating = false,
+                        message = "食物库为空，请先添加食物数据！",
+                        success = false
+                    )
+                    return@launch
+                }
+
+                // 生成最近一周的摄入数据（使用食物库数据）
+                val intakeRecords = TestDataGenerator.generateIntakeRecords(foods)
                 intakeRecords.forEach { record ->
                     intakeRecordRepository.insertRecord(record)
                 }
@@ -54,6 +68,7 @@ class TestDataViewModel @Inject constructor(
                 _state.value = TestDataState(
                     isGenerating = false,
                     message = "成功生成最近一周的测试数据！\n" +
+                            "- 使用食物库：${foods.size} 种食物\n" +
                             "- 摄入记录：${intakeRecords.size} 条\n" +
                             "- 身体数据：${bodyRecords.size} 条\n" +
                             "- 睡眠记录：${sleepRecords.size} 条",

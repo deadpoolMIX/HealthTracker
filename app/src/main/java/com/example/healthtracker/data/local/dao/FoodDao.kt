@@ -27,6 +27,9 @@ interface FoodDao {
     @Query("SELECT * FROM foods ORDER BY name")
     fun getAllFoods(): Flow<List<FoodEntity>>
 
+    @Query("SELECT * FROM foods ORDER BY name")
+    suspend fun getAllFoodsOnce(): List<FoodEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFood(food: FoodEntity): Long
 

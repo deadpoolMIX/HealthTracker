@@ -26,6 +26,8 @@ class FoodRepository @Inject constructor(
 
     fun getAllFoods(): Flow<List<FoodEntity>> = foodDao.getAllFoods()
 
+    suspend fun getAllFoodsOnce(): List<FoodEntity> = foodDao.getAllFoodsOnce()
+
     fun getCustomFoods(): Flow<List<FoodEntity>> = foodDao.getCustomFoods()
 
     fun getFavoriteFoods(): Flow<List<FoodEntity>> = foodDao.getFavoriteFoods()

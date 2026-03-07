@@ -67,7 +67,12 @@ fun HealthTrackerNavGraph(
         // 记录页面 - 搜索食物
         composable(Screen.AddIntake.route) {
             AddIntakeScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = {
+                    // 保存后直接返回首页（清除返回栈）
+                    navController.navigate(Screen.Main.route) {
+                        popUpTo(Screen.Main.route) { inclusive = true }
+                    }
+                },
                 onNavigateToCustomFood = { _ ->
                     navController.navigate(Screen.AddCustomFood.route)
                 }

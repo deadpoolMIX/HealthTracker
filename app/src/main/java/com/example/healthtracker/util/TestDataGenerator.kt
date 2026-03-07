@@ -1,6 +1,7 @@
 package com.example.healthtracker.util
 
 import com.example.healthtracker.data.local.entity.BodyRecordEntity
+import com.example.healthtracker.data.local.entity.FoodEntity
 import com.example.healthtracker.data.local.entity.IntakeRecordEntity
 import com.example.healthtracker.data.local.entity.SleepRecordEntity
 import java.util.Calendar
@@ -10,47 +11,17 @@ import kotlin.random.Random
  * 测试数据生成器
  * 用于生成模拟的用户数据，方便测试报表功能
  * 生成最近一周的所有数据（摄入、体重、睡眠）
+ * 从食物库中选择食物生成摄入记录
  */
 object TestDataGenerator {
 
-    // 食物模板数据类
-    private data class FoodTemplate(
-        val name: String,
-        val calories: Double,
-        val carbs: Double,
-        val protein: Double,
-        val fat: Double,
-        val icon: String
-    )
-
-    // 常见食物数据（带图标）
-    private val foodTemplates = listOf(
-        FoodTemplate("米饭", 116.0, 25.9, 2.6, 0.3, "🍚"),
-        FoodTemplate("馒头", 223.0, 47.0, 7.0, 1.1, "🥟"),
-        FoodTemplate("鸡蛋", 144.0, 0.1, 13.3, 8.8, "🥚"),
-        FoodTemplate("牛奶", 54.0, 3.4, 3.0, 3.2, "🥛"),
-        FoodTemplate("苹果", 52.0, 13.5, 0.2, 0.2, "🍎"),
-        FoodTemplate("香蕉", 93.0, 20.7, 1.2, 0.2, "🍌"),
-        FoodTemplate("鸡胸肉", 133.0, 0.0, 19.4, 5.0, "🍗"),
-        FoodTemplate("牛肉", 106.0, 0.1, 20.2, 2.3, "🥩"),
-        FoodTemplate("西兰花", 36.0, 4.1, 4.1, 0.4, "🥦"),
-        FoodTemplate("豆腐", 76.0, 1.8, 8.1, 3.7, "🫘"),
-        FoodTemplate("燕麦", 367.0, 61.6, 14.2, 6.7, "🥣"),
-        FoodTemplate("酸奶", 72.0, 9.3, 2.5, 2.7, "🥛"),
-        FoodTemplate("西红柿", 15.0, 3.3, 0.9, 0.2, "🍅"),
-        FoodTemplate("黄瓜", 15.0, 2.9, 0.8, 0.2, "🥒"),
-        FoodTemplate("鱼", 109.0, 0.0, 17.6, 4.1, "🐟"),
-        FoodTemplate("面包", 265.0, 50.0, 8.0, 3.0, "🍞"),
-        FoodTemplate("豆浆", 31.0, 1.2, 1.8, 0.7, "🥛"),
-        FoodTemplate("橙子", 47.0, 11.8, 0.7, 0.2, "🍊"),
-        FoodTemplate("葡萄", 43.0, 10.3, 0.4, 0.4, "🍇"),
-        FoodTemplate("土豆", 77.0, 17.2, 2.0, 0.2, "🥔")
-    )
-
     /**
      * 生成最近一周（7天）的摄入记录
+     * @param foods 食物库中的食物列表
      */
-    fun generateIntakeRecords(): List<IntakeRecordEntity> {
+    fun generateIntakeRecords(foods: List<FoodEntity>): List<IntakeRecordEntity> {
+        if (foods.isEmpty()) return emptyList()
+
         val records = mutableListOf<IntakeRecordEntity>()
         val today = System.currentTimeMillis()
 
@@ -61,21 +32,25 @@ object TestDataGenerator {
             val mealTypes = listOf(0, 1, 2) // 早餐、午餐、晚餐
 
             mealTypes.forEach { mealType ->
-                // 每顿1-3种食物
+                // 每顿1-3种食物，从食物库中随机选择
                 val foodCount = Random.nextInt(1, 4)
-                val selectedFoods = foodTemplates.shuffled().take(foodCount)
+                val selectedFoods = foods.shuffled().take(foodCount)
 
                 selectedFoods.forEach { food ->
                     val amount = Random.nextDouble(80.0, 300.0)
                     val actualCalories = (amount / 100.0) * food.calories
-                    val actualCarbs = (amount / 100.0) * food.carbs
+                    val actualCarbs = (amount / 100.0) * food.carbohydrates
                     val actualProtein = (amount / 100.0) * food.protein
                     val actualFat = (amount / 100.0) * food.fat
 
+                    // 使用食物库中的图标
+                    val foodIcon = food.icon.ifEmpty { null }
+
                     records.add(
                         IntakeRecordEntity(
+                            foodId = food.id,
                             foodName = food.name,
-                            foodIcon = food.icon,
+                            foodIcon = foodIcon,
                             date = date,
                             amount = amount,
                             calories = actualCalories,
@@ -84,7 +59,7 @@ object TestDataGenerator {
                             fat = actualFat,
                             mealType = mealType,
                             caloriesPer100g = food.calories,
-                            carbsPer100g = food.carbs,
+                            carbsPer100g = food.carbohydrates,
                             proteinPer100g = food.protein,
                             fatPer100g = food.fat,
                             unit = "克",
@@ -95,31 +70,38 @@ object TestDataGenerator {
             }
 
             // 随机加餐（50%概率）
-            if (Random.nextBoolean()) {
-                val snack = foodTemplates.filter {
-                    it.name in listOf("苹果", "香蕉", "酸奶", "橙子", "葡萄")
-                }.random()
-                val amount = Random.nextDouble(100.0, 200.0)
+            if (Random.nextBoolean() && foods.isNotEmpty()) {
+                // 选择适合做加餐的食物（水果、酸奶等）
+                val snackKeywords = listOf("果", "奶", "饮", "蕉", "苹", "橙", "葡", "莓")
+                val snackFoods = foods.filter { food ->
+                    snackKeywords.any { keyword -> food.name.contains(keyword) }
+                }.ifEmpty { foods }
 
-                records.add(
-                    IntakeRecordEntity(
-                        foodName = snack.name,
-                        foodIcon = snack.icon,
-                        date = date,
-                        amount = amount,
-                        calories = (amount / 100.0) * snack.calories,
-                        carbohydrates = (amount / 100.0) * snack.carbs,
-                        protein = (amount / 100.0) * snack.protein,
-                        fat = (amount / 100.0) * snack.fat,
-                        mealType = 3, // 加餐
-                        caloriesPer100g = snack.calories,
-                        carbsPer100g = snack.carbs,
-                        proteinPer100g = snack.protein,
-                        fatPer100g = snack.fat,
-                        unit = "克",
-                        createdAt = date + Random.nextLong(36000000, 61200000) // 10:00 - 17:00
+                if (snackFoods.isNotEmpty()) {
+                    val snack = snackFoods.random()
+                    val amount = Random.nextDouble(100.0, 200.0)
+
+                    records.add(
+                        IntakeRecordEntity(
+                            foodId = snack.id,
+                            foodName = snack.name,
+                            foodIcon = snack.icon.ifEmpty { null },
+                            date = date,
+                            amount = amount,
+                            calories = (amount / 100.0) * snack.calories,
+                            carbohydrates = (amount / 100.0) * snack.carbohydrates,
+                            protein = (amount / 100.0) * snack.protein,
+                            fat = (amount / 100.0) * snack.fat,
+                            mealType = 3, // 加餐
+                            caloriesPer100g = snack.calories,
+                            carbsPer100g = snack.carbohydrates,
+                            proteinPer100g = snack.protein,
+                            fatPer100g = snack.fat,
+                            unit = "克",
+                            createdAt = date + Random.nextLong(36000000, 61200000) // 10:00 - 17:00
+                        )
                     )
-                )
+                }
             }
         }
 
