@@ -164,6 +164,9 @@ private fun NutritionChartCard(
 
             // 柱状图
             if (data.isNotEmpty()) {
+                // 找出所有数据的最大总量，用于等比例缩放
+                val maxValue = data.maxOf { it.carbs + it.protein + it.fat }.toFloat().coerceAtLeast(1f)
+
                 Canvas(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -177,11 +180,11 @@ private fun NutritionChartCard(
                     data.forEachIndexed { index, day ->
                         val x = index * (barWidth + spacing) + spacing / 2
 
-                        // 堆叠柱状图 - 使用总和计算高度
-                        val totalValue = day.carbs + day.protein + day.fat
-                        val carbsHeight = if (totalValue > 0) (day.carbs / totalValue * size.height).toFloat() else 0f
-                        val proteinHeight = if (totalValue > 0) (day.protein / totalValue * size.height).toFloat() else 0f
-                        val fatHeight = if (totalValue > 0) (day.fat / totalValue * size.height).toFloat() else 0f
+                        // 堆叠柱状图 - 按实际数值等比例缩放
+                        val totalHeight = ((day.carbs + day.protein + day.fat) / maxValue * size.height).toFloat()
+                        val carbsHeight = if (day.carbs + day.protein + day.fat > 0) (day.carbs / (day.carbs + day.protein + day.fat) * totalHeight) else 0f
+                        val proteinHeight = if (day.carbs + day.protein + day.fat > 0) (day.protein / (day.carbs + day.protein + day.fat) * totalHeight) else 0f
+                        val fatHeight = if (day.carbs + day.protein + day.fat > 0) (day.fat / (day.carbs + day.protein + day.fat) * totalHeight) else 0f
 
                         // 绘制脂肪（底部）
                         drawRect(
@@ -276,6 +279,9 @@ private fun NutritionWeeklyChartCard(
 
             // 柱状图
             if (data.isNotEmpty()) {
+                // 找出所有数据的最大总量，用于等比例缩放
+                val maxValue = data.maxOf { it.carbs + it.protein + it.fat }.toFloat().coerceAtLeast(1f)
+
                 Canvas(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -289,11 +295,11 @@ private fun NutritionWeeklyChartCard(
                     data.forEachIndexed { index, week ->
                         val x = index * (barWidth + spacing) + spacing / 2
 
-                        // 堆叠柱状图 - 使用比例计算高度
-                        val totalValue = week.carbs + week.protein + week.fat
-                        val carbsHeight = if (totalValue > 0) (week.carbs / totalValue * size.height).toFloat() else 0f
-                        val proteinHeight = if (totalValue > 0) (week.protein / totalValue * size.height).toFloat() else 0f
-                        val fatHeight = if (totalValue > 0) (week.fat / totalValue * size.height).toFloat() else 0f
+                        // 堆叠柱状图 - 按实际数值等比例缩放
+                        val totalHeight = ((week.carbs + week.protein + week.fat) / maxValue * size.height).toFloat()
+                        val carbsHeight = if (week.carbs + week.protein + week.fat > 0) (week.carbs / (week.carbs + week.protein + week.fat) * totalHeight) else 0f
+                        val proteinHeight = if (week.carbs + week.protein + week.fat > 0) (week.protein / (week.carbs + week.protein + week.fat) * totalHeight) else 0f
+                        val fatHeight = if (week.carbs + week.protein + week.fat > 0) (week.fat / (week.carbs + week.protein + week.fat) * totalHeight) else 0f
 
                         // 绘制脂肪（底部）
                         drawRect(
