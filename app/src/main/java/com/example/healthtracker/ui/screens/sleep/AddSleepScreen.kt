@@ -4,7 +4,6 @@ import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -66,6 +65,19 @@ fun AddSleepScreen(
         )
     }
 
+    // 计算睡眠时长
+    val sleepCalendar = Calendar.getInstance()
+    sleepCalendar.timeInMillis = uiState.sleepDate
+    sleepCalendar.set(Calendar.HOUR_OF_DAY, uiState.sleepHour)
+    sleepCalendar.set(Calendar.MINUTE, uiState.sleepMinute)
+
+    val wakeCalendar = Calendar.getInstance()
+    wakeCalendar.timeInMillis = uiState.wakeDate
+    wakeCalendar.set(Calendar.HOUR_OF_DAY, uiState.wakeHour)
+    wakeCalendar.set(Calendar.MINUTE, uiState.wakeMinute)
+
+    val durationMinutes = (wakeCalendar.timeInMillis - sleepCalendar.timeInMillis) / (1000 * 60)
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -87,149 +99,114 @@ fun AddSleepScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 入睡时间区域
-            Card(
+            // 入睡时间行
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                ),
-                shape = RoundedCornerShape(16.dp)
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                Text(
+                    text = "入睡",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.width(50.dp)
+                )
+
+                // 日期选择
+                TextButton(onClick = { showSleepDatePicker = true }) {
                     Text(
-                        text = "入睡时间",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        text = DateTimeUtils.formatDateShort(uiState.sleepDate),
+                        style = MaterialTheme.typography.bodyMedium
                     )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // 入睡日期选择
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = DateTimeUtils.formatDate(uiState.sleepDate),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        IconButton(onClick = { showSleepDatePicker = true }) {
-                            Icon(Icons.Default.DateRange, contentDescription = "选择日期")
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // 滑动转轮时间选择器
-                    WheelTimePicker(
-                        initialHour = uiState.sleepHour,
-                        initialMinute = uiState.sleepMinute,
-                        onTimeSelected = { hour, minute ->
-                            viewModel.setSleepHour(hour)
-                            viewModel.setSleepMinute(minute)
-                        }
+                    Icon(
+                        Icons.Default.DateRange,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // 时间滚轮
+                CompactTimePicker(
+                    initialHour = uiState.sleepHour,
+                    initialMinute = uiState.sleepMinute,
+                    onTimeSelected = { hour, minute ->
+                        viewModel.setSleepHour(hour)
+                        viewModel.setSleepMinute(minute)
+                    }
+                )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // 起床时间区域
-            Card(
+            // 起床时间行
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
-                ),
-                shape = RoundedCornerShape(16.dp)
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                Text(
+                    text = "起床",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.width(50.dp)
+                )
+
+                // 日期选择
+                TextButton(onClick = { showWakeDatePicker = true }) {
                     Text(
-                        text = "起床时间",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        text = DateTimeUtils.formatDateShort(uiState.wakeDate),
+                        style = MaterialTheme.typography.bodyMedium
                     )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // 起床日期选择
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = DateTimeUtils.formatDate(uiState.wakeDate),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        IconButton(onClick = { showWakeDatePicker = true }) {
-                            Icon(Icons.Default.DateRange, contentDescription = "选择日期")
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // 滑动转轮时间选择器
-                    WheelTimePicker(
-                        initialHour = uiState.wakeHour,
-                        initialMinute = uiState.wakeMinute,
-                        onTimeSelected = { hour, minute ->
-                            viewModel.setWakeHour(hour)
-                            viewModel.setWakeMinute(minute)
-                        }
+                    Icon(
+                        Icons.Default.DateRange,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // 时间滚轮
+                CompactTimePicker(
+                    initialHour = uiState.wakeHour,
+                    initialMinute = uiState.wakeMinute,
+                    onTimeSelected = { hour, minute ->
+                        viewModel.setWakeHour(hour)
+                        viewModel.setWakeMinute(minute)
+                    }
+                )
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // 睡眠时长显示
-            val sleepCalendar = Calendar.getInstance()
-            sleepCalendar.timeInMillis = uiState.sleepDate
-            sleepCalendar.set(Calendar.HOUR_OF_DAY, uiState.sleepHour)
-            sleepCalendar.set(Calendar.MINUTE, uiState.sleepMinute)
-
-            val wakeCalendar = Calendar.getInstance()
-            wakeCalendar.timeInMillis = uiState.wakeDate
-            wakeCalendar.set(Calendar.HOUR_OF_DAY, uiState.wakeHour)
-            wakeCalendar.set(Calendar.MINUTE, uiState.wakeMinute)
-
-            val durationMinutes = (wakeCalendar.timeInMillis - sleepCalendar.timeInMillis) / (1000 * 60)
-
-            Card(
+            Surface(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Column(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "预计睡眠时长",
+                        text = "睡眠时长：",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = if (durationMinutes >= 0) {
                             "${durationMinutes / 60}小时${durationMinutes % 60}分钟"
                         } else {
-                            "时间设置无效"
+                            "时间无效"
                         },
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = if (durationMinutes >= 0) MaterialTheme.colorScheme.primary
                                else MaterialTheme.colorScheme.error
@@ -237,11 +214,14 @@ fun AddSleepScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
+            // 保存按钮
             Button(
                 onClick = { viewModel.save() },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
                 enabled = !uiState.isSaving && durationMinutes > 0
             ) {
                 if (uiState.isSaving) {
@@ -261,10 +241,10 @@ fun AddSleepScreen(
 }
 
 /**
- * 滑动转轮时间选择器
+ * 紧凑型时间选择器（滚动滚轮）
  */
 @Composable
-private fun WheelTimePicker(
+private fun CompactTimePicker(
     initialHour: Int,
     initialMinute: Int,
     onTimeSelected: (Int, Int) -> Unit
@@ -273,64 +253,60 @@ private fun WheelTimePicker(
     var selectedMinute by remember { mutableIntStateOf(initialMinute) }
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(150.dp),
-        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 小时选择器
-        WheelPicker(
+        // 小时滚轮
+        CompactWheelPicker(
             items = (0..23).map { String.format("%02d", it) },
             initialIndex = initialHour,
             onSelectedChange = { index ->
                 selectedHour = index
                 onTimeSelected(index, selectedMinute)
             },
-            modifier = Modifier.width(80.dp)
+            modifier = Modifier.width(56.dp)
         )
 
         Text(
             text = ":",
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 8.dp)
+            modifier = Modifier.padding(horizontal = 2.dp)
         )
 
-        // 分钟选择器
-        WheelPicker(
+        // 分钟滚轮
+        CompactWheelPicker(
             items = (0..59).map { String.format("%02d", it) },
             initialIndex = initialMinute,
             onSelectedChange = { index ->
                 selectedMinute = index
                 onTimeSelected(selectedHour, index)
             },
-            modifier = Modifier.width(80.dp)
+            modifier = Modifier.width(56.dp)
         )
     }
 }
 
 /**
- * 滑动转轮选择器
+ * 紧凑型滚动选择器
  */
 @Composable
-private fun WheelPicker(
+private fun CompactWheelPicker(
     items: List<String>,
     initialIndex: Int,
     onSelectedChange: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = maxOf(0, initialIndex - 2))
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = maxOf(0, initialIndex - 1))
     val snappingLayout = remember(listState) { SnapLayoutInfoProvider(listState) }
     val flingBehavior = rememberSnapFlingBehavior(snappingLayout)
 
     // 监听滚动位置变化
     LaunchedEffect(listState.firstVisibleItemIndex) {
-        onSelectedChange(listState.firstVisibleItemIndex + 2)
+        onSelectedChange(listState.firstVisibleItemIndex + 1)
     }
 
     Box(
-        modifier = modifier.height(150.dp)
+        modifier = modifier.height(80.dp)
     ) {
         // 渐变遮罩
         Box(
@@ -341,10 +317,9 @@ private fun WheelPicker(
                     drawRect(
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.9f),
+                                Color.White.copy(alpha = 0.85f),
                                 Color.Transparent,
-                                Color.Transparent,
-                                Color.White.copy(alpha = 0.9f)
+                                Color.White.copy(alpha = 0.85f)
                             ),
                             startY = 0f,
                             endY = size.height
@@ -358,40 +333,32 @@ private fun WheelPicker(
             flingBehavior = flingBehavior,
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 50.dp, bottom = 50.dp)
+            contentPadding = PaddingValues(top = 24.dp, bottom = 24.dp)
         ) {
-            items(items.size + 4) { index ->
-                val actualIndex = index - 2
-                val isSelected = actualIndex == listState.firstVisibleItemIndex + 2
+            items(items.size + 2) { index ->
+                val actualIndex = index - 1
+                val isSelected = actualIndex == listState.firstVisibleItemIndex + 1
 
                 Box(
                     modifier = Modifier
-                        .height(50.dp)
+                        .height(32.dp)
                         .fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
                     if (actualIndex in items.indices) {
                         Text(
                             text = items[actualIndex],
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             color = if (isSelected) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            textAlign = TextAlign.Center
+                                   else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            textAlign = TextAlign.Center,
+                            fontSize = if (isSelected) 18.sp else 14.sp
                         )
                     }
                 }
             }
         }
-
-        // 选中行指示器
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .height(50.dp)
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp)
-        )
     }
 }
 

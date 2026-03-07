@@ -171,6 +171,17 @@ object DateTimeUtils {
     }
 
     /**
+     * 格式化日期显示（短格式，如 3月7日）
+     */
+    fun formatDateShort(timestamp: Long): String {
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = timestamp
+        val month = calendar.get(Calendar.MONTH) + 1
+        val day = calendar.get(Calendar.DAY_OF_MONTH)
+        return "${month}月${day}日"
+    }
+
+    /**
      * 格式化睡眠时长
      */
     fun formatDuration(minutes: Long): String {
