@@ -1173,16 +1173,20 @@ private fun EditIntakeDialog(
                 // 使用固定宽度确保所有选项等高等宽，且在同一行
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
                 ) {
                     mealTypes.forEachIndexed { index, type ->
                         FilterChip(
                             selected = selectedMealType == index,
                             onClick = { selectedMealType = index },
-                            label = { Text(type, maxLines = 1) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .defaultMinSize(minWidth = 56.dp)
+                            label = {
+                                Text(
+                                    type,
+                                    maxLines = 1,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            },
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }

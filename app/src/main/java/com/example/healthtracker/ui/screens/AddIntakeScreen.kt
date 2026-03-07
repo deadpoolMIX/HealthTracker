@@ -265,20 +265,18 @@ fun AddIntakeScreen(
                             onClick = { showAddDialog = food }
                         )
                     }
-
-                    // 底部添加自定义食物按钮
-                    item {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        OutlinedButton(
-                            onClick = { onNavigateToCustomFood(null) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("添加自定义食物")
-                        }
-                    }
                 }
+            }
+
+            // 添加自定义食物按钮 - 在框外面
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { onNavigateToCustomFood(null) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("添加自定义食物")
             }
         }
     }

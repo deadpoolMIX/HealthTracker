@@ -16,7 +16,7 @@ object DefaultFoods {
             carbohydrates = 25.9,
             protein = 2.6,
             fat = 0.3,
-            icon = "rice"
+            icon = "🍚"
         ),
         FoodEntity(
             name = "馒头",
@@ -25,7 +25,7 @@ object DefaultFoods {
             carbohydrates = 47.0,
             protein = 7.0,
             fat = 1.1,
-            icon = "bread"
+            icon = "🥟"
         ),
         FoodEntity(
             name = "面条",
@@ -34,7 +34,7 @@ object DefaultFoods {
             carbohydrates = 28.6,
             protein = 4.5,
             fat = 0.5,
-            icon = "noodle"
+            icon = "🍜"
         ),
         // 肉类
         FoodEntity(
@@ -44,7 +44,7 @@ object DefaultFoods {
             carbohydrates = 0.2,
             protein = 20.3,
             fat = 6.2,
-            icon = "meat"
+            icon = "🥩"
         ),
         FoodEntity(
             name = "牛肉（瘦）",
@@ -53,7 +53,7 @@ object DefaultFoods {
             carbohydrates = 0.1,
             protein = 20.2,
             fat = 2.3,
-            icon = "meat"
+            icon = "🥩"
         ),
         FoodEntity(
             name = "鸡肉",
@@ -62,7 +62,7 @@ object DefaultFoods {
             carbohydrates = 0.0,
             protein = 19.3,
             fat = 9.4,
-            icon = "chicken"
+            icon = "🍗"
         ),
         // 蔬菜类
         FoodEntity(
@@ -72,7 +72,7 @@ object DefaultFoods {
             carbohydrates = 2.4,
             protein = 1.2,
             fat = 0.2,
-            icon = "vegetable"
+            icon = "🥬"
         ),
         FoodEntity(
             name = "西红柿",
@@ -81,7 +81,7 @@ object DefaultFoods {
             carbohydrates = 3.3,
             protein = 0.9,
             fat = 0.2,
-            icon = "vegetable"
+            icon = "🍅"
         ),
         FoodEntity(
             name = "黄瓜",
@@ -90,7 +90,7 @@ object DefaultFoods {
             carbohydrates = 2.9,
             protein = 0.8,
             fat = 0.2,
-            icon = "vegetable"
+            icon = "🥒"
         ),
         FoodEntity(
             name = "土豆",
@@ -99,7 +99,7 @@ object DefaultFoods {
             carbohydrates = 17.2,
             protein = 2.0,
             fat = 0.2,
-            icon = "vegetable"
+            icon = "🥔"
         ),
         // 水果类
         FoodEntity(
@@ -109,7 +109,7 @@ object DefaultFoods {
             carbohydrates = 13.5,
             protein = 0.2,
             fat = 0.2,
-            icon = "fruit"
+            icon = "🍎"
         ),
         FoodEntity(
             name = "香蕉",
@@ -118,7 +118,7 @@ object DefaultFoods {
             carbohydrates = 20.7,
             protein = 1.2,
             fat = 0.2,
-            icon = "fruit"
+            icon = "🍌"
         ),
         FoodEntity(
             name = "橙子",
@@ -127,7 +127,7 @@ object DefaultFoods {
             carbohydrates = 11.8,
             protein = 0.8,
             fat = 0.2,
-            icon = "fruit"
+            icon = "🍊"
         ),
         // 蛋奶类
         FoodEntity(
@@ -137,7 +137,7 @@ object DefaultFoods {
             carbohydrates = 0.1,
             protein = 13.3,
             fat = 8.8,
-            icon = "egg"
+            icon = "🥚"
         ),
         FoodEntity(
             name = "牛奶",
@@ -146,7 +146,7 @@ object DefaultFoods {
             carbohydrates = 3.4,
             protein = 3.0,
             fat = 3.2,
-            icon = "milk"
+            icon = "🥛"
         ),
         // 豆类
         FoodEntity(
@@ -156,7 +156,7 @@ object DefaultFoods {
             carbohydrates = 1.8,
             protein = 8.1,
             fat = 3.7,
-            icon = "bean"
+            icon = "🫘"
         ),
         FoodEntity(
             name = "黄豆",
@@ -165,7 +165,7 @@ object DefaultFoods {
             carbohydrates = 18.6,
             protein = 35.0,
             fat = 16.0,
-            icon = "bean"
+            icon = "🫘"
         ),
         // 坚果类
         FoodEntity(
@@ -175,7 +175,7 @@ object DefaultFoods {
             carbohydrates = 13.0,
             protein = 24.8,
             fat = 48.0,
-            icon = "nut"
+            icon = "🥜"
         ),
         // 海鲜类
         FoodEntity(
@@ -185,7 +185,7 @@ object DefaultFoods {
             carbohydrates = 0.0,
             protein = 18.6,
             fat = 0.8,
-            icon = "seafood"
+            icon = "🦐"
         ),
         FoodEntity(
             name = "鱼（鲤鱼）",
@@ -194,7 +194,7 @@ object DefaultFoods {
             carbohydrates = 0.0,
             protein = 17.6,
             fat = 4.1,
-            icon = "seafood"
+            icon = "🐟"
         ),
         // 油脂类
         FoodEntity(
@@ -204,7 +204,7 @@ object DefaultFoods {
             carbohydrates = 0.0,
             protein = 0.0,
             fat = 99.9,
-            icon = "oil"
+            icon = "🫒"
         )
     )
 }

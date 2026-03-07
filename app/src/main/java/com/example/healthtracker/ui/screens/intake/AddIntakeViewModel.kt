@@ -7,6 +7,7 @@ import com.example.healthtracker.data.local.entity.IntakeRecordEntity
 import com.example.healthtracker.data.repository.FoodRepository
 import com.example.healthtracker.data.repository.IntakeRecordRepository
 import com.example.healthtracker.util.DateTimeUtils
+import com.example.healthtracker.util.FoodEmojiUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -107,6 +108,30 @@ class AddIntakeViewModel @Inject constructor(
     }
 
     /**
+     * 获取食物的正确图标（确保是emoji格式）
+     */
+    private fun getFoodIcon(food: FoodEntity): String {
+        // 如果食物有图标且是emoji格式，直接使用
+        if (food.icon.isNotEmpty() && isEmoji(food.icon)) {
+            return food.icon
+        }
+        // 否则根据名称推断
+        return FoodEmojiUtils.getDefaultEmojiForFood(food.name)
+    }
+
+    /**
+     * 检查字符串是否为emoji
+     */
+    private fun isEmoji(text: String): Boolean {
+        if (text.isEmpty()) return false
+        val firstChar = text[0]
+        // Emoji 的 Unicode 范围检查
+        return firstChar.code in 0x1F300..0x1F9FF ||
+                firstChar.code in 0x2600..0x26FF ||
+                firstChar.code in 0x2700..0x27BF
+    }
+
+    /**
      * 批量保存所有记录
      */
     fun saveAllRecords(dateMillis: Long, mealType: Int) {
@@ -116,9 +141,12 @@ class AddIntakeViewModel @Inject constructor(
             val date = DateTimeUtils.getStartOfDay(dateMillis)
 
             val records = _pendingItems.value.map { item ->
+                // 获取正确的食物图标
+                val foodIcon = getFoodIcon(item.food)
+
                 IntakeRecordEntity(
                     foodName = item.food.name,
-                    foodIcon = item.food.icon.ifEmpty { null },
+                    foodIcon = foodIcon,
                     date = date,
                     amount = item.amount,
                     calories = item.calories,
@@ -170,8 +198,16 @@ class AddIntakeViewModel @Inject constructor(
             val actualProtein = (amount / 100.0) * proteinPer100g
             val actualFat = (amount / 100.0) * fatPer100g
 
+            // 确保图标是emoji格式
+            val foodIcon = if (icon.isNotEmpty() && isEmoji(icon)) {
+                icon
+            } else {
+                FoodEmojiUtils.getDefaultEmojiForFood(foodName)
+            }
+
             val record = IntakeRecordEntity(
                 foodName = foodName,
+                foodIcon = foodIcon,
                 date = DateTimeUtils.getStartOfDay(),
                 amount = amount,
                 calories = actualCalories,
