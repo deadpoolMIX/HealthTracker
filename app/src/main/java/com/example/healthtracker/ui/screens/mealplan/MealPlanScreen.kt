@@ -37,7 +37,13 @@ fun MealPlanScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("饮食计划", fontWeight = FontWeight.Medium) }
+                title = { Text("饮食计划", fontWeight = FontWeight.Medium) },
+                actions = {
+                    // 排序按钮
+                    IconButton(onClick = { viewModel.showSortDialog() }) {
+                        Icon(Icons.Default.Sort, contentDescription = "排序")
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -57,13 +63,36 @@ fun MealPlanScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
+                // 当前排序方式提示
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "排序：${viewModel.getSortTypeName(uiState.sortType)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        TextButton(onClick = { viewModel.showSortDialog() }) {
+                            Text("更改", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+
                 // 计划列表
                 LazyColumn(
                     modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(allPlans) { plan ->
+                    items(allPlans, key = { it.id }) { plan ->
                         MealPlanCard(
                             plan = plan,
                             isSelected = selectedPlanId == plan.id,
@@ -85,6 +114,15 @@ fun MealPlanScreen(
                 }
             }
         }
+    }
+
+    // 排序选择对话框
+    if (uiState.showSortDialog) {
+        SortDialog(
+            currentSortType = uiState.sortType,
+            onDismiss = { viewModel.hideSortDialog() },
+            onSelect = { viewModel.setSortType(it) }
+        )
     }
 
     // 删除确认对话框
@@ -110,6 +148,51 @@ fun MealPlanScreen(
             }
         )
     }
+}
+
+@Composable
+private fun SortDialog(
+    currentSortType: SortType,
+    onDismiss: () -> Unit,
+    onSelect: (SortType) -> Unit
+) {
+    val sortOptions = listOf(
+        SortType.TIME_DESC to "时间 新-旧",
+        SortType.TIME_ASC to "时间 旧-新",
+        SortType.NAME_ASC to "名称 A-Z",
+        SortType.NAME_DESC to "名称 Z-A",
+        SortType.MANUAL to "手动排序"
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("排序方式") },
+        text = {
+            Column {
+                sortOptions.forEach { (sortType, name) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(sortType) }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = currentSortType == sortType,
+                            onClick = { onSelect(sortType) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = name, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
+            }
+        }
+    )
 }
 
 @Composable
@@ -268,7 +351,7 @@ private fun PlanItemsList(items: List<MealPlanItemEntity>) {
 
             // 按餐次分组显示
             val groupedByMeal = items.groupBy { it.mealType }
-            val mealOrder = listOf(0, 1, 2, 3) // 早餐、午餐、晚餐、加餐
+            val mealOrder = listOf(0, 1, 2, 3)
             val mealNames = listOf("早餐", "午餐", "晚餐", "加餐")
 
             mealOrder.forEach { mealType ->
