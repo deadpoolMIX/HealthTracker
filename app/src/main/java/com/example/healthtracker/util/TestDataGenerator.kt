@@ -109,19 +109,19 @@ object TestDataGenerator {
     }
 
     /**
-     * 生成最近一周（7天）的身体数据记录
+     * 生成最近一个月（30天）的身体数据记录
      */
     fun generateBodyRecords(baseWeight: Double = 70.0): List<BodyRecordEntity> {
         val records = mutableListOf<BodyRecordEntity>()
         val today = System.currentTimeMillis()
         var currentWeight = baseWeight
 
-        for (dayOffset in 6 downTo 0) {
+        for (dayOffset in 29 downTo 0) {
             val date = getStartOfDay(today, -dayOffset)
 
             // 体重轻微波动，模拟真实数据
-            currentWeight += Random.nextDouble(-0.2, 0.2)
-            val weight = currentWeight.coerceIn(baseWeight - 2, baseWeight + 2)
+            currentWeight += Random.nextDouble(-0.3, 0.3)
+            val weight = currentWeight.coerceIn(baseWeight - 3, baseWeight + 3)
 
             // 体脂率 18-22% 波动
             val bodyFat = 20.0 + Random.nextDouble(-2.0, 2.0)
@@ -152,13 +152,13 @@ object TestDataGenerator {
     }
 
     /**
-     * 生成最近一周（7天）的睡眠记录
+     * 生成最近一个月（30天）的睡眠记录
      */
     fun generateSleepRecords(): List<SleepRecordEntity> {
         val records = mutableListOf<SleepRecordEntity>()
         val today = System.currentTimeMillis()
 
-        for (dayOffset in 6 downTo 0) {
+        for (dayOffset in 29 downTo 0) {
             val date = getStartOfDay(today, -dayOffset)
 
             // 入睡时间：22:00 - 01:00
