@@ -20,5 +20,7 @@ data class FoodEntity(
     val icon: String,                    // 图标名称
     val isCustom: Boolean = false,       // 是否为用户自定义
     val isFavorite: Boolean = false,     // 是否收藏
+    val unit: String? = null,            // 单位名称（如：个、杯、瓶等）
+    val gramsPerUnit: Double? = null,    // 每单位克数
     val createdAt: Long = System.currentTimeMillis()
 )

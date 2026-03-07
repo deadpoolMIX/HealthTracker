@@ -17,7 +17,7 @@ import com.example.healthtracker.data.local.entity.*
         MealPlanItemEntity::class,
         UserSettingsEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class HealthTrackerDatabase : RoomDatabase() {
@@ -104,6 +104,14 @@ abstract class HealthTrackerDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // 添加导航栏顺序字段
                 db.execSQL("ALTER TABLE user_settings ADD COLUMN navBarOrder TEXT NOT NULL DEFAULT '0,1,2,3'")
+            }
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 添加食物单位字段
+                db.execSQL("ALTER TABLE foods ADD COLUMN unit TEXT")
+                db.execSQL("ALTER TABLE foods ADD COLUMN gramsPerUnit REAL")
             }
         }
     }

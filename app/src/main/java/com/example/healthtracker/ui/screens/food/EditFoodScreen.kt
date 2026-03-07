@@ -3,9 +3,6 @@ package com.example.healthtracker.ui.screens.food
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -27,6 +24,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.healthtracker.util.FoodEmojiUtils
 import kotlinx.coroutines.launch
 
+/**
+ * 编辑食物页面
+ * 布局与添加自定义食物页面一致
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditFoodScreen(
@@ -37,16 +38,23 @@ fun EditFoodScreen(
     val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
 
-    var name by remember { mutableStateOf("") }
-    var calories by remember { mutableStateOf("") }
-    var carbs by remember { mutableStateOf("") }
-    var protein by remember { mutableStateOf("") }
-    var fat by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("其他") }
+    var foodName by remember { mutableStateOf("") }
     var selectedEmoji by remember { mutableStateOf("🍽️") }
     var showEmojiPicker by remember { mutableStateOf(false) }
 
-    val categories = listOf("主食", "肉类", "蔬菜", "水果", "蛋奶", "豆类", "坚果", "海鲜", "油脂", "其他")
+    // 单位相关
+    var hasUnit by remember { mutableStateOf(false) }
+    var unit by remember { mutableStateOf("") }
+    var gramsPerUnit by remember { mutableStateOf("") }
+
+    // 每百克营养数据
+    var caloriesPer100g by remember { mutableStateOf("") }
+    var carbsPer100g by remember { mutableStateOf("") }
+    var proteinPer100g by remember { mutableStateOf("") }
+    var fatPer100g by remember { mutableStateOf("") }
+
+    val commonUnits = listOf("个", "杯", "瓶", "份", "块", "片", "勺", "包", "碗", "袋")
+    var expandedUnit by remember { mutableStateOf(false) }
 
     // 加载食物数据
     LaunchedEffect(foodId) {
@@ -56,15 +64,35 @@ fun EditFoodScreen(
     // 当食物数据加载完成后，更新表单
     LaunchedEffect(uiState.food) {
         uiState.food?.let { food ->
-            name = food.name
-            calories = food.calories.toString()
-            carbs = food.carbohydrates.toString()
-            protein = food.protein.toString()
-            fat = food.fat.toString()
-            category = food.category
+            foodName = food.name
             selectedEmoji = if (food.icon.isNotEmpty()) food.icon else FoodEmojiUtils.getDefaultEmojiForFood(food.name)
+            caloriesPer100g = food.calories.toString()
+            carbsPer100g = food.carbohydrates.toString()
+            proteinPer100g = food.protein.toString()
+            fatPer100g = food.fat.toString()
+            // 单位数据
+            hasUnit = !food.unit.isNullOrEmpty() && food.gramsPerUnit != null && food.gramsPerUnit > 0
+            unit = food.unit ?: ""
+            gramsPerUnit = food.gramsPerUnit?.toString() ?: ""
         }
     }
+
+    // 计算每单位的营养值（用于预览）
+    val caloriesValue = caloriesPer100g.toDoubleOrNull() ?: 0.0
+    val carbsValue = carbsPer100g.toDoubleOrNull() ?: 0.0
+    val proteinValue = proteinPer100g.toDoubleOrNull() ?: 0.0
+    val fatValue = fatPer100g.toDoubleOrNull() ?: 0.0
+    val gramsPerUnitValue = gramsPerUnit.toDoubleOrNull() ?: 0.0
+
+    val unitCalories = if (hasUnit && gramsPerUnitValue > 0) caloriesValue * gramsPerUnitValue / 100 else 0.0
+    val unitCarbs = if (hasUnit && gramsPerUnitValue > 0) carbsValue * gramsPerUnitValue / 100 else 0.0
+    val unitProtein = if (hasUnit && gramsPerUnitValue > 0) proteinValue * gramsPerUnitValue / 100 else 0.0
+    val unitFat = if (hasUnit && gramsPerUnitValue > 0) fatValue * gramsPerUnitValue / 100 else 0.0
+
+    // 验证输入
+    val isValid = foodName.isNotBlank() &&
+            caloriesValue > 0 &&
+            (!hasUnit || (unit.isNotBlank() && gramsPerUnitValue > 0))
 
     Scaffold(
         topBar = {
@@ -107,14 +135,14 @@ fun EditFoodScreen(
             ) {
                 // 食物名称
                 OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
+                    value = foodName,
+                    onValueChange = { foodName = it },
                     label = { Text("食物名称 *") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
 
-                // Emoji 选择
+                // 图标选择
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -126,7 +154,7 @@ fun EditFoodScreen(
                     Spacer(modifier = Modifier.width(16.dp))
                     Box(
                         modifier = Modifier
-                            .size(56.dp)
+                            .size(48.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.primaryContainer)
                             .clickable { showEmojiPicker = true },
@@ -134,60 +162,30 @@ fun EditFoodScreen(
                     ) {
                         Text(
                             text = selectedEmoji,
-                            fontSize = 28.sp
+                            fontSize = 24.sp
                         )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(onClick = { showEmojiPicker = true }) {
-                        Text("更换图标")
-                    }
-                }
-
-                // 分类选择
-                Text(
-                    text = "食物分类",
-                    style = MaterialTheme.typography.titleSmall
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    categories.take(5).forEach { cat ->
-                        FilterChip(
-                            selected = category == cat,
-                            onClick = { category = cat },
-                            label = { Text(cat) }
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    categories.drop(5).forEach { cat ->
-                        FilterChip(
-                            selected = category == cat,
-                            onClick = { category = cat },
-                            label = { Text(cat) }
-                        )
+                        Text("更换")
                     }
                 }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                // 营养数据
+                // 每百克营养数据
                 Text(
-                    text = "营养数据 (每100g)",
+                    text = "每百克营养数据 *",
                     style = MaterialTheme.typography.titleSmall
                 )
 
                 OutlinedTextField(
-                    value = calories,
-                    onValueChange = { calories = it },
-                    label = { Text("热量 (kcal) *") },
+                    value = caloriesPer100g,
+                    onValueChange = { caloriesPer100g = it },
+                    label = { Text("热量 (kcal)") },
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth()
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
 
                 Row(
@@ -195,31 +193,128 @@ fun EditFoodScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     OutlinedTextField(
-                        value = carbs,
-                        onValueChange = { carbs = it },
+                        value = carbsPer100g,
+                        onValueChange = { carbsPer100g = it },
                         label = { Text("碳水 (g)") },
+                        modifier = Modifier.weight(1f),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.weight(1f)
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
                     OutlinedTextField(
-                        value = protein,
-                        onValueChange = { protein = it },
+                        value = proteinPer100g,
+                        onValueChange = { proteinPer100g = it },
                         label = { Text("蛋白质 (g)") },
+                        modifier = Modifier.weight(1f),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.weight(1f)
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
                 }
 
                 OutlinedTextField(
-                    value = fat,
-                    onValueChange = { fat = it },
+                    value = fatPer100g,
+                    onValueChange = { fatPer100g = it },
                     label = { Text("脂肪 (g)") },
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth()
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                // 单位设置（可选）
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = hasUnit,
+                        onCheckedChange = { hasUnit = it }
+                    )
+                    Text(
+                        text = "设置单位（可选）",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                // 单位相关输入
+                if (hasUnit) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = gramsPerUnit,
+                            onValueChange = { gramsPerUnit = it },
+                            label = { Text("数值 *") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                        )
+
+                        ExposedDropdownMenuBox(
+                            expanded = expandedUnit,
+                            onExpandedChange = { expandedUnit = it },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            OutlinedTextField(
+                                value = unit,
+                                onValueChange = { unit = it },
+                                label = { Text("单位 *") },
+                                modifier = Modifier.menuAnchor(),
+                                singleLine = true
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expandedUnit,
+                                onDismissRequest = { expandedUnit = false }
+                            ) {
+                                commonUnits.forEach { u ->
+                                    DropdownMenuItem(
+                                        text = { Text(u) },
+                                        onClick = {
+                                            unit = u
+                                            expandedUnit = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // 每单位营养预览
+                    if (gramsPerUnitValue > 0 && caloriesValue > 0) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Text(
+                                    text = "每${unit.ifBlank { "单位" }}营养值预览",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("热量: ${String.format("%.1f", unitCalories)} kcal")
+                                    Text("碳水: ${String.format("%.1f", unitCarbs)} g")
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("蛋白质: ${String.format("%.1f", unitProtein)} g")
+                                    Text("脂肪: ${String.format("%.1f", unitFat)} g")
+                                }
+                            }
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.weight(1f))
 
@@ -228,40 +323,44 @@ fun EditFoodScreen(
                     onClick = {
                         scope.launch {
                             if (viewModel.updateFood(
-                                name = name,
-                                calories = calories.toDoubleOrNull() ?: 0.0,
-                                carbs = carbs.toDoubleOrNull() ?: 0.0,
-                                protein = protein.toDoubleOrNull() ?: 0.0,
-                                fat = fat.toDoubleOrNull() ?: 0.0,
-                                category = category,
-                                icon = selectedEmoji
-                            )) {
+                                    name = foodName,
+                                    calories = caloriesValue,
+                                    carbs = carbsValue,
+                                    protein = proteinValue,
+                                    fat = fatValue,
+                                    category = uiState.food?.category ?: "其他",
+                                    icon = selectedEmoji,
+                                    unit = if (hasUnit) unit else null,
+                                    gramsPerUnit = if (hasUnit) gramsPerUnitValue else null
+                                )) {
                                 onNavigateBack()
                             }
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = name.isNotBlank() && (calories.toDoubleOrNull() ?: 0.0) > 0
+                    enabled = isValid
                 ) {
                     Text("保存修改")
                 }
 
-                // 删除按钮
-                OutlinedButton(
-                    onClick = {
-                        scope.launch {
-                            viewModel.deleteFood()
-                            onNavigateBack()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Icon(Icons.Default.Delete, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("删除此食物")
+                // 删除按钮（仅自定义食物可删除）
+                if (uiState.food?.isCustom == true) {
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                viewModel.deleteFood()
+                                onNavigateBack()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("删除此食物")
+                    }
                 }
             }
         }
@@ -295,6 +394,7 @@ private fun EmojiPickerDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(400.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 FoodEmojiUtils.foodEmojisByCategory.forEach { (category, emojis) ->
                     Text(
@@ -303,13 +403,13 @@ private fun EmojiPickerDialog(
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(6),
-                        modifier = Modifier.height(80.dp),
+                    // 使用普通 Row 代替 LazyVerticalGrid，使整个页面可以滚动
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        items(emojis) { (emoji, description) ->
+                        emojis.forEach { (emoji, _) ->
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)

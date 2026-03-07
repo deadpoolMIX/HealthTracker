@@ -78,6 +78,7 @@ fun FoodLibraryScreen(
             when (uiState.selectedTabIndex) {
                 0 -> RecentFoodsTab(
                     foods = recentFoods,
+                    onFoodClick = { food -> onNavigateToEditFood(food.id) },
                     onFavoriteClick = { viewModel.toggleFavorite(it) }
                 )
                 1 -> CustomFoodsTab(
@@ -88,6 +89,7 @@ fun FoodLibraryScreen(
                 )
                 2 -> FavoriteFoodsTab(
                     foods = favoriteFoods,
+                    onFoodClick = { food -> onNavigateToEditFood(food.id) },
                     onFavoriteClick = { viewModel.toggleFavorite(it) }
                 )
             }
@@ -98,6 +100,7 @@ fun FoodLibraryScreen(
 @Composable
 private fun RecentFoodsTab(
     foods: List<FoodEntity>,
+    onFoodClick: (FoodEntity) -> Unit,
     onFavoriteClick: (FoodEntity) -> Unit
 ) {
     if (foods.isEmpty()) {
@@ -111,6 +114,7 @@ private fun RecentFoodsTab(
             items(foods) { food ->
                 FoodItem(
                     food = food,
+                    onClick = { onFoodClick(food) },
                     onFavoriteClick = { onFavoriteClick(food) },
                     showFavoriteButton = true
                 )
@@ -153,6 +157,7 @@ private fun CustomFoodsTab(
 @Composable
 private fun FavoriteFoodsTab(
     foods: List<FoodEntity>,
+    onFoodClick: (FoodEntity) -> Unit,
     onFavoriteClick: (FoodEntity) -> Unit
 ) {
     if (foods.isEmpty()) {
@@ -166,6 +171,7 @@ private fun FavoriteFoodsTab(
             items(foods) { food ->
                 FoodItem(
                     food = food,
+                    onClick = { onFoodClick(food) },
                     onFavoriteClick = { onFavoriteClick(food) }
                 )
             }

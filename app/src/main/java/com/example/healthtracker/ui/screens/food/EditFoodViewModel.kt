@@ -40,7 +40,9 @@ class EditFoodViewModel @Inject constructor(
         protein: Double,
         fat: Double,
         category: String,
-        icon: String = "🍽️"
+        icon: String = "🍽️",
+        unit: String? = null,
+        gramsPerUnit: Double? = null
     ): Boolean {
         val currentFood = _uiState.value.food ?: return false
         if (name.isBlank() || calories <= 0) return false
@@ -52,7 +54,9 @@ class EditFoodViewModel @Inject constructor(
             protein = protein,
             fat = fat,
             category = category,
-            icon = icon
+            icon = icon,
+            unit = unit,
+            gramsPerUnit = gramsPerUnit
         )
         foodRepository.updateFood(updatedFood)
         return true

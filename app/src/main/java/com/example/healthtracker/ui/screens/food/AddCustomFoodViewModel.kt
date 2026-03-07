@@ -44,7 +44,9 @@ class AddCustomFoodViewModel @Inject constructor(
                     fat = fat,
                     icon = icon,
                     isCustom = true,
-                    isFavorite = false
+                    isFavorite = false,
+                    unit = unit,
+                    gramsPerUnit = gramsPerUnit
                 )
                 foodRepository.insertFood(food)
                 _saveSuccess.value = true

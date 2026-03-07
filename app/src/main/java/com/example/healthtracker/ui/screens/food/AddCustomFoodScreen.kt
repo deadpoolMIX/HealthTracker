@@ -3,9 +3,6 @@ package com.example.healthtracker.ui.screens.food
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -214,6 +211,15 @@ fun AddCustomFoodScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    OutlinedTextField(
+                        value = gramsPerUnit,
+                        onValueChange = { gramsPerUnit = it },
+                        label = { Text("数值 *") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    )
+
                     ExposedDropdownMenuBox(
                         expanded = expandedUnit,
                         onExpandedChange = { expandedUnit = it },
@@ -241,15 +247,6 @@ fun AddCustomFoodScreen(
                             }
                         }
                     }
-
-                    OutlinedTextField(
-                        value = gramsPerUnit,
-                        onValueChange = { gramsPerUnit = it },
-                        label = { Text("每单位克/毫升 *") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-                    )
                 }
 
                 // 每单位营养预览
@@ -351,6 +348,7 @@ private fun EmojiPickerDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(400.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 FoodEmojiUtils.foodEmojisByCategory.forEach { (category, emojis) ->
                     Text(
@@ -359,13 +357,13 @@ private fun EmojiPickerDialog(
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(6),
-                        modifier = Modifier.height(80.dp),
+                    // 使用 FlowRow 代替 LazyVerticalGrid，使整个页面可以滚动
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        items(emojis) { (emoji, _) ->
+                        emojis.forEach { (emoji, _) ->
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
