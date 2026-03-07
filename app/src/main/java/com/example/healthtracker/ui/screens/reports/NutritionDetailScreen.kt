@@ -2,6 +2,7 @@ package com.example.healthtracker.ui.screens.reports
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -132,6 +134,35 @@ private fun NutritionChartCard(
     val proteinColor = MaterialTheme.colorScheme.secondary
     val fatColor = MaterialTheme.colorScheme.tertiary
 
+    // 点击的柱状图索引
+    var selectedIndex by remember { mutableStateOf(-1) }
+
+    // 详情弹窗
+    if (selectedIndex >= 0 && selectedIndex < data.size) {
+        val selectedDay = data[selectedIndex]
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = selectedDay.date
+        val dayStr = "${cal.get(Calendar.MONTH) + 1}月${cal.get(Calendar.DAY_OF_MONTH)}日"
+
+        AlertDialog(
+            onDismissRequest = { selectedIndex = -1 },
+            title = { Text(dayStr, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    NutritionDetailRow("热量", String.format(Locale.getDefault(), "%.0f", selectedDay.calories), "kcal", MaterialTheme.colorScheme.error)
+                    NutritionDetailRow("碳水", String.format(Locale.getDefault(), "%.1f", selectedDay.carbs), "g", carbsColor)
+                    NutritionDetailRow("蛋白质", String.format(Locale.getDefault(), "%.1f", selectedDay.protein), "g", proteinColor)
+                    NutritionDetailRow("脂肪", String.format(Locale.getDefault(), "%.1f", selectedDay.fat), "g", fatColor)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedIndex = -1 }) {
+                    Text("关闭")
+                }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -168,6 +199,21 @@ private fun NutritionChartCard(
                         .fillMaxWidth()
                         .height(200.dp)
                         .clip(RoundedCornerShape(8.dp))
+                        .pointerInput(data) {
+                            detectTapGestures { offset ->
+                                val barWidth = size.width / data.size * 0.6f
+                                val spacing = size.width / data.size * 0.4f
+
+                                data.forEachIndexed { index, _ ->
+                                    val barStart = index * (barWidth + spacing) + spacing / 2
+                                    val barEnd = barStart + barWidth
+                                    if (offset.x in barStart..barEnd) {
+                                        selectedIndex = index
+                                        return@detectTapGestures
+                                    }
+                                }
+                            }
+                        }
                 ) {
                     val totalWidth = size.width
                     val barWidth = totalWidth / data.size * 0.6f
@@ -178,7 +224,7 @@ private fun NutritionChartCard(
 
                         // 堆叠柱状图 - 按实际数值等比例缩放
                         val dayTotal = day.carbs + day.protein + day.fat
-                        val totalHeight = (dayTotal / maxValue * size.height).toFloat()
+                        val totalHeight: Float = (dayTotal / maxValue * size.height).toFloat()
                         val carbsHeight: Float = if (dayTotal > 0) (day.carbs / dayTotal * totalHeight).toFloat() else 0f
                         val proteinHeight: Float = if (dayTotal > 0) (day.protein / dayTotal * totalHeight).toFloat() else 0f
                         val fatHeight: Float = if (dayTotal > 0) (day.fat / dayTotal * totalHeight).toFloat() else 0f
@@ -240,6 +286,40 @@ private fun NutritionChartCard(
 }
 
 @Composable
+private fun NutritionDetailRow(
+    label: String,
+    value: String,
+    unit: String,
+    color: Color
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = unit,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
 private fun NutritionWeeklyChartCard(
     title: String,
     data: List<WeeklyNutrition>
@@ -247,6 +327,32 @@ private fun NutritionWeeklyChartCard(
     val carbsColor = MaterialTheme.colorScheme.primary
     val proteinColor = MaterialTheme.colorScheme.secondary
     val fatColor = MaterialTheme.colorScheme.tertiary
+
+    // 点击的柱状图索引
+    var selectedIndex by remember { mutableStateOf(-1) }
+
+    // 详情弹窗
+    if (selectedIndex >= 0 && selectedIndex < data.size) {
+        val selectedWeek = data[selectedIndex]
+
+        AlertDialog(
+            onDismissRequest = { selectedIndex = -1 },
+            title = { Text(selectedWeek.weekLabel, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    NutritionDetailRow("热量", String.format(Locale.getDefault(), "%.0f", selectedWeek.calories), "kcal", MaterialTheme.colorScheme.error)
+                    NutritionDetailRow("碳水", String.format(Locale.getDefault(), "%.1f", selectedWeek.carbs), "g", carbsColor)
+                    NutritionDetailRow("蛋白质", String.format(Locale.getDefault(), "%.1f", selectedWeek.protein), "g", proteinColor)
+                    NutritionDetailRow("脂肪", String.format(Locale.getDefault(), "%.1f", selectedWeek.fat), "g", fatColor)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedIndex = -1 }) {
+                    Text("关闭")
+                }
+            }
+        )
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -284,6 +390,21 @@ private fun NutritionWeeklyChartCard(
                         .fillMaxWidth()
                         .height(200.dp)
                         .clip(RoundedCornerShape(8.dp))
+                        .pointerInput(data) {
+                            detectTapGestures { offset ->
+                                val barWidth = size.width / data.size * 0.5f
+                                val spacing = size.width / data.size * 0.5f
+
+                                data.forEachIndexed { index, _ ->
+                                    val barStart = index * (barWidth + spacing) + spacing / 2
+                                    val barEnd = barStart + barWidth
+                                    if (offset.x in barStart..barEnd) {
+                                        selectedIndex = index
+                                        return@detectTapGestures
+                                    }
+                                }
+                            }
+                        }
                 ) {
                     val totalWidth = size.width
                     val barWidth = totalWidth / data.size * 0.5f
