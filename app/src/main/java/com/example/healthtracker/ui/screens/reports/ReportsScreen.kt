@@ -312,7 +312,6 @@ private fun ReportSettingsDialog(
 
 /**
  * 营养素柱状图卡片
- * 支持堆叠柱状图 + 热量折线叠加
  */
 @Composable
 private fun NutritionChartCard(
@@ -320,15 +319,9 @@ private fun NutritionChartCard(
     period: Int,
     onClick: () -> Unit = {}
 ) {
-    // 图表类型：0=堆叠柱状图，1=并排柱状图
-    var chartType by remember { mutableIntStateOf(0) }
-    // 是否显示热量折线
-    var showCaloriesLine by remember { mutableStateOf(true) }
-
     val carbsColor = MaterialTheme.colorScheme.primary
     val proteinColor = MaterialTheme.colorScheme.secondary
     val fatColor = MaterialTheme.colorScheme.tertiary
-    val caloriesColor = MaterialTheme.colorScheme.error
 
     Card(
         modifier = Modifier
@@ -341,32 +334,11 @@ private fun NutritionChartCard(
             modifier = Modifier.padding(16.dp)
         ) {
             // 标题行
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "营养素摄入",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                // 图表类型切换
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    FilterChip(
-                        selected = chartType == 0,
-                        onClick = { chartType = 0 },
-                        label = { Text("堆叠", fontSize = 12.sp) },
-                        modifier = Modifier.height(28.dp)
-                    )
-                    FilterChip(
-                        selected = chartType == 1,
-                        onClick = { chartType = 1 },
-                        label = { Text("并排", fontSize = 12.sp) },
-                        modifier = Modifier.height(28.dp)
-                    )
-                }
-            }
+            Text(
+                text = "营养素摄入",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
 
             // 图例
             Spacer(modifier = Modifier.height(8.dp))
@@ -377,27 +349,6 @@ private fun NutritionChartCard(
                 LegendItem("碳水", carbsColor)
                 LegendItem("蛋白质", proteinColor)
                 LegendItem("脂肪", fatColor)
-                if (showCaloriesLine) {
-                    LegendItem("热量", caloriesColor, isLine = true)
-                }
-            }
-
-            // 热量折线开关
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable { showCaloriesLine = !showCaloriesLine }
-            ) {
-                Checkbox(
-                    checked = showCaloriesLine,
-                    onCheckedChange = { showCaloriesLine = it },
-                    modifier = Modifier.size(20.dp)
-                )
-                Text(
-                    text = "显示热量折线",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -412,7 +363,7 @@ private fun NutritionChartCard(
                     Text("暂无摄入数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
-                // 数据汇总
+                // 数据汇总 - 缩小字体让四个数据同行
                 val totalCalories = data.sumOf { it.calories }
                 val avgCalories = if (data.isNotEmpty()) totalCalories / data.size else 0.0
                 val avgCarbs = if (data.isNotEmpty()) data.sumOf { it.carbs } / data.size else 0.0
@@ -423,21 +374,20 @@ private fun NutritionChartCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    StatItem("平均热量", "${String.format("%.0f", avgCalories)} kcal")
-                    StatItem("碳水", "${String.format("%.0f", avgCarbs)}g")
-                    StatItem("蛋白质", "${String.format("%.0f", avgProtein)}g")
-                    StatItem("脂肪", "${String.format("%.0f", avgFat)}g")
+                    StatItemCompact("热量", String.format("%.0f", avgCalories), "kcal", MaterialTheme.colorScheme.error)
+                    StatItemCompact("碳水", String.format("%.0f", avgCarbs), "g", carbsColor)
+                    StatItemCompact("蛋白", String.format("%.0f", avgProtein), "g", proteinColor)
+                    StatItemCompact("脂肪", String.format("%.0f", avgFat), "g", fatColor)
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // 图表
+                // 堆叠柱状图
                 val sortedData = data.sortedBy { it.date }
                 val maxNutrient = maxOf(
                     sortedData.maxOfOrNull { it.carbs + it.protein + it.fat } ?: 100.0,
                     100.0
                 )
-                val maxCaloriesValue = sortedData.maxOfOrNull { it.calories } ?: 1.0
 
                 Canvas(
                     modifier = Modifier
@@ -451,95 +401,29 @@ private fun NutritionChartCard(
                     sortedData.forEachIndexed { index, day ->
                         val x = index * (barWidth + spacing) + spacing / 2
 
-                        if (chartType == 0) {
-                            // 堆叠柱状图：碳水(下) -> 蛋白质(中) -> 脂肪(上)
-                            val carbsHeight = (day.carbs / maxNutrient * chartHeight).toFloat()
-                            val proteinHeight = (day.protein / maxNutrient * chartHeight).toFloat()
-                            val fatHeight = (day.fat / maxNutrient * chartHeight).toFloat()
+                        // 堆叠柱状图：碳水(下) -> 蛋白质(中) -> 脂肪(上)
+                        val carbsHeight = (day.carbs / maxNutrient * chartHeight).toFloat()
+                        val proteinHeight = (day.protein / maxNutrient * chartHeight).toFloat()
+                        val fatHeight = (day.fat / maxNutrient * chartHeight).toFloat()
 
-                            // 碳水 - 底部
-                            drawRect(
-                                color = carbsColor,
-                                topLeft = Offset(x, chartHeight - carbsHeight),
-                                size = Size(barWidth, carbsHeight)
-                            )
-                            // 蛋白质 - 中间
-                            drawRect(
-                                color = proteinColor,
-                                topLeft = Offset(x, chartHeight - carbsHeight - proteinHeight),
-                                size = Size(barWidth, proteinHeight)
-                            )
-                            // 脂肪 - 顶部
-                            drawRect(
-                                color = fatColor,
-                                topLeft = Offset(x, chartHeight - carbsHeight - proteinHeight - fatHeight),
-                                size = Size(barWidth, fatHeight)
-                            )
-                        } else {
-                            // 并排柱状图
-                            val singleBarWidth = barWidth / 3.2f
-                            val maxValue = maxOf(
-                                sortedData.maxOfOrNull { it.carbs } ?: 1.0,
-                                sortedData.maxOfOrNull { it.protein } ?: 1.0,
-                                sortedData.maxOfOrNull { it.fat } ?: 1.0,
-                                1.0
-                            )
-
-                            val carbsHeight = (day.carbs / maxValue * chartHeight).toFloat()
-                            val proteinHeight = (day.protein / maxValue * chartHeight).toFloat()
-                            val fatHeight = (day.fat / maxValue * chartHeight).toFloat()
-
-                            // 碳水
-                            drawRect(
-                                color = carbsColor,
-                                topLeft = Offset(x, chartHeight - carbsHeight),
-                                size = Size(singleBarWidth, carbsHeight)
-                            )
-                            // 蛋白质
-                            drawRect(
-                                color = proteinColor,
-                                topLeft = Offset(x + singleBarWidth + 2.dp.toPx(), chartHeight - proteinHeight),
-                                size = Size(singleBarWidth, proteinHeight)
-                            )
-                            // 脂肪
-                            drawRect(
-                                color = fatColor,
-                                topLeft = Offset(x + (singleBarWidth + 2.dp.toPx()) * 2, chartHeight - fatHeight),
-                                size = Size(singleBarWidth, fatHeight)
-                            )
-                        }
-                    }
-
-                    // 热量折线
-                    if (showCaloriesLine && sortedData.size >= 2) {
-                        val path = Path()
-                        sortedData.forEachIndexed { index, day ->
-                            val x = index * (barWidth + spacing) + spacing / 2 + barWidth / 2
-                            val y = chartHeight - (day.calories / maxCaloriesValue * chartHeight).toFloat()
-
-                            if (index == 0) {
-                                path.moveTo(x, y)
-                            } else {
-                                path.lineTo(x, y)
-                            }
-                        }
-
-                        drawPath(
-                            path = path,
-                            color = caloriesColor,
-                            style = Stroke(width = 2.5f)
+                        // 碳水 - 底部
+                        drawRect(
+                            color = carbsColor,
+                            topLeft = Offset(x, chartHeight - carbsHeight),
+                            size = Size(barWidth, carbsHeight)
                         )
-
-                        // 绘制数据点
-                        sortedData.forEachIndexed { index, day ->
-                            val x = index * (barWidth + spacing) + spacing / 2 + barWidth / 2
-                            val y = chartHeight - (day.calories / maxCaloriesValue * chartHeight).toFloat()
-                            drawCircle(
-                                color = caloriesColor,
-                                radius = 4f,
-                                center = Offset(x, y)
-                            )
-                        }
+                        // 蛋白质 - 中间
+                        drawRect(
+                            color = proteinColor,
+                            topLeft = Offset(x, chartHeight - carbsHeight - proteinHeight),
+                            size = Size(barWidth, proteinHeight)
+                        )
+                        // 脂肪 - 顶部
+                        drawRect(
+                            color = fatColor,
+                            topLeft = Offset(x, chartHeight - carbsHeight - proteinHeight - fatHeight),
+                            size = Size(barWidth, fatHeight)
+                        )
                     }
                 }
 
@@ -563,6 +447,38 @@ private fun NutritionChartCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun StatItemCompact(
+    label: String,
+    value: String,
+    unit: String,
+    color: Color
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = color,
+                maxLines = 1
+            )
+            Text(
+                text = unit,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1
+        )
     }
 }
 
