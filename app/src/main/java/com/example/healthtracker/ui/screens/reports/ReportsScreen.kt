@@ -1,6 +1,7 @@
 package com.example.healthtracker.ui.screens.reports
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -784,69 +785,140 @@ private fun SleepChartCard(
             // 睡眠范围条形图
             val sortedData = data.sortedBy { it.date }.takeLast(7)
 
-            Canvas(
+            // 图表区域 - 左侧日期 + 右侧条形图
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(150.dp)
+                    .height(180.dp)
             ) {
-                // 时间轴：18:00 - 12:00（次日中午）
-                val startHour = 18f
-                val totalHours = 18f
-
-                sortedData.forEachIndexed { index, sleep ->
-                    val calSleep = Calendar.getInstance()
-                    calSleep.timeInMillis = sleep.sleepTime
-                    val sleepHour = calSleep.get(Calendar.HOUR_OF_DAY) + calSleep.get(Calendar.MINUTE) / 60f
-
-                    val calWake = Calendar.getInstance()
-                    calWake.timeInMillis = sleep.wakeTime
-                    val wakeHour = calWake.get(Calendar.HOUR_OF_DAY) + calWake.get(Calendar.MINUTE) / 60f
-
-                    // 计算条形位置
-                    var sleepOffset = sleepHour - startHour
-                    if (sleepOffset < 0) sleepOffset += 24f
-
-                    var wakeOffset = wakeHour - startHour
-                    if (wakeOffset < 0) wakeOffset += 24f
-
-                    // 如果起床时间小于入睡时间，说明跨越了午夜
-                    val barWidth = if (wakeOffset < sleepOffset) {
-                        (24f - sleepOffset) + wakeOffset
-                    } else {
-                        wakeOffset - sleepOffset
+                // 日期标签列（左侧）
+                Column(
+                    modifier = Modifier
+                        .width(36.dp)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    sortedData.forEach { sleep ->
+                        val cal = Calendar.getInstance()
+                        cal.timeInMillis = sleep.date
+                        val dayStr = "${cal.get(Calendar.DAY_OF_MONTH)}日"
+                        Text(
+                            text = dayStr,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = onSurfaceVariantColor,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
                     }
-
-                    val barHeight = size.height / sortedData.size * 0.7f
-                    val y = index * (size.height / sortedData.size) + barHeight * 0.15f
-
-                    // 绘制睡眠条
-                    drawRect(
-                        color = primaryColor.copy(alpha = 0.6f),
-                        topLeft = Offset(sleepOffset / totalHours * size.width, y),
-                        size = Size(barWidth / totalHours * size.width, barHeight)
-                    )
                 }
 
-                // 绘制午夜线
-                val midnightX = (24f - startHour) / totalHours * size.width
-                drawLine(
-                    color = onSurfaceVariantColor.copy(alpha = 0.3f),
-                    start = Offset(midnightX, 0f),
-                    end = Offset(midnightX, size.height),
-                    strokeWidth = 1f,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f))
-                )
+                // 图表区域（右侧）
+                Canvas(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                ) {
+                    // 时间轴：18:00 - 12:00（次日中午）
+                    val startHour = 18f
+                    val totalHours = 18f
+                    val chartHeight = size.height
+                    val chartWidth = size.width
+
+                    sortedData.forEachIndexed { index, sleep ->
+                        val calSleep = Calendar.getInstance()
+                        calSleep.timeInMillis = sleep.sleepTime
+                        val sleepHour = calSleep.get(Calendar.HOUR_OF_DAY) + calSleep.get(Calendar.MINUTE) / 60f
+
+                        val calWake = Calendar.getInstance()
+                        calWake.timeInMillis = sleep.wakeTime
+                        val wakeHour = calWake.get(Calendar.HOUR_OF_DAY) + calWake.get(Calendar.MINUTE) / 60f
+
+                        // 计算条形位置
+                        var sleepOffset = sleepHour - startHour
+                        if (sleepOffset < 0) sleepOffset += 24f
+
+                        var wakeOffset = wakeHour - startHour
+                        if (wakeOffset < 0) wakeOffset += 24f
+
+                        // 如果起床时间小于入睡时间，说明跨越了午夜
+                        val barWidth = if (wakeOffset < sleepOffset) {
+                            (24f - sleepOffset) + wakeOffset
+                        } else {
+                            wakeOffset - sleepOffset
+                        }
+
+                        val barHeight = chartHeight / sortedData.size * 0.65f
+                        val y = index * (chartHeight / sortedData.size) + barHeight * 0.2f
+
+                        // 绘制睡眠条
+                        drawRoundRect(
+                            color = primaryColor.copy(alpha = 0.7f),
+                            topLeft = Offset(sleepOffset / totalHours * chartWidth, y),
+                            size = Size(barWidth / totalHours * chartWidth, barHeight),
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
+                        )
+                    }
+
+                    // 绘制午夜线
+                    val midnightX = (24f - startHour) / totalHours * chartWidth
+                    drawLine(
+                        color = onSurfaceVariantColor.copy(alpha = 0.5f),
+                        start = Offset(midnightX, 0f),
+                        end = Offset(midnightX, chartHeight),
+                        strokeWidth = 1f,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
+                    )
+
+                    // 绘制6点线
+                    val sixAmX = (30f - startHour) / totalHours * chartWidth
+                    drawLine(
+                        color = onSurfaceVariantColor.copy(alpha = 0.3f),
+                        start = Offset(sixAmX, 0f),
+                        end = Offset(sixAmX, chartHeight),
+                        strokeWidth = 1f,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(2f, 4f))
+                    )
+                }
             }
 
             // 时间轴标签
+            Spacer(modifier = Modifier.height(8.dp))
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 36.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("18:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
                 Text("00:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
                 Text("06:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
                 Text("12:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
+            }
+
+            // 睡眠时长列表
+            Spacer(modifier = Modifier.height(12.dp))
+            sortedData.takeLast(5).forEach { sleep ->
+                val cal = Calendar.getInstance()
+                cal.timeInMillis = sleep.date
+                val dateStr = "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}"
+                val durationStr = formatDuration(sleep.duration)
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = dateStr,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = onSurfaceVariantColor
+                    )
+                    Text(
+                        text = "睡眠 $durationStr",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }
