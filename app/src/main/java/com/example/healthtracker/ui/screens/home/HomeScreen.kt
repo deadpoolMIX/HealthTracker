@@ -55,6 +55,7 @@ fun HomeScreen(
     var selectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var showTargetCaloriesDialog by remember { mutableStateOf(false) }
+    var showEditIntakeDialog by remember { mutableStateOf<IntakeRecordEntity?>(null) }
 
     Scaffold(
         topBar = {
@@ -267,7 +268,7 @@ fun HomeScreen(
                                                         selectedIds + record.id
                                                     }
                                                 } else {
-                                                    onNavigateToEditIntake(record.id)
+                                                    showEditIntakeDialog = record
                                                 }
                                             },
                                             onLongClick = {
@@ -419,6 +420,18 @@ fun HomeScreen(
             onConfirm = { newTarget ->
                 viewModel.updateTargetCalories(newTarget)
                 showTargetCaloriesDialog = false
+            }
+        )
+    }
+
+    // 编辑摄入记录对话框
+    showEditIntakeDialog?.let { record ->
+        EditIntakeDialog(
+            record = record,
+            onDismiss = { showEditIntakeDialog = null },
+            onConfirm = { updatedRecord ->
+                viewModel.updateRecord(updatedRecord)
+                showEditIntakeDialog = null
             }
         )
     }
@@ -1069,6 +1082,189 @@ private fun TargetCaloriesDialog(
                 }
             ) {
                 Text("确定")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
+}
+
+/**
+ * 编辑摄入记录对话框
+ * 显示餐次、数值、单位，允许修改
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditIntakeDialog(
+    record: IntakeRecordEntity,
+    onDismiss: () -> Unit,
+    onConfirm: (IntakeRecordEntity) -> Unit
+) {
+    var selectedMealType by remember { mutableIntStateOf(record.mealType) }
+    var amountText by remember { mutableStateOf(record.amount.toInt().toString()) }
+    var selectedUnit by remember { mutableStateOf(record.unit ?: "克") }
+    var expandedUnit by remember { mutableStateOf(false) }
+
+    val mealTypes = listOf("早餐", "午餐", "晚餐", "加餐")
+    val units = listOf("克", "毫升", "个", "杯", "勺", "份", "块", "片", "包", "碗")
+
+    // 计算营养值
+    val amount = amountText.toDoubleOrNull() ?: 0.0
+    val calories = (amount / 100.0) * record.caloriesPer100g
+    val carbs = (amount / 100.0) * record.carbsPer100g
+    val protein = (amount / 100.0) * record.proteinPer100g
+    val fat = (amount / 100.0) * record.fatPer100g
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = getFoodEmoji(record.foodName), fontSize = 16.sp)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(record.foodName, fontWeight = FontWeight.Medium)
+            }
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // 餐次选择
+                Text(
+                    text = "餐次",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    mealTypes.forEachIndexed { index, type ->
+                        FilterChip(
+                            selected = selectedMealType == index,
+                            onClick = { selectedMealType = index },
+                            label = { Text(type) }
+                        )
+                    }
+                }
+
+                // 数值和单位输入
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 数值输入框
+                    OutlinedTextField(
+                        value = amountText,
+                        onValueChange = { amountText = it.filter { c -> c.isDigit() } },
+                        label = { Text("数值") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+
+                    // 单位选择框
+                    ExposedDropdownMenuBox(
+                        expanded = expandedUnit,
+                        onExpandedChange = { expandedUnit = it },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        OutlinedTextField(
+                            value = selectedUnit,
+                            onValueChange = {},
+                            label = { Text("单位") },
+                            modifier = Modifier.menuAnchor(),
+                            singleLine = true,
+                            readOnly = true,
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedUnit)
+                            }
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expandedUnit,
+                            onDismissRequest = { expandedUnit = false }
+                        ) {
+                            units.forEach { unit ->
+                                DropdownMenuItem(
+                                    text = { Text(unit) },
+                                    onClick = {
+                                        selectedUnit = unit
+                                        expandedUnit = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 营养预览
+                if (amount > 0) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            Text(
+                                text = "营养预览",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("${calories.toInt()}", fontWeight = FontWeight.Bold)
+                                    Text("热量", style = MaterialTheme.typography.labelSmall)
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("${carbs.toInt()}g", fontWeight = FontWeight.Bold)
+                                    Text("碳水", style = MaterialTheme.typography.labelSmall)
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("${protein.toInt()}g", fontWeight = FontWeight.Bold)
+                                    Text("蛋白质", style = MaterialTheme.typography.labelSmall)
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("${fat.toInt()}g", fontWeight = FontWeight.Bold)
+                                    Text("脂肪", style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val updatedRecord = record.copy(
+                        mealType = selectedMealType,
+                        amount = amount,
+                        calories = calories,
+                        carbohydrates = carbs,
+                        protein = protein,
+                        fat = fat,
+                        unit = selectedUnit
+                    )
+                    onConfirm(updatedRecord)
+                },
+                enabled = amount > 0
+            ) {
+                Text("保存")
             }
         },
         dismissButton = {

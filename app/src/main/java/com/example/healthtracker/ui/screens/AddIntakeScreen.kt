@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -16,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -432,7 +434,10 @@ private fun FoodSearchResultItem(
 
 /**
  * 添加食物对话框
+ * 左边为输入框（输入数值），右边为下拉选择框（选择单位）
+ * 使用食物库数据计算营养值
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddFoodDialog(
     food: FoodEntity,
@@ -442,14 +447,47 @@ private fun AddFoodDialog(
     var amountText by remember { mutableStateOf("") }
     var selectedUnitIndex by remember { mutableIntStateOf(0) }
     var amountError by remember { mutableStateOf<String?>(null) }
+    var expandedUnit by remember { mutableStateOf(false) }
 
-    // 单位选项
-    val units = listOf("克", "毫升", "个", "杯", "勺", "份")
-    val unitGrams = listOf(1.0, 1.0, 100.0, 200.0, 15.0, 100.0) // 每单位对应的克数
+    // 单位选项 - 根据食物库数据动态生成
+    val baseUnits = listOf("克", "毫升")
+    val customUnits = listOf("个", "杯", "勺", "份", "块", "片", "包", "碗", "袋")
 
-    // 计算预览数据
+    // 如果食物有自定义单位，优先显示
+    val units = if (food.unit != null && food.gramsPerUnit != null && food.gramsPerUnit > 0) {
+        listOf(food.unit!!) + baseUnits + customUnits.filter { it != food.unit }
+    } else {
+        baseUnits + customUnits
+    }
+
+    // 每单位对应的克数
+    val unitGramsMap = remember(food) {
+        mutableMapOf<String, Double>().apply {
+            put("克", 1.0)
+            put("毫升", 1.0)
+            put("个", food.gramsPerUnit ?: 100.0)
+            put("杯", 200.0)
+            put("勺", 15.0)
+            put("份", food.gramsPerUnit ?: 100.0)
+            put("块", 50.0)
+            put("片", 20.0)
+            put("包", 100.0)
+            put("碗", 200.0)
+            put("袋", 100.0)
+            // 如果食物有自定义单位，使用食物库中的值
+            if (food.unit != null && food.gramsPerUnit != null) {
+                put(food.unit!!, food.gramsPerUnit)
+            }
+        }
+    }
+
+    // 计算预览数据 - 使用食物库的营养数据
     val amount = amountText.toDoubleOrNull() ?: 0.0
-    val grams = amount * unitGrams[selectedUnitIndex]
+    val currentUnit = units.getOrElse(selectedUnitIndex) { "克" }
+    val gramsPerUnit = unitGramsMap[currentUnit] ?: 1.0
+    val grams = amount * gramsPerUnit
+
+    // 使用食物库中每百克的营养数据计算
     val calories = (grams / 100.0) * food.calories
     val carbs = (grams / 100.0) * food.carbohydrates
     val protein = (grams / 100.0) * food.protein
@@ -476,50 +514,74 @@ private fun AddFoodDialog(
                         Text(text = getFoodEmoji(food), style = MaterialTheme.typography.titleMedium)
                     }
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = food.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Column {
+                        Text(
+                            text = food.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "${food.calories.toInt()} kcal/100g",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
-                // 数值输入
-                OutlinedTextField(
-                    value = amountText,
-                    onValueChange = {
-                        if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) {
-                            amountText = it
-                            amountError = null
-                        }
-                    },
-                    label = { Text("输入数值") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    isError = amountError != null,
-                    supportingText = amountError?.let { { Text(it) } },
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
-                    )
-                )
-
-                // 单位选择
-                Text(
-                    text = "选择单位",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                // 单位选择器（横向滚动）
+                // 数值和单位输入行 - 左边输入框，右边选择框
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    units.forEachIndexed { index, unit ->
-                        FilterChip(
-                            selected = selectedUnitIndex == index,
-                            onClick = { selectedUnitIndex = index },
-                            label = { Text(unit) }
+                    // 左边：数值输入框
+                    OutlinedTextField(
+                        value = amountText,
+                        onValueChange = {
+                            if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) {
+                                amountText = it
+                                amountError = null
+                            }
+                        },
+                        label = { Text("数值") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        isError = amountError != null,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal
                         )
+                    )
+
+                    // 右边：单位下拉选择框
+                    ExposedDropdownMenuBox(
+                        expanded = expandedUnit,
+                        onExpandedChange = { expandedUnit = it },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        OutlinedTextField(
+                            value = currentUnit,
+                            onValueChange = {},
+                            label = { Text("单位") },
+                            modifier = Modifier.menuAnchor(),
+                            singleLine = true,
+                            readOnly = true,
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedUnit)
+                            }
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expandedUnit,
+                            onDismissRequest = { expandedUnit = false }
+                        ) {
+                            units.forEachIndexed { index, unit ->
+                                DropdownMenuItem(
+                                    text = { Text(unit) },
+                                    onClick = {
+                                        selectedUnitIndex = index
+                                        expandedUnit = false
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -569,7 +631,8 @@ private fun AddFoodDialog(
                             if (amount <= 0) {
                                 amountError = "请输入有效数值"
                             } else {
-                                onConfirm(amount * unitGrams[selectedUnitIndex], units[selectedUnitIndex])
+                                // 返回实际克数
+                                onConfirm(grams, "$amount${currentUnit}")
                             }
                         },
                         modifier = Modifier.weight(1f)
