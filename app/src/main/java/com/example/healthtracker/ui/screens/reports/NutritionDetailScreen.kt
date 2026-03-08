@@ -44,26 +44,6 @@ fun NutritionDetailScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
-                },
-                actions = {
-                    // 周期切换按钮
-                    IconButton(
-                        onClick = { viewModel.setPeriodOffset(uiState.periodOffset + 1) },
-                        enabled = uiState.periodOffset < 12
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "上一周期")
-                    }
-                    Text(
-                        text = viewModel.getPeriodLabel(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    IconButton(
-                        onClick = { viewModel.setPeriodOffset(uiState.periodOffset - 1) },
-                        enabled = uiState.periodOffset > 0
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "下一周期")
-                    }
                 }
             )
         }
@@ -89,7 +69,8 @@ fun NutritionDetailScreen(
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         periods.forEachIndexed { index, period ->
                             FilterChip(
@@ -97,6 +78,27 @@ fun NutritionDetailScreen(
                                 onClick = { viewModel.setPeriod(index) },
                                 label = { Text(period) }
                             )
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        // 周期切换按钮
+                        IconButton(
+                            onClick = { viewModel.setPeriodOffset(uiState.periodOffset + 1) },
+                            enabled = uiState.periodOffset < 12,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "上一周期")
+                        }
+                        Text(
+                            text = viewModel.getPeriodLabel(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        IconButton(
+                            onClick = { viewModel.setPeriodOffset(uiState.periodOffset - 1) },
+                            enabled = uiState.periodOffset > 0,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "下一周期")
                         }
                     }
                 }
