@@ -422,6 +422,8 @@ private fun WeeklyNutritionChartContent(
     proteinColor: Color,
     fatColor: Color
 ) {
+    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
+
     // 数据汇总
     val avgCalories = data.sumOf { it.calories } / data.size
     val avgCarbs = data.sumOf { it.carbs } / data.size
@@ -471,7 +473,6 @@ private fun WeeklyNutritionChartContent(
                 val chartWidth = size.width
 
                 // 先绘制虚线（在柱状图下面）
-                val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
                 val linePositions = listOf(0f, 0.5f, 1f)
                 linePositions.forEach { ratio ->
                     val lineY = chartHeight * ratio * 0.95f
@@ -530,12 +531,14 @@ private fun MonthlyNutritionChartContent(
     proteinColor: Color,
     fatColor: Color
 ) {
+    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
+
     if (weeklyData.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxWidth().height(200.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text("暂无摄入数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("暂无摄入数据", color = onSurfaceVariantColor)
         }
         return
     }
@@ -588,7 +591,6 @@ private fun MonthlyNutritionChartContent(
                 val chartWidth = size.width
 
                 // 先绘制虚线（在柱状图下面）
-                val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
                 val linePositions = listOf(0f, 0.5f, 1f)
                 linePositions.forEach { ratio ->
                     val lineY = chartHeight * ratio * 0.95f
