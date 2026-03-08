@@ -1191,7 +1191,7 @@ private fun WeekSleepChartWithTimeAxis(
 
                 // 先绘制所有时间点的虚线（在柱状图下面）
                 timePoints.forEach { (hourContinuous, _) ->
-                    val lineY = (hourContinuous - startHour) / totalHours * chartHeight
+                    val lineY = (hourContinuous.toFloat() - startHour.toFloat()) / totalHours.toFloat() * chartHeight
                     drawLine(
                         color = onSurfaceVariantColor.copy(alpha = 0.5f),
                         start = Offset(0f, lineY),
@@ -1397,7 +1397,7 @@ private fun MonthSleepChartWithTimeAxis(
 
                 // 先绘制所有时间点的虚线（在柱状图下面）
                 timePoints.forEach { (hourContinuous, _) ->
-                    val lineY = (hourContinuous - startHour) / totalHours * chartHeight
+                    val lineY = (hourContinuous.toFloat() - startHour.toFloat()) / totalHours.toFloat() * chartHeight
                     drawLine(
                         color = onSurfaceVariantColor.copy(alpha = 0.5f),
                         start = Offset(0f, lineY),
