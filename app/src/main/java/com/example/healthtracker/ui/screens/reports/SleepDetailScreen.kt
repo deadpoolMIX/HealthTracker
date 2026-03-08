@@ -468,13 +468,13 @@ private fun WeekSleepChart(
                             val barCount = sortedData.size
                             val totalSpacing = size.width * 0.25f
                             val totalBarWidth = size.width - totalSpacing
-                            val barWidth = totalBarWidth / barCount
+                            val barWidth = totalBarWidth / barCount.toFloat()
                             val spacing = totalSpacing / (barCount + 1)
 
                             sortedData.forEachIndexed { index, _ ->
                                 val barStart = spacing + index * (barWidth + spacing)
                                 val barEnd = barStart + barWidth
-                                if (offset.x in barStart..barEnd && offset.y in 0f..size.height) {
+                                if (offset.x >= barStart && offset.x <= barEnd && offset.y >= 0f && offset.y <= size.height) {
                                     selectedIndex = index
                                     return@detectTapGestures
                                 }
@@ -487,7 +487,7 @@ private fun WeekSleepChart(
                 val barCount = sortedData.size
                 val totalSpacing = chartWidth * 0.25f
                 val totalBarWidth = chartWidth - totalSpacing
-                val barWidth = totalBarWidth / barCount
+                val barWidth = totalBarWidth / barCount.toFloat()
                 val spacing = totalSpacing / (barCount + 1)
 
                 // 绘制虚线
@@ -677,13 +677,13 @@ private fun MonthSleepChart(
                             val barCount = weeklyData.size
                             val totalSpacing = size.width * 0.4f
                             val totalBarWidth = size.width - totalSpacing
-                            val barWidth = totalBarWidth / barCount
+                            val barWidth = totalBarWidth / barCount.toFloat()
                             val spacing = totalSpacing / (barCount + 1)
 
                             weeklyData.forEachIndexed { index, _ ->
                                 val barStart = spacing + index * (barWidth + spacing)
                                 val barEnd = barStart + barWidth
-                                if (offset.x in barStart..barEnd && offset.y in 0f..size.height) {
+                                if (offset.x >= barStart && offset.x <= barEnd && offset.y >= 0f && offset.y <= size.height) {
                                     selectedIndex = index
                                     return@detectTapGestures
                                 }
@@ -696,7 +696,7 @@ private fun MonthSleepChart(
                 val barCount = weeklyData.size
                 val totalSpacing = chartWidth * 0.4f
                 val totalBarWidth = chartWidth - totalSpacing
-                val barWidth = totalBarWidth / barCount
+                val barWidth = totalBarWidth / barCount.toFloat()
                 val spacing = totalSpacing / (barCount + 1)
 
                 // 绘制虚线
@@ -868,13 +868,13 @@ private fun YearSleepChart(
                             val barCount = displayData.size
                             val totalSpacing = size.width * 0.3f
                             val totalBarWidth = size.width - totalSpacing
-                            val barWidth = totalBarWidth / barCount
+                            val barWidth = totalBarWidth / barCount.toFloat()
                             val spacing = totalSpacing / (barCount + 1)
 
                             displayData.forEachIndexed { index, _ ->
                                 val barStart = spacing + index * (barWidth + spacing)
                                 val barEnd = barStart + barWidth
-                                if (offset.x in barStart..barEnd && offset.y in 0f..size.height) {
+                                if (offset.x >= barStart && offset.x <= barEnd && offset.y >= 0f && offset.y <= size.height) {
                                     selectedIndex = index
                                     return@detectTapGestures
                                 }
@@ -887,7 +887,7 @@ private fun YearSleepChart(
                 val barCount = displayData.size
                 val totalSpacing = chartWidth * 0.3f
                 val totalBarWidth = chartWidth - totalSpacing
-                val barWidth = totalBarWidth / barCount
+                val barWidth = totalBarWidth / barCount.toFloat()
                 val spacing = totalSpacing / (barCount + 1)
 
                 // 绘制虚线
