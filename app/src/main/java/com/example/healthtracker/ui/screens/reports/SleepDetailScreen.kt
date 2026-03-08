@@ -396,7 +396,7 @@ private fun MonthSleepChart(
     calendar.set(Calendar.SECOND, 0)
     calendar.set(Calendar.MILLISECOND, 0)
 
-    val weeklyData = mutableListOf<WeeklySleepTime>()
+    val weeklyData = mutableListOf<WeeklySleepChartData>()
     val startHour = 22
     val endHour = 36
 
@@ -428,7 +428,7 @@ private fun MonthSleepChart(
             }.average().toFloat()
         } else 7f
 
-        weeklyData.add(WeeklySleepTime("第${i + 1}周", avgSleepHour, avgWakeHour))
+        weeklyData.add(WeeklySleepChartData("第${i + 1}周", avgSleepHour, avgWakeHour))
 
         calendar.add(Calendar.DAY_OF_MONTH, 1)
         calendar.set(Calendar.HOUR_OF_DAY, 0)
@@ -567,7 +567,7 @@ private fun YearSleepChart(
             }.average().toFloat()
         } else 7f
 
-        MonthlySleepTime("${month}月", month, avgSleepHour, avgWakeHour)
+        MonthlySleepChartData("${month}月", month, avgSleepHour, avgWakeHour)
     }
 
     // 根据 page 选择显示的月份
@@ -659,13 +659,13 @@ private fun YearSleepChart(
     }
 }
 
-private data class WeeklySleepTime(
+private data class WeeklySleepChartData(
     val weekLabel: String,
     val avgSleepHour: Float,
     val avgWakeHour: Float
 )
 
-private data class MonthlySleepTime(
+private data class MonthlySleepChartData(
     val monthLabel: String,
     val monthIndex: Int,
     val avgSleepHour: Float,
