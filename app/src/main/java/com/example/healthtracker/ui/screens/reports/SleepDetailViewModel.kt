@@ -193,9 +193,9 @@ class SleepDetailViewModel @Inject constructor(
     }
 
     // 获取年度数据（按月分组）
-    fun getMonthlyData(): List<MonthlySleepTime> {
+    fun getMonthlyData(): List<MonthlySleepTimeData> {
         val calendar = Calendar.getInstance()
-        val monthlyData = mutableListOf<MonthlySleepTime>()
+        val monthlyData = mutableListOf<MonthlySleepTimeData>()
         val startHour = 22
 
         for (month in 1..12) {
@@ -224,7 +224,7 @@ class SleepDetailViewModel @Inject constructor(
                 }.average().toFloat()
             } else 7f
 
-            monthlyData.add(MonthlySleepTime(
+            monthlyData.add(MonthlySleepTimeData(
                 monthLabel = "${month}月",
                 monthIndex = month,
                 avgSleepHour = avgSleepHour,
@@ -236,7 +236,7 @@ class SleepDetailViewModel @Inject constructor(
     }
 }
 
-data class MonthlySleepTime(
+data class MonthlySleepTimeData(
     val monthLabel: String,
     val monthIndex: Int,
     val avgSleepHour: Float,
