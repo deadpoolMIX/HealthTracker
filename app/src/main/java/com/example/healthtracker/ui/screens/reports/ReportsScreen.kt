@@ -42,7 +42,6 @@ fun ReportsScreen(
     onNavigateToSleepDetail: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val periods = listOf("周", "月")
 
     // 报表设置对话框
     if (uiState.showSettingsDialog) {
@@ -150,22 +149,6 @@ fun ReportsScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 周期选择
-                item {
-                    // 周/月选择
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        periods.forEachIndexed { index, period ->
-                            FilterChip(
-                                selected = uiState.selectedPeriod == index,
-                                onClick = { viewModel.setPeriod(index) },
-                                label = { Text(period) }
-                            )
-                        }
-                    }
-                }
-
                 // 营养素堆叠柱状图
                 if (uiState.showNutritionChart) {
                     item {

@@ -56,8 +56,7 @@ class SleepDetailViewModel @Inject constructor(
             0 -> { // 周
                 calendar.add(Calendar.WEEK_OF_YEAR, -offset)
                 val month = calendar.get(Calendar.MONTH) + 1
-                val day = calendar.get(Calendar.DAY_OF_MONTH)
-                "${month}月${day}日起"
+                "${month}月"
             }
             1 -> { // 月
                 calendar.add(Calendar.MONTH, -offset)
