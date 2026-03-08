@@ -1,18 +1,15 @@
 package com.example.healthtracker.ui.screens.reports
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,9 +30,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.healthtracker.data.local.entity.BodyRecordEntity
 import com.example.healthtracker.data.local.entity.SleepRecordEntity
 import com.example.healthtracker.ui.theme.NutrientColors
-import com.example.healthtracker.util.DateTimeUtils
 import java.util.Calendar
-import kotlin.math.sqrt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -171,7 +166,7 @@ fun ReportsScreen(
                                 onClick = { viewModel.setPeriodOffset(uiState.periodOffset + 1) },
                                 enabled = uiState.periodOffset < 12
                             ) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "上一周期")
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "上一周期")
                             }
                             Text(
                                 text = viewModel.getPeriodLabel(),
@@ -182,7 +177,7 @@ fun ReportsScreen(
                                 onClick = { viewModel.setPeriodOffset(uiState.periodOffset - 1) },
                                 enabled = uiState.periodOffset > 0
                             ) {
-                                Icon(Icons.Default.ArrowForward, contentDescription = "下一周期")
+                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "下一周期")
                             }
                         }
                     }
@@ -1414,87 +1409,6 @@ private fun MonthSleepChartWithTimeAxis(
         }
     }
 }
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        // Y轴时间标签
-        Column(
-            modifier = Modifier
-                .width(40.dp)
-                .height(200.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("12:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
-            Text("06:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
-            Text("00:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
-            Text("18:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
-        }
-
-        // 图表区域
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-            ) {
-                val chartHeight = size.height
-                val chartWidth = size.width
-                val barCount = weeklyData.size
-                val totalSpacing = chartWidth * 0.4f
-                val totalBarWidth = chartWidth - totalSpacing
-                val barWidth = totalBarWidth / barCount
-                val spacing = totalSpacing / (barCount + 1)
-
-                weeklyData.forEachIndexed { index, week ->
-                    val x = spacing + index * (barWidth + spacing)
-
-                    val sleepY = (week.avgSleepHour - startHour) / totalHours * chartHeight
-                    var wakeHour = week.avgWakeHour
-                    if (wakeHour < startHour) wakeHour += 24f
-                    if (wakeHour > endHour) wakeHour = endHour.toFloat()
-                    val wakeY = (wakeHour - startHour) / totalHours * chartHeight
-
-                    // 绘制睡眠柱状图
-                    drawRoundRect(
-                        color = primaryColor.copy(alpha = 0.8f),
-                        topLeft = Offset(x, sleepY),
-                        size = Size(barWidth, wakeY - sleepY),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
-                    )
-                }
-
-                // 绘制午夜线
-                val midnightY = (24 - startHour) / totalHours * chartHeight
-                drawLine(
-                    color = onSurfaceVariantColor.copy(alpha = 0.3f),
-                    start = Offset(0f, midnightY),
-                    end = Offset(chartWidth, midnightY),
-                    strokeWidth = 1f,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
-                )
-            }
-
-            // X轴周标签
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                weeklyData.forEach { week ->
-                    Text(
-                        text = week.weekLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = onSurfaceVariantColor,
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center,
-                        maxLines = 1
-                    )
-                }
-            }
-        }
-    }
-}
 
 /**
  * 每周睡眠时间数据
@@ -1552,24 +1466,5 @@ private fun ShimmerChartCard() {
                     .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f))
             )
         }
-    }
-}
-
-/**
- * 动画图表卡片容器
- */
-@Composable
-private fun AnimatedChartCard(
-    visible: Boolean,
-    content: @Composable () -> Unit
-) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
-            animationSpec = tween(300),
-            initialOffsetY = { it / 4 }
-        )
-    ) {
-        content()
     }
 }
