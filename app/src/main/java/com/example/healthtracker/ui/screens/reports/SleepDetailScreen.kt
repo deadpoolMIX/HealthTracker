@@ -242,7 +242,8 @@ private fun SleepSummaryCard(
                 SummaryItem(
                     label = "平均时长",
                     value = formatSleepDuration(avgDuration),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    valueFontSize = 16.sp
                 )
             }
         }
@@ -253,7 +254,8 @@ private fun SleepSummaryCard(
 private fun SummaryItem(
     label: String,
     value: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    valueFontSize: TextUnit = TextUnit.Unspecified
 ) {
     Column(
         modifier = modifier,
@@ -261,9 +263,11 @@ private fun SummaryItem(
     ) {
         Text(
             text = value,
-            style = MaterialTheme.typography.headlineSmall,
+            style = if (valueFontSize == TextUnit.Unspecified) MaterialTheme.typography.headlineSmall
+                    else MaterialTheme.typography.headlineSmall.copy(fontSize = valueFontSize),
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 1
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
