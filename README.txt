@@ -1154,3 +1154,23 @@ Token 使用量：15.7m（模型：glm-5）
   - 问题：EditFoodScreen 未同步 AddCustomFoodScreen 的"每n克"布局
   - 解决：完全重写 EditFoodScreen，与 AddCustomFoodScreen 布局一致
 - 结果：BUILD SUCCESSFUL
+
+【2026-03-08】功能 #87 #88 #89 #90：报表页面优化
+- #87：修复睡眠图表 y 轴虚线的整数除法问题
+  - 问题：y 轴只有第一行有虚线，其他行没有
+  - 原因：整数除法导致除数为零
+  - 解决：将 numYAxisLabels 改为浮点数计算，确保每行都有虚线
+- #88：营养素摄入详情页面添加周期切换功能
+  - 问题：营养素摄入详情页面没有切换上周/上月的功能
+  - 解决：
+    1. NutritionDetailViewModel 添加 periodOffset 状态
+    2. 添加 setPeriodOffset() 方法和 getPeriodLabel() 方法
+    3. NutritionDetailScreen 在 TopAppBar 添加周期切换按钮
+    4. loadData() 根据 periodOffset 计算日期范围
+- #89：数据报表页面身体数据趋势区块保持原有功能
+  - 验证：x 轴显示日期，y 轴显示体重，功能正常
+- #90：隐藏所有三围相关功能
+  - BodyDataDetailScreen：移除三围切换按钮（注释掉 TopAppBar actions）
+  - ReportsScreen：移除三围切换按钮和三围数据图表代码
+  - 保留数据库字段，仅隐藏 UI 入口
+- 结果：BUILD SUCCESSFUL
