@@ -6,8 +6,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -68,7 +68,6 @@ fun SleepDetailScreen(
                 SleepChartCard(
                     sleepData = uiState.sleepData,
                     period = uiState.selectedPeriod,
-                    periodOffset = uiState.periodOffset,
                     yearPage = uiState.yearPage,
                     onYearPageChange = { viewModel.setYearPage(it) },
                     periodLabel = viewModel.getPeriodLabel()
@@ -113,7 +112,7 @@ private fun PeriodSelectorWithArrows(
                 modifier = Modifier.size(36.dp)
             ) {
                 Icon(
-                    Icons.Default.KeyboardArrowLeft,
+                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                     contentDescription = "上一个周期",
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -140,7 +139,7 @@ private fun PeriodSelectorWithArrows(
                 modifier = Modifier.size(36.dp)
             ) {
                 Icon(
-                    Icons.Default.KeyboardArrowRight,
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = "下一个周期",
                     tint = if (periodOffset > 0) MaterialTheme.colorScheme.primary
                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
@@ -203,7 +202,6 @@ private fun StatItem(label: String, value: String) {
 private fun SleepChartCard(
     sleepData: List<SleepRecordEntity>,
     period: Int,
-    periodOffset: Int,
     yearPage: Int,
     onYearPageChange: (Int) -> Unit,
     periodLabel: String
@@ -249,7 +247,7 @@ private fun SleepChartCard(
                         enabled = yearPage == 1
                     ) {
                         Icon(
-                            Icons.Default.KeyboardArrowLeft,
+                            Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                             contentDescription = "上一页",
                             tint = if (yearPage == 0) onSurfaceVariantColor.copy(alpha = 0.3f) else primaryColor
                         )
@@ -263,7 +261,7 @@ private fun SleepChartCard(
                         enabled = yearPage == 0
                     ) {
                         Icon(
-                            Icons.Default.KeyboardArrowRight,
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
                             contentDescription = "下一页",
                             tint = if (yearPage == 1) onSurfaceVariantColor.copy(alpha = 0.3f) else primaryColor
                         )
@@ -471,7 +469,7 @@ private fun MonthSleepChart(
             convertToChartHour(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
         }.average().toFloat()
 
-        WeeklySleepChartData("第$weekNum周", avgSleepHour, avgWakeHour)
+        WeeklySleepChartData("第${weekNum}周", avgSleepHour, avgWakeHour)
     }
 
     if (weeklyData.isEmpty()) {
