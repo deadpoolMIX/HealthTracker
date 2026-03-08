@@ -792,11 +792,9 @@ private fun BodyDataChartCard(
 
             if (dataType == 0) {
                 // 体重、体脂、肌肉量
-                val weights = sortedData.mapNotNull { it.weight }
-                val bodyFats = sortedData.mapNotNull { it.bodyFatRate }
-                val muscles = sortedData.mapNotNull { it.muscleMass }
+                val hasValidData = sortedData.any { it.weight != null || it.bodyFatRate != null || it.muscleMass != null }
 
-                if (weights.isEmpty() && bodyFats.isEmpty() && muscles.isEmpty()) {
+                if (!hasValidData) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -806,13 +804,40 @@ private fun BodyDataChartCard(
                         Text("暂无身体数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else {
-                    // 计算范围
-                    val minWeight = (weights.minOrNull() ?: 50.0) - 2
-                    val maxWeight = (weights.maxOrNull() ?: 80.0) + 2
-                    val minBodyFat = (bodyFats.minOrNull() ?: 15.0) - 2
-                    val maxBodyFat = (bodyFats.maxOrNull() ?: 25.0) + 2
-                    val minMuscle = (muscles.minOrNull() ?: 30.0) - 2
-                    val maxMuscle = (muscles.maxOrNull() ?: 50.0) + 2
+                    // 提取所有数据（保留 null 值位置）
+                    val weights = sortedData.map { it.weight }
+                    val bodyFats = sortedData.map { it.bodyFatRate }
+                    val muscles = sortedData.map { it.muscleMass }
+                    val dataCount = sortedData.size
+
+                    // 计算范围（忽略 null 值）
+                    val validWeights = weights.filterNotNull()
+                    val validBodyFats = bodyFats.filterNotNull()
+                    val validMuscles = muscles.filterNotNull()
+
+                    val minWeight = (validWeights.minOrNull() ?: 50.0) - 2
+                    val maxWeight = (validWeights.maxOrNull() ?: 80.0) + 2
+                    val minBodyFat = (validBodyFats.minOrNull() ?: 15.0) - 2
+                    val maxBodyFat = (validBodyFats.maxOrNull() ?: 25.0) + 2
+                    val minMuscle = (validMuscles.minOrNull() ?: 30.0) - 2
+                    val maxMuscle = (validMuscles.maxOrNull() ?: 50.0) + 2
+
+                    // 生成 x 轴标签
+                    val xLabels = remember(sortedData, period) {
+                        if (period == 0) {
+                            // 周视图：显示每天的日期（如 "7日"）
+                            sortedData.map { entity ->
+                                val calendar = Calendar.getInstance()
+                                calendar.timeInMillis = entity.date
+                                "${calendar.get(Calendar.DAY_OF_MONTH)}日"
+                            }
+                        } else {
+                            // 月视图：显示周号（如 "第1周"）
+                            sortedData.mapIndexed { index, _ ->
+                                "第${index + 1}周"
+                            }
+                        }
+                    }
 
                     Canvas(
                         modifier = Modifier
@@ -823,55 +848,71 @@ private fun BodyDataChartCard(
                         val chartWidth = size.width
 
                         // 绘制平滑曲线
-                        // 体重折线
-                        if (weights.size >= 2) {
-                            drawSmoothLine(
-                                points = weights.mapIndexed { index, weight ->
-                                    val x = (index.toFloat() / (weights.size - 1)) * chartWidth
-                                    val y = chartHeight - ((weight - minWeight) / (maxWeight - minWeight) * chartHeight).toFloat() + 20
-                                    Offset(x, y)
-                                },
-                                color = weightColor
-                            )
-                            // 绘制数据点
-                            weights.forEachIndexed { index, weight ->
-                                val x = (index.toFloat() / (weights.size - 1)) * chartWidth
-                                val y = chartHeight - ((weight - minWeight) / (maxWeight - minWeight) * chartHeight).toFloat() + 20
-                                drawCircle(color = weightColor, radius = 4f, center = Offset(x, y))
+                        // 体重折线 - 只绘制非 null 的连续数据点
+                        val weightPoints = weights.mapIndexedNotNull { index, weight ->
+                            weight?.let {
+                                val x = if (dataCount > 1) (index.toFloat() / (dataCount - 1)) * chartWidth else chartWidth / 2
+                                val y = chartHeight - ((it - minWeight) / (maxWeight - minWeight) * chartHeight).toFloat() + 20
+                                Offset(x, y)
                             }
+                        }
+                        if (weightPoints.size >= 2) {
+                            drawSmoothLine(points = weightPoints, color = weightColor)
+                            weightPoints.forEach { point ->
+                                drawCircle(color = weightColor, radius = 4f, center = point)
+                            }
+                        } else if (weightPoints.size == 1) {
+                            drawCircle(color = weightColor, radius = 4f, center = weightPoints.first())
                         }
 
                         // 体脂折线
-                        if (bodyFats.size >= 2) {
-                            drawSmoothLine(
-                                points = bodyFats.mapIndexed { index, bodyFat ->
-                                    val x = (index.toFloat() / (bodyFats.size - 1)) * chartWidth
-                                    val y = chartHeight - ((bodyFat - minBodyFat) / (maxBodyFat - minBodyFat) * chartHeight).toFloat() + 20
-                                    Offset(x, y)
-                                },
-                                color = bodyFatColor
-                            )
-                            bodyFats.forEachIndexed { index, bodyFat ->
-                                val x = (index.toFloat() / (bodyFats.size - 1)) * chartWidth
-                                val y = chartHeight - ((bodyFat - minBodyFat) / (maxBodyFat - minBodyFat) * chartHeight).toFloat() + 20
-                                drawCircle(color = bodyFatColor, radius = 4f, center = Offset(x, y))
+                        val bodyFatPoints = bodyFats.mapIndexedNotNull { index, bodyFat ->
+                            bodyFat?.let {
+                                val x = if (dataCount > 1) (index.toFloat() / (dataCount - 1)) * chartWidth else chartWidth / 2
+                                val y = chartHeight - ((it - minBodyFat) / (maxBodyFat - minBodyFat) * chartHeight).toFloat() + 20
+                                Offset(x, y)
                             }
+                        }
+                        if (bodyFatPoints.size >= 2) {
+                            drawSmoothLine(points = bodyFatPoints, color = bodyFatColor)
+                            bodyFatPoints.forEach { point ->
+                                drawCircle(color = bodyFatColor, radius = 4f, center = point)
+                            }
+                        } else if (bodyFatPoints.size == 1) {
+                            drawCircle(color = bodyFatColor, radius = 4f, center = bodyFatPoints.first())
                         }
 
                         // 肌肉量折线
-                        if (muscles.size >= 2) {
-                            drawSmoothLine(
-                                points = muscles.mapIndexed { index, muscle ->
-                                    val x = (index.toFloat() / (muscles.size - 1)) * chartWidth
-                                    val y = chartHeight - ((muscle - minMuscle) / (maxMuscle - minMuscle) * chartHeight).toFloat() + 20
-                                    Offset(x, y)
-                                },
-                                color = muscleColor
-                            )
-                            muscles.forEachIndexed { index, muscle ->
-                                val x = (index.toFloat() / (muscles.size - 1)) * chartWidth
-                                val y = chartHeight - ((muscle - minMuscle) / (maxMuscle - minMuscle) * chartHeight).toFloat() + 20
-                                drawCircle(color = muscleColor, radius = 4f, center = Offset(x, y))
+                        val musclePoints = muscles.mapIndexedNotNull { index, muscle ->
+                            muscle?.let {
+                                val x = if (dataCount > 1) (index.toFloat() / (dataCount - 1)) * chartWidth else chartWidth / 2
+                                val y = chartHeight - ((it - minMuscle) / (maxMuscle - minMuscle) * chartHeight).toFloat() + 20
+                                Offset(x, y)
+                            }
+                        }
+                        if (musclePoints.size >= 2) {
+                            drawSmoothLine(points = musclePoints, color = muscleColor)
+                            musclePoints.forEach { point ->
+                                drawCircle(color = muscleColor, radius = 4f, center = point)
+                            }
+                        } else if (musclePoints.size == 1) {
+                            drawCircle(color = muscleColor, radius = 4f, center = musclePoints.first())
+                        }
+                    }
+
+                    // X 轴标签
+                    if (xLabels.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            xLabels.forEach { label ->
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
@@ -882,9 +923,9 @@ private fun BodyDataChartCard(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        weights.lastOrNull()?.let { StatItem("体重", "${String.format("%.1f", it)} kg") }
-                        bodyFats.lastOrNull()?.let { StatItem("体脂", "${String.format("%.1f", it)}%") }
-                        muscles.lastOrNull()?.let { StatItem("肌肉", "${String.format("%.1f", it)} kg") }
+                        validWeights.lastOrNull()?.let { StatItem("体重", "${String.format("%.1f", it)} kg") }
+                        validBodyFats.lastOrNull()?.let { StatItem("体脂", "${String.format("%.1f", it)}%") }
+                        validMuscles.lastOrNull()?.let { StatItem("肌肉", "${String.format("%.1f", it)} kg") }
                     }
                 }
             }
