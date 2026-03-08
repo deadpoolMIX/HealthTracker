@@ -325,6 +325,15 @@ private fun NutritionChartCard(
     val proteinColor = NutrientColors.Protein
     val fatColor = NutrientColors.Fat
 
+    // 根据周期筛选数据
+    val displayData = if (period == 0) {
+        // 周模式：只显示最近7天
+        data.sortedBy { it.date }.takeLast(7)
+    } else {
+        // 月模式：按周聚合
+        aggregateByWeek(data)
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -355,7 +364,7 @@ private fun NutritionChartCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            if (data.isEmpty()) {
+            if (displayData.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -365,12 +374,11 @@ private fun NutritionChartCard(
                     Text("暂无摄入数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
-                // 数据汇总 - 缩小字体让四个数据同行
-                val totalCalories = data.sumOf { it.calories }
-                val avgCalories = if (data.isNotEmpty()) totalCalories / data.size else 0.0
-                val avgCarbs = if (data.isNotEmpty()) data.sumOf { it.carbs } / data.size else 0.0
-                val avgProtein = if (data.isNotEmpty()) data.sumOf { it.protein } / data.size else 0.0
-                val avgFat = if (data.isNotEmpty()) data.sumOf { it.fat } / data.size else 0.0
+                // 数据汇总
+                val avgCalories = if (displayData.isNotEmpty()) displayData.sumOf { it.calories } / displayData.size else 0.0
+                val avgCarbs = if (displayData.isNotEmpty()) displayData.sumOf { it.carbs } / displayData.size else 0.0
+                val avgProtein = if (displayData.isNotEmpty()) displayData.sumOf { it.protein } / displayData.size else 0.0
+                val avgFat = if (displayData.isNotEmpty()) displayData.sumOf { it.fat } / displayData.size else 0.0
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -384,75 +392,84 @@ private fun NutritionChartCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // 堆叠柱状图 - 修复对齐问题
-                val sortedData = data.sortedBy { it.date }
+                // 堆叠柱状图
                 val maxNutrient = maxOf(
-                    sortedData.maxOfOrNull { it.carbs + it.protein + it.fat } ?: 100.0,
+                    displayData.maxOfOrNull { it.carbs + it.protein + it.fat } ?: 100.0,
                     100.0
                 )
 
-                // 使用 Box 包含 Canvas 和标签，确保对齐
-                Column(
+                Row(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Canvas(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
+                    // 柱状图区域
+                    Column(
+                        modifier = Modifier.weight(1f)
                     ) {
-                        val barCount = sortedData.size
-                        val totalSpacing = size.width * 0.3f // 总间距占30%
-                        val totalBarWidth = size.width - totalSpacing // 柱状图总宽度占70%
-                        val barWidth = totalBarWidth / barCount
-                        val spacing = totalSpacing / (barCount + 1) // 每个间隔
-                        val chartHeight = size.height - 10f // 留出底部空间
+                        Canvas(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                        ) {
+                            val barCount = displayData.size
+                            val totalSpacing = size.width * 0.25f
+                            val totalBarWidth = size.width - totalSpacing
+                            val barWidth = totalBarWidth / barCount
+                            val spacing = totalSpacing / (barCount + 1)
+                            val chartHeight = size.height
 
-                        sortedData.forEachIndexed { index, day ->
-                            val x = spacing + index * (barWidth + spacing)
+                            displayData.forEachIndexed { index, day ->
+                                val x = spacing + index * (barWidth + spacing)
 
-                            // 堆叠柱状图：碳水(下) -> 蛋白质(中) -> 脂肪(上)
-                            val carbsHeight = (day.carbs / maxNutrient * chartHeight).toFloat()
-                            val proteinHeight = (day.protein / maxNutrient * chartHeight).toFloat()
-                            val fatHeight = (day.fat / maxNutrient * chartHeight).toFloat()
+                                val carbsHeight = (day.carbs / maxNutrient * chartHeight * 0.95f).toFloat()
+                                val proteinHeight = (day.protein / maxNutrient * chartHeight * 0.95f).toFloat()
+                                val fatHeight = (day.fat / maxNutrient * chartHeight * 0.95f).toFloat()
 
-                            // 碳水 - 底部
-                            drawRect(
-                                color = carbsColor,
-                                topLeft = Offset(x, chartHeight - carbsHeight),
-                                size = Size(barWidth, carbsHeight)
-                            )
-                            // 蛋白质 - 中间
-                            drawRect(
-                                color = proteinColor,
-                                topLeft = Offset(x, chartHeight - carbsHeight - proteinHeight),
-                                size = Size(barWidth, proteinHeight)
-                            )
-                            // 脂肪 - 顶部
-                            drawRect(
-                                color = fatColor,
-                                topLeft = Offset(x, chartHeight - carbsHeight - proteinHeight - fatHeight),
-                                size = Size(barWidth, fatHeight)
-                            )
+                                // 碳水 - 底部
+                                drawRect(
+                                    color = carbsColor,
+                                    topLeft = Offset(x, chartHeight - carbsHeight),
+                                    size = Size(barWidth, carbsHeight)
+                                )
+                                // 蛋白质 - 中间
+                                drawRect(
+                                    color = proteinColor,
+                                    topLeft = Offset(x, chartHeight - carbsHeight - proteinHeight),
+                                    size = Size(barWidth, proteinHeight)
+                                )
+                                // 脂肪 - 顶部
+                                drawRect(
+                                    color = fatColor,
+                                    topLeft = Offset(x, chartHeight - carbsHeight - proteinHeight - fatHeight),
+                                    size = Size(barWidth, fatHeight)
+                                )
+                            }
                         }
-                    }
 
-                    // 日期标签 - 与柱状图对齐
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        sortedData.forEach { day ->
-                            val cal = Calendar.getInstance()
-                            cal.timeInMillis = day.date
-                            Text(
-                                text = "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.weight(1f),
-                                textAlign = TextAlign.Center,
-                                maxLines = 1
-                            )
+                        // X轴标签
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            displayData.forEach { day ->
+                                val label = if (period == 0) {
+                                    // 周模式：显示日期
+                                    val cal = Calendar.getInstance()
+                                    cal.timeInMillis = day.date
+                                    "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}"
+                                } else {
+                                    // 月模式：显示周标签
+                                    (day as? WeeklyNutritionDisplay)?.weekLabel ?: ""
+                                }
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f),
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1
+                                )
+                            }
                         }
                     }
                 }
@@ -460,6 +477,62 @@ private fun NutritionChartCard(
         }
     }
 }
+
+/**
+ * 按周聚合营养数据
+ */
+private fun aggregateByWeek(data: List<DailyNutrition>): List<WeeklyNutritionDisplay> {
+    val calendar = Calendar.getInstance()
+    val now = System.currentTimeMillis()
+    calendar.timeInMillis = now
+    calendar.add(Calendar.WEEK_OF_YEAR, -3)
+    calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+    calendar.set(Calendar.HOUR_OF_DAY, 0)
+    calendar.set(Calendar.MINUTE, 0)
+    calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.MILLISECOND, 0)
+
+    val result = mutableListOf<WeeklyNutritionDisplay>()
+
+    for (i in 0 until 4) {
+        val weekStart = calendar.timeInMillis
+        calendar.add(Calendar.DAY_OF_MONTH, 6)
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        val weekEnd = calendar.timeInMillis
+
+        val weekData = data.filter { it.date in weekStart..weekEnd }
+
+        result.add(WeeklyNutritionDisplay(
+            date = weekStart,
+            weekLabel = "第${i + 1}周",
+            calories = weekData.sumOf { it.calories },
+            carbs = weekData.sumOf { it.carbs },
+            protein = weekData.sumOf { it.protein },
+            fat = weekData.sumOf { it.fat }
+        ))
+
+        calendar.add(Calendar.DAY_OF_MONTH, 1)
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+    }
+
+    return result
+}
+
+/**
+ * 周营养数据显示类
+ */
+private data class WeeklyNutritionDisplay(
+    val date: Long,
+    val weekLabel: String,
+    val calories: Double,
+    val carbs: Double,
+    val protein: Double,
+    val fat: Double
+)
 
 @Composable
 private fun StatItemCompact(
@@ -848,7 +921,7 @@ private fun StatItem(label: String, value: String) {
     }
 }
 
-// 睡眠范围条形图卡片 - 竖着的柱状图
+// 睡眠范围条形图卡片 - 竖着的柱状图，y轴显示时间
 @Composable
 private fun SleepChartCard(
     data: List<SleepRecordEntity>,
@@ -859,7 +932,6 @@ private fun SleepChartCard(
     onClick: () -> Unit = {}
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
-    val secondaryColor = MaterialTheme.colorScheme.secondary
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Card(
@@ -893,21 +965,21 @@ private fun SleepChartCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             if (period == 0) {
-                // 周模式：显示最近七天的柱状图（竖着的）
-                WeekSleepChart(data = data, primaryColor = primaryColor, onSurfaceVariantColor = onSurfaceVariantColor)
+                // 周模式：显示最近七天的睡眠柱状图
+                WeekSleepChartWithTimeAxis(data = data, primaryColor = primaryColor, onSurfaceVariantColor = onSurfaceVariantColor)
             } else {
-                // 月模式：显示四周的柱状图
-                MonthSleepChart(data = data, primaryColor = primaryColor, secondaryColor = secondaryColor, onSurfaceVariantColor = onSurfaceVariantColor)
+                // 月模式：显示四周的睡眠柱状图
+                MonthSleepChartWithTimeAxis(data = data, primaryColor = primaryColor, onSurfaceVariantColor = onSurfaceVariantColor)
             }
         }
     }
 }
 
 /**
- * 周模式睡眠图表 - 竖着的柱状图
+ * 周模式睡眠图表 - y轴显示时间，柱状图顶部是入睡时间，底部是起床时间
  */
 @Composable
-private fun WeekSleepChart(
+private fun WeekSleepChartWithTimeAxis(
     data: List<SleepRecordEntity>,
     primaryColor: Color,
     onSurfaceVariantColor: Color
@@ -926,68 +998,125 @@ private fun WeekSleepChart(
         return
     }
 
-    // 计算最大睡眠时长用于缩放
-    val maxDuration = sortedData.maxOfOrNull { it.duration }?.toFloat()?.coerceAtLeast(1f) ?: 1f
+    // 时间范围：18:00 到 12:00（次日中午）
+    val startHour = 18 // 18:00 开始
+    val endHour = 36 // 12:00（次日中午，用36表示跨天）
+    val totalHours = endHour - startHour // 18小时范围
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // 竖着的柱状图
-        Canvas(
+    Row(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        // Y轴时间标签
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
+                .width(40.dp)
+                .height(200.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            val barCount = sortedData.size
-            val totalSpacing = size.width * 0.3f
-            val totalBarWidth = size.width - totalSpacing
-            val barWidth = totalBarWidth / barCount
-            val spacing = totalSpacing / (barCount + 1)
-            val chartHeight = size.height
-
-            sortedData.forEachIndexed { index, sleep ->
-                val x = spacing + index * (barWidth + spacing)
-                val barHeight = (sleep.duration / maxDuration * chartHeight * 0.9f).toFloat()
-
-                // 绘制睡眠时长柱状图
-                drawRoundRect(
-                    color = primaryColor.copy(alpha = 0.8f),
-                    topLeft = Offset(x, chartHeight - barHeight),
-                    size = Size(barWidth, barHeight),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
-                )
-            }
+            Text("12:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
+            Text("06:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
+            Text("00:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
+            Text("18:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
         }
 
-        // X轴标签 - 日期
-        Spacer(modifier = Modifier.height(4.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+        // 图表区域
+        Column(
+            modifier = Modifier.weight(1f)
         ) {
-            sortedData.forEach { sleep ->
-                val cal = Calendar.getInstance()
-                cal.timeInMillis = sleep.date
-                val dayLabel = "${cal.get(Calendar.DAY_OF_MONTH)}"
-                Text(
-                    text = dayLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = onSurfaceVariantColor,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
-                    maxLines = 1
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+            ) {
+                val chartHeight = size.height
+                val chartWidth = size.width
+                val barCount = sortedData.size
+                val totalSpacing = chartWidth * 0.25f
+                val totalBarWidth = chartWidth - totalSpacing
+                val barWidth = totalBarWidth / barCount
+                val spacing = totalSpacing / (barCount + 1)
+
+                sortedData.forEachIndexed { index, sleep ->
+                    val calSleep = Calendar.getInstance()
+                    calSleep.timeInMillis = sleep.sleepTime
+                    val sleepHour = calSleep.get(Calendar.HOUR_OF_DAY)
+                    val sleepMinute = calSleep.get(Calendar.MINUTE)
+                    // 转换为连续小时数（18:00 = 18, 次日2:00 = 26）
+                    var sleepHourContinuous = sleepHour + sleepMinute / 60f
+                    if (sleepHourContinuous < startHour) {
+                        sleepHourContinuous += 24 // 跨天
+                    }
+
+                    val calWake = Calendar.getInstance()
+                    calWake.timeInMillis = sleep.wakeTime
+                    val wakeHour = calWake.get(Calendar.HOUR_OF_DAY)
+                    val wakeMinute = calWake.get(Calendar.MINUTE)
+                    var wakeHourContinuous = wakeHour + wakeMinute / 60f
+                    if (wakeHourContinuous < startHour) {
+                        wakeHourContinuous += 24 // 跨天
+                    }
+                    // 起床时间如果超过12:00，也算作次日
+                    if (wakeHourContinuous > endHour) {
+                        wakeHourContinuous = endHour.toFloat()
+                    }
+
+                    // 计算柱状图位置
+                    val x = spacing + index * (barWidth + spacing)
+                    // y轴：顶部是入睡时间，底部是起床时间
+                    val sleepY = (sleepHourContinuous - startHour) / totalHours * chartHeight
+                    val wakeY = (wakeHourContinuous - startHour) / totalHours * chartHeight
+
+                    // 绘制睡眠柱状图
+                    drawRoundRect(
+                        color = primaryColor.copy(alpha = 0.8f),
+                        topLeft = Offset(x, sleepY),
+                        size = Size(barWidth, wakeY - sleepY),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
+                    )
+                }
+
+                // 绘制午夜线
+                val midnightY = (24 - startHour) / totalHours * chartHeight
+                drawLine(
+                    color = onSurfaceVariantColor.copy(alpha = 0.3f),
+                    start = Offset(0f, midnightY),
+                    end = Offset(chartWidth, midnightY),
+                    strokeWidth = 1f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
                 )
+            }
+
+            // X轴日期标签
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                sortedData.forEach { sleep ->
+                    val cal = Calendar.getInstance()
+                    cal.timeInMillis = sleep.date
+                    val dayLabel = "${cal.get(Calendar.DAY_OF_MONTH)}"
+                    Text(
+                        text = dayLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = onSurfaceVariantColor,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        maxLines = 1
+                    )
+                }
             }
         }
     }
 }
 
 /**
- * 月模式睡眠图表 - 四周的平均入睡/起床时间
+ * 月模式睡眠图表 - 四周的平均睡眠时间
  */
 @Composable
-private fun MonthSleepChart(
+private fun MonthSleepChartWithTimeAxis(
     data: List<SleepRecordEntity>,
     primaryColor: Color,
-    secondaryColor: Color,
     onSurfaceVariantColor: Color
 ) {
     // 按周分组计算平均入睡和起床时间
@@ -1001,7 +1130,7 @@ private fun MonthSleepChart(
     calendar.set(Calendar.SECOND, 0)
     calendar.set(Calendar.MILLISECOND, 0)
 
-    val weeklyData = mutableListOf<WeeklySleepData>()
+    val weeklyData = mutableListOf<WeeklySleepTime>()
 
     for (i in 0 until 4) {
         val weekStart = calendar.timeInMillis
@@ -1017,7 +1146,11 @@ private fun MonthSleepChart(
             weekRecords.map { record ->
                 val cal = Calendar.getInstance()
                 cal.timeInMillis = record.sleepTime
-                cal.get(Calendar.HOUR_OF_DAY) + cal.get(Calendar.MINUTE) / 60f
+                val hour = cal.get(Calendar.HOUR_OF_DAY)
+                val minute = cal.get(Calendar.MINUTE)
+                var h = hour + minute / 60f
+                if (h < 18) h += 24 // 跨天
+                h
             }.average().toFloat()
         } else 23f
 
@@ -1025,19 +1158,16 @@ private fun MonthSleepChart(
             weekRecords.map { record ->
                 val cal = Calendar.getInstance()
                 cal.timeInMillis = record.wakeTime
-                cal.get(Calendar.HOUR_OF_DAY) + cal.get(Calendar.MINUTE) / 60f
+                val hour = cal.get(Calendar.HOUR_OF_DAY)
+                val minute = cal.get(Calendar.MINUTE)
+                hour + minute / 60f
             }.average().toFloat()
         } else 7f
 
-        val avgDuration = if (weekRecords.isNotEmpty()) {
-            weekRecords.map { it.duration }.average().toLong()
-        } else 0L
-
-        weeklyData.add(WeeklySleepData(
+        weeklyData.add(WeeklySleepTime(
             weekLabel = "第${i + 1}周",
             avgSleepHour = avgSleepHour,
-            avgWakeHour = avgWakeHour,
-            avgDuration = avgDuration
+            avgWakeHour = avgWakeHour
         ))
 
         calendar.add(Calendar.DAY_OF_MONTH, 1)
@@ -1046,7 +1176,7 @@ private fun MonthSleepChart(
         calendar.set(Calendar.SECOND, 0)
     }
 
-    if (weeklyData.isEmpty() || weeklyData.all { it.avgDuration == 0L }) {
+    if (weeklyData.isEmpty()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1058,65 +1188,101 @@ private fun MonthSleepChart(
         return
     }
 
-    // 计算最大睡眠时长
-    val maxDuration = weeklyData.maxOf { it.avgDuration }.toFloat().coerceAtLeast(1f)
+    // 时间范围：18:00 到 12:00（次日中午）
+    val startHour = 18
+    val endHour = 36
+    val totalHours = endHour - startHour
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // 竖着的柱状图
-        Canvas(
+    Row(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        // Y轴时间标签
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
+                .width(40.dp)
+                .height(200.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            val barCount = weeklyData.size
-            val totalSpacing = size.width * 0.4f
-            val totalBarWidth = size.width - totalSpacing
-            val barWidth = totalBarWidth / barCount
-            val spacing = totalSpacing / (barCount + 1)
-            val chartHeight = size.height
-
-            weeklyData.forEachIndexed { index, week ->
-                val x = spacing + index * (barWidth + spacing)
-                val barHeight = (week.avgDuration / maxDuration * chartHeight * 0.9f).toFloat()
-
-                // 绘制睡眠时长柱状图
-                drawRoundRect(
-                    color = primaryColor.copy(alpha = 0.8f),
-                    topLeft = Offset(x, chartHeight - barHeight),
-                    size = Size(barWidth, barHeight),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
-                )
-            }
+            Text("12:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
+            Text("06:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
+            Text("00:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
+            Text("18:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
         }
 
-        // X轴标签 - 第几周
-        Spacer(modifier = Modifier.height(4.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+        // 图表区域
+        Column(
+            modifier = Modifier.weight(1f)
         ) {
-            weeklyData.forEach { week ->
-                Text(
-                    text = week.weekLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = onSurfaceVariantColor,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
-                    maxLines = 1
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+            ) {
+                val chartHeight = size.height
+                val chartWidth = size.width
+                val barCount = weeklyData.size
+                val totalSpacing = chartWidth * 0.4f
+                val totalBarWidth = chartWidth - totalSpacing
+                val barWidth = totalBarWidth / barCount
+                val spacing = totalSpacing / (barCount + 1)
+
+                weeklyData.forEachIndexed { index, week ->
+                    val x = spacing + index * (barWidth + spacing)
+
+                    val sleepY = (week.avgSleepHour - startHour) / totalHours * chartHeight
+                    var wakeHour = week.avgWakeHour
+                    if (wakeHour < startHour) wakeHour += 24f
+                    if (wakeHour > endHour) wakeHour = endHour.toFloat()
+                    val wakeY = (wakeHour - startHour) / totalHours * chartHeight
+
+                    // 绘制睡眠柱状图
+                    drawRoundRect(
+                        color = primaryColor.copy(alpha = 0.8f),
+                        topLeft = Offset(x, sleepY),
+                        size = Size(barWidth, wakeY - sleepY),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
+                    )
+                }
+
+                // 绘制午夜线
+                val midnightY = (24 - startHour) / totalHours * chartHeight
+                drawLine(
+                    color = onSurfaceVariantColor.copy(alpha = 0.3f),
+                    start = Offset(0f, midnightY),
+                    end = Offset(chartWidth, midnightY),
+                    strokeWidth = 1f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
                 )
+            }
+
+            // X轴周标签
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                weeklyData.forEach { week ->
+                    Text(
+                        text = week.weekLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = onSurfaceVariantColor,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        maxLines = 1
+                    )
+                }
             }
         }
     }
 }
 
 /**
- * 每周睡眠数据
+ * 每周睡眠时间数据
  */
-private data class WeeklySleepData(
+private data class WeeklySleepTime(
     val weekLabel: String,
     val avgSleepHour: Float,
-    val avgWakeHour: Float,
-    val avgDuration: Long
+    val avgWakeHour: Float
 )
 
 private fun formatDuration(minutes: Long): String {
