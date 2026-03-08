@@ -73,7 +73,8 @@ fun ReportsScreen(
             )
         }
     ) { paddingValues ->
-        if (uiState.isLoading) {
+        // 只在首次加载且无数据时显示骨架屏
+        if (uiState.isLoading && uiState.intakeData.isEmpty() && uiState.bodyData.isEmpty() && uiState.sleepData.isEmpty()) {
             // 骨架屏加载
             Column(
                 modifier = Modifier
@@ -1127,24 +1128,31 @@ private fun WeekSleepChartWithTimeAxis(
     val endHour = 36 // 12:00（次日中午，用36表示跨天）
     val totalHours = endHour - startHour // 14小时范围
 
+    // 8个时间点（从上到下：22:00, 00:00, 02:00, 04:00, 06:00, 08:00, 10:00, 12:00）
+    val timePoints = listOf(
+        36 to "12:00", // 12:00（次日中午）
+        34 to "10:00", // 10:00
+        32 to "08:00", // 08:00
+        30 to "06:00", // 06:00
+        28 to "04:00", // 04:00
+        26 to "02:00", // 02:00
+        24 to "00:00", // 00:00（午夜）
+        22 to "22:00"  // 22:00
+    )
+
     Row(
         modifier = Modifier.fillMaxWidth()
     ) {
         // Y轴时间标签 - 8个时间点
         Column(
             modifier = Modifier
-                .width(36.dp)
+                .width(40.dp)
                 .height(200.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("12点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
-            Text("10点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
-            Text("8点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
-            Text("6点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
-            Text("4点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
-            Text("2点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
-            Text("0点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
-            Text("22点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            timePoints.forEach { (_, label) ->
+                Text(label, style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            }
         }
 
         // 图表区域
@@ -1163,6 +1171,18 @@ private fun WeekSleepChartWithTimeAxis(
                 val totalBarWidth = chartWidth - totalSpacing
                 val barWidth = totalBarWidth / barCount
                 val spacing = totalSpacing / (barCount + 1)
+
+                // 先绘制所有时间点的虚线（在柱状图下面）
+                timePoints.forEach { (hourContinuous, _) ->
+                    val lineY = (hourContinuous - startHour) / totalHours * chartHeight
+                    drawLine(
+                        color = onSurfaceVariantColor.copy(alpha = 0.2f),
+                        start = Offset(0f, lineY),
+                        end = Offset(chartWidth, lineY),
+                        strokeWidth = 1f,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
+                    )
+                }
 
                 sortedData.forEachIndexed { index, sleep ->
                     val calSleep = Calendar.getInstance()
@@ -1202,16 +1222,6 @@ private fun WeekSleepChartWithTimeAxis(
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
                     )
                 }
-
-                // 绘制午夜线
-                val midnightY = (24 - startHour) / totalHours * chartHeight
-                drawLine(
-                    color = onSurfaceVariantColor.copy(alpha = 0.3f),
-                    start = Offset(0f, midnightY),
-                    end = Offset(chartWidth, midnightY),
-                    strokeWidth = 1f,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
-                )
             }
 
             // X轴日期标签
@@ -1323,24 +1333,31 @@ private fun MonthSleepChartWithTimeAxis(
     val endHour = 36
     val totalHours = endHour - startHour
 
+    // 8个时间点（从上到下：22:00, 00:00, 02:00, 04:00, 06:00, 08:00, 10:00, 12:00）
+    val timePoints = listOf(
+        36 to "12:00", // 12:00（次日中午）
+        34 to "10:00", // 10:00
+        32 to "08:00", // 08:00
+        30 to "06:00", // 06:00
+        28 to "04:00", // 04:00
+        26 to "02:00", // 02:00
+        24 to "00:00", // 00:00（午夜）
+        22 to "22:00"  // 22:00
+    )
+
     Row(
         modifier = Modifier.fillMaxWidth()
     ) {
         // Y轴时间标签 - 8个时间点
         Column(
             modifier = Modifier
-                .width(36.dp)
+                .width(40.dp)
                 .height(200.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("12点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
-            Text("10点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
-            Text("8点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
-            Text("6点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
-            Text("4点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
-            Text("2点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
-            Text("0点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
-            Text("22点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            timePoints.forEach { (_, label) ->
+                Text(label, style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            }
         }
 
         // 图表区域
@@ -1360,6 +1377,18 @@ private fun MonthSleepChartWithTimeAxis(
                 val barWidth = totalBarWidth / barCount
                 val spacing = totalSpacing / (barCount + 1)
 
+                // 先绘制所有时间点的虚线（在柱状图下面）
+                timePoints.forEach { (hourContinuous, _) ->
+                    val lineY = (hourContinuous - startHour) / totalHours * chartHeight
+                    drawLine(
+                        color = onSurfaceVariantColor.copy(alpha = 0.2f),
+                        start = Offset(0f, lineY),
+                        end = Offset(chartWidth, lineY),
+                        strokeWidth = 1f,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
+                    )
+                }
+
                 weeklyData.forEachIndexed { index, week ->
                     val x = spacing + index * (barWidth + spacing)
 
@@ -1377,16 +1406,6 @@ private fun MonthSleepChartWithTimeAxis(
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
                     )
                 }
-
-                // 绘制午夜线
-                val midnightY = (24 - startHour) / totalHours * chartHeight
-                drawLine(
-                    color = onSurfaceVariantColor.copy(alpha = 0.3f),
-                    start = Offset(0f, midnightY),
-                    end = Offset(chartWidth, midnightY),
-                    strokeWidth = 1f,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
-                )
             }
 
             // X轴周标签
