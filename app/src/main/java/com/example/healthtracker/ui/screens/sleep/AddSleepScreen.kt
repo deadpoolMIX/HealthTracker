@@ -1,25 +1,17 @@
 package com.example.healthtracker.ui.screens.sleep
 
-import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
-import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.healthtracker.util.DateTimeUtils
 import java.util.Calendar
@@ -43,6 +35,22 @@ fun AddSleepScreen(
     var showSleepDatePicker by remember { mutableStateOf(false) }
     var showWakeDatePicker by remember { mutableStateOf(false) }
 
+    // 时间选择对话框
+    var showSleepTimePicker by remember { mutableStateOf(false) }
+    var showWakeTimePicker by remember { mutableStateOf(false) }
+
+    // 时间选择器状态
+    val sleepTimePickerState = rememberTimePickerState(
+        initialHour = uiState.sleepHour,
+        initialMinute = uiState.sleepMinute,
+        is24Hour = true
+    )
+    val wakeTimePickerState = rememberTimePickerState(
+        initialHour = uiState.wakeHour,
+        initialMinute = uiState.wakeMinute,
+        is24Hour = true
+    )
+
     if (showSleepDatePicker) {
         DatePickerDialog(
             onDismissRequest = { showSleepDatePicker = false },
@@ -62,6 +70,30 @@ fun AddSleepScreen(
                 showWakeDatePicker = false
             },
             selectedDate = uiState.wakeDate
+        )
+    }
+
+    if (showSleepTimePicker) {
+        TimePickerDialog(
+            onDismissRequest = { showSleepTimePicker = false },
+            onConfirm = {
+                viewModel.setSleepHour(sleepTimePickerState.hour)
+                viewModel.setSleepMinute(sleepTimePickerState.minute)
+                showSleepTimePicker = false
+            },
+            timePickerState = sleepTimePickerState
+        )
+    }
+
+    if (showWakeTimePicker) {
+        TimePickerDialog(
+            onDismissRequest = { showWakeTimePicker = false },
+            onConfirm = {
+                viewModel.setWakeHour(wakeTimePickerState.hour)
+                viewModel.setWakeMinute(wakeTimePickerState.minute)
+                showWakeTimePicker = false
+            },
+            timePickerState = wakeTimePickerState
         )
     }
 
@@ -99,85 +131,179 @@ fun AddSleepScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 入睡时间行
-            Row(
+            // 入睡时间卡片
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                ),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text(
-                    text = "入睡",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.width(50.dp)
-                )
-
-                // 日期选择
-                TextButton(onClick = { showSleepDatePicker = true }) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
                     Text(
-                        text = DateTimeUtils.formatDateShort(uiState.sleepDate),
-                        style = MaterialTheme.typography.bodyMedium
+                        text = "入睡时间",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
                     )
-                    Icon(
-                        Icons.Default.DateRange,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                Spacer(modifier = Modifier.weight(1f))
-
-                // 时间滚轮
-                CompactTimePicker(
-                    initialHour = uiState.sleepHour,
-                    initialMinute = uiState.sleepMinute,
-                    onTimeSelected = { hour, minute ->
-                        viewModel.setSleepHour(hour)
-                        viewModel.setSleepMinute(minute)
+                    // 日期选择
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.DateRange,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "日期：",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        TextButton(onClick = { showSleepDatePicker = true }) {
+                            Text(DateTimeUtils.formatDateShort(uiState.sleepDate))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                Icons.Default.DateRange,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
-                )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 时间选择
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Schedule,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "时间：",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        TextButton(onClick = { showSleepTimePicker = true }) {
+                            Text(
+                                text = String.format("%02d:%02d", uiState.sleepHour, uiState.sleepMinute),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                Icons.Default.Schedule,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 起床时间行
-            Row(
+            // 起床时间卡片
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                ),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text(
-                    text = "起床",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.width(50.dp)
-                )
-
-                // 日期选择
-                TextButton(onClick = { showWakeDatePicker = true }) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
                     Text(
-                        text = DateTimeUtils.formatDateShort(uiState.wakeDate),
-                        style = MaterialTheme.typography.bodyMedium
+                        text = "起床时间",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary
                     )
-                    Icon(
-                        Icons.Default.DateRange,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                Spacer(modifier = Modifier.weight(1f))
-
-                // 时间滚轮
-                CompactTimePicker(
-                    initialHour = uiState.wakeHour,
-                    initialMinute = uiState.wakeMinute,
-                    onTimeSelected = { hour, minute ->
-                        viewModel.setWakeHour(hour)
-                        viewModel.setWakeMinute(minute)
+                    // 日期选择
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.DateRange,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "日期：",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        TextButton(onClick = { showWakeDatePicker = true }) {
+                            Text(DateTimeUtils.formatDateShort(uiState.wakeDate))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                Icons.Default.DateRange,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
-                )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 时间选择
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Schedule,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "时间：",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        TextButton(onClick = { showWakeTimePicker = true }) {
+                            Text(
+                                text = String.format("%02d:%02d", uiState.wakeHour, uiState.wakeMinute),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                Icons.Default.Schedule,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -191,7 +317,7 @@ fun AddSleepScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -241,125 +367,34 @@ fun AddSleepScreen(
 }
 
 /**
- * 紧凑型时间选择器（滚动滚轮）
+ * 时间选择对话框
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CompactTimePicker(
-    initialHour: Int,
-    initialMinute: Int,
-    onTimeSelected: (Int, Int) -> Unit
+private fun TimePickerDialog(
+    onDismissRequest: () -> Unit,
+    onConfirm: () -> Unit,
+    timePickerState: TimePickerState
 ) {
-    var selectedHour by remember { mutableIntStateOf(initialHour) }
-    var selectedMinute by remember { mutableIntStateOf(initialMinute) }
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // 小时滚轮
-        CompactWheelPicker(
-            items = (0..23).map { String.format("%02d", it) },
-            initialIndex = initialHour,
-            onSelectedChange = { index ->
-                selectedHour = index
-                onTimeSelected(index, selectedMinute)
-            },
-            modifier = Modifier.width(56.dp)
-        )
-
-        Text(
-            text = ":",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 2.dp)
-        )
-
-        // 分钟滚轮
-        CompactWheelPicker(
-            items = (0..59).map { String.format("%02d", it) },
-            initialIndex = initialMinute,
-            onSelectedChange = { index ->
-                selectedMinute = index
-                onTimeSelected(selectedHour, index)
-            },
-            modifier = Modifier.width(56.dp)
-        )
-    }
-}
-
-/**
- * 紧凑型滚动选择器
- */
-@Composable
-private fun CompactWheelPicker(
-    items: List<String>,
-    initialIndex: Int,
-    onSelectedChange: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = maxOf(0, initialIndex - 1))
-    val snappingLayout = remember(listState) { SnapLayoutInfoProvider(listState) }
-    val flingBehavior = rememberSnapFlingBehavior(snappingLayout)
-
-    // 监听滚动位置变化
-    LaunchedEffect(listState.firstVisibleItemIndex) {
-        onSelectedChange(listState.firstVisibleItemIndex + 1)
-    }
-
-    Box(
-        modifier = modifier.height(80.dp)
-    ) {
-        // 渐变遮罩
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .drawWithContent {
-                    drawContent()
-                    drawRect(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.85f),
-                                Color.Transparent,
-                                Color.White.copy(alpha = 0.85f)
-                            ),
-                            startY = 0f,
-                            endY = size.height
-                        )
-                    )
-                }
-        )
-
-        LazyColumn(
-            state = listState,
-            flingBehavior = flingBehavior,
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 24.dp, bottom = 24.dp)
-        ) {
-            items(items.size + 2) { index ->
-                val actualIndex = index - 1
-                val isSelected = actualIndex == listState.firstVisibleItemIndex + 1
-
-                Box(
-                    modifier = Modifier
-                        .height(32.dp)
-                        .fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (actualIndex in items.indices) {
-                        Text(
-                            text = items[actualIndex],
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                            textAlign = TextAlign.Center,
-                            fontSize = if (isSelected) 18.sp else 14.sp
-                        )
-                    }
-                }
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("确定")
             }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text("取消")
+            }
+        },
+        text = {
+            TimePicker(
+                state = timePickerState,
+                modifier = Modifier.padding(8.dp)
+            )
         }
-    }
+    )
 }
 
 /**

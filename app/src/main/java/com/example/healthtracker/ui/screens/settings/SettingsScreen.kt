@@ -50,12 +50,13 @@ fun SettingsScreen(
                 onClick = onNavigateToUserProfile
             )
             HorizontalDivider()
-            SettingsItem(
-                title = "饮食计划",
-                subtitle = "管理自定义饮食计划",
-                onClick = onNavigateToMealPlans
-            )
-            HorizontalDivider()
+            // 饮食计划已隐藏
+            // SettingsItem(
+            //     title = "饮食计划",
+            //     subtitle = "管理自定义饮食计划",
+            //     onClick = onNavigateToMealPlans
+            // )
+            // HorizontalDivider()
             SettingsItem(
                 title = "食物管理",
                 subtitle = "添加或编辑自定义食物",

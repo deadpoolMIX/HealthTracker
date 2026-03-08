@@ -2,12 +2,9 @@ package com.example.healthtracker.ui.screens.mealplan
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -19,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -149,67 +145,37 @@ fun AddMealPlanScreen(
                 }
             }
 
-            // 星期选择（针对周计划）- 可左右滑动
+            // 星期选择（针对周计划）- 简化显示
             if (uiState.planType == 2) {
                 Text(
                     text = "选择星期",
                     style = MaterialTheme.typography.titleSmall
                 )
 
-                // 可滑动的星期选择
-                var scrollOffset by remember { mutableFloatStateOf(0f) }
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .pointerInput(Unit) {
-                            detectHorizontalDragGestures(
-                                onDragEnd = {
-                                    scrollOffset = 0f
-                                }
-                            ) { _, dragAmount ->
-                                scrollOffset += dragAmount
-                                val currentDay = uiState.currentDayOfWeek ?: 0
-                                if (scrollOffset > 50) {
-                                    // 向右滑动，选择前一天
-                                    if (currentDay > 0) {
-                                        viewModel.setCurrentDayOfWeek(currentDay - 1)
-                                    }
-                                    scrollOffset = 0f
-                                } else if (scrollOffset < -50) {
-                                    // 向左滑动，选择后一天
-                                    if (currentDay < 6) {
-                                        viewModel.setCurrentDayOfWeek(currentDay + 1)
-                                    }
-                                    scrollOffset = 0f
-                                }
-                            }
-                        }
+                // 简化的星期选择 - 只显示一二三四五六日
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        weekDays.forEachIndexed { index, day ->
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(horizontal = 2.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                FilterChip(
-                                    selected = uiState.currentDayOfWeek == index,
-                                    onClick = { viewModel.setCurrentDayOfWeek(index) },
-                                    label = {
-                                        Text(
-                                            text = day,
-                                            maxLines = 1,
-                                            textAlign = TextAlign.Center
-                                        )
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
+                    weekDays.forEachIndexed { index, day ->
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 2.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            FilterChip(
+                                selected = uiState.currentDayOfWeek == index,
+                                onClick = { viewModel.setCurrentDayOfWeek(index) },
+                                label = {
+                                    Text(
+                                        text = day.removePrefix("周"),
+                                        maxLines = 1,
+                                        textAlign = TextAlign.Center
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                     }
                 }

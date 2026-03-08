@@ -78,21 +78,22 @@ fun MainScreen(
                     },
                     label = { Text("食物库") }
                 )
-                NavigationBarItem(
-                    selected = currentRoute == Screen.MealPlan.route,
-                    onClick = {
-                        if (currentRoute != Screen.MealPlan.route) {
-                            navController.navigate(Screen.MealPlan.route) {
-                                popUpTo(Screen.Home.route) { inclusive = false }
-                                launchSingleTop = true
-                            }
-                        }
-                    },
-                    icon = {
-                        Icon(Icons.Filled.RestaurantMenu, contentDescription = "饮食计划")
-                    },
-                    label = { Text("计划") }
-                )
+                // 饮食计划页面已隐藏
+                // NavigationBarItem(
+                //     selected = currentRoute == Screen.MealPlan.route,
+                //     onClick = {
+                //         if (currentRoute != Screen.MealPlan.route) {
+                //             navController.navigate(Screen.MealPlan.route) {
+                //                 popUpTo(Screen.Home.route) { inclusive = false }
+                //                 launchSingleTop = true
+                //             }
+                //         }
+                //     },
+                //     icon = {
+                //         Icon(Icons.Filled.RestaurantMenu, contentDescription = "饮食计划")
+                //     },
+                //     label = { Text("计划") }
+                // )
                 NavigationBarItem(
                     selected = currentRoute == Screen.Reports.route,
                     onClick = {
