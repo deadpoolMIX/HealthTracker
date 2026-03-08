@@ -447,14 +447,14 @@ private fun WeeklyNutritionChartContent(
     )
 
     Row(modifier = Modifier.fillMaxWidth()) {
-        // Y轴标签（热量）
+        // Y轴标签（热量，不带单位）
         Column(
-            modifier = Modifier.width(44.dp).height(200.dp),
+            modifier = Modifier.width(32.dp).height(200.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("${String.format("%.0f", maxCalories)}kcal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-            Text("${String.format("%.0f", maxCalories * 0.5)}kcal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-            Text("0kcal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Text(String.format("%.0f", maxCalories), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Text(String.format("%.0f", maxCalories * 0.5), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Text("0", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
 
         // 图表区域
@@ -468,6 +468,21 @@ private fun WeeklyNutritionChartContent(
                 val barWidth = totalBarWidth / barCount
                 val spacing = totalSpacing / (barCount + 1)
                 val chartHeight = size.height
+                val chartWidth = size.width
+
+                // 先绘制虚线（在柱状图下面）
+                val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
+                val linePositions = listOf(0f, 0.5f, 1f)
+                linePositions.forEach { ratio ->
+                    val lineY = chartHeight * ratio * 0.95f
+                    drawLine(
+                        color = onSurfaceVariantColor.copy(alpha = 0.2f),
+                        start = Offset(0f, lineY),
+                        end = Offset(chartWidth, lineY),
+                        strokeWidth = 1f,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
+                    )
+                }
 
                 data.forEachIndexed { index, day ->
                     val x = spacing + index * (barWidth + spacing)
@@ -549,14 +564,14 @@ private fun MonthlyNutritionChartContent(
     )
 
     Row(modifier = Modifier.fillMaxWidth()) {
-        // Y轴标签（热量）
+        // Y轴标签（热量，不带单位）
         Column(
-            modifier = Modifier.width(44.dp).height(200.dp),
+            modifier = Modifier.width(32.dp).height(200.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("${String.format("%.0f", maxCalories)}kcal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-            Text("${String.format("%.0f", maxCalories * 0.5)}kcal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-            Text("0kcal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Text(String.format("%.0f", maxCalories), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Text(String.format("%.0f", maxCalories * 0.5), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Text("0", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
 
         // 图表区域
@@ -570,6 +585,21 @@ private fun MonthlyNutritionChartContent(
                 val barWidth = totalBarWidth / barCount
                 val spacing = totalSpacing / (barCount + 1)
                 val chartHeight = size.height
+                val chartWidth = size.width
+
+                // 先绘制虚线（在柱状图下面）
+                val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
+                val linePositions = listOf(0f, 0.5f, 1f)
+                linePositions.forEach { ratio ->
+                    val lineY = chartHeight * ratio * 0.95f
+                    drawLine(
+                        color = onSurfaceVariantColor.copy(alpha = 0.2f),
+                        start = Offset(0f, lineY),
+                        end = Offset(chartWidth, lineY),
+                        strokeWidth = 1f,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
+                    )
+                }
 
                 weeklyData.forEachIndexed { index, week ->
                     val x = spacing + index * (barWidth + spacing)
