@@ -67,16 +67,8 @@ fun BodyDataDetailScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
-                },
-                actions = {
-                    // 数据类型切换按钮
-                    TextButton(onClick = { viewModel.setDataType(if (uiState.dataType == 0) 1 else 0) }) {
-                        Text(
-                            text = if (uiState.dataType == 0) "三围" else "体重体脂",
-                            fontSize = 13.sp
-                        )
-                    }
                 }
+                // 隐藏三围切换按钮
             )
         }
     ) { paddingValues ->

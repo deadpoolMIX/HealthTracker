@@ -771,21 +771,7 @@ private fun BodyDataChartCard(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                // 数据类型切换
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    FilterChip(
-                        selected = dataType == 0,
-                        onClick = { dataType = 0 },
-                        label = { Text("体重体脂", fontSize = 12.sp) },
-                        modifier = Modifier.height(28.dp)
-                    )
-                    FilterChip(
-                        selected = dataType == 1,
-                        onClick = { dataType = 1 },
-                        label = { Text("三围", fontSize = 12.sp) },
-                        modifier = Modifier.height(28.dp)
-                    )
-                }
+                // 隐藏三围切换按钮
             }
 
             // 图例
@@ -794,15 +780,9 @@ private fun BodyDataChartCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (dataType == 0) {
-                    LegendItem("体重", weightColor)
-                    LegendItem("体脂", bodyFatColor)
-                    LegendItem("肌肉", muscleColor)
-                } else {
-                    LegendItem("胸围", chestColor)
-                    LegendItem("腰围", waistColor)
-                    LegendItem("臀围", hipColor)
-                }
+                LegendItem("体重", weightColor)
+                LegendItem("体脂", bodyFatColor)
+                LegendItem("肌肉", muscleColor)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -905,98 +885,6 @@ private fun BodyDataChartCard(
                         weights.lastOrNull()?.let { StatItem("体重", "${String.format("%.1f", it)} kg") }
                         bodyFats.lastOrNull()?.let { StatItem("体脂", "${String.format("%.1f", it)}%") }
                         muscles.lastOrNull()?.let { StatItem("肌肉", "${String.format("%.1f", it)} kg") }
-                    }
-                }
-            } else {
-                // 三围数据
-                val chests = sortedData.mapNotNull { it.chest }
-                val waists = sortedData.mapNotNull { it.waist }
-                val hips = sortedData.mapNotNull { it.hip }
-
-                if (chests.isEmpty() && waists.isEmpty() && hips.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("暂无三围数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                } else {
-                    // 计算范围（三围使用统一范围）
-                    val allMeasurements = chests + waists + hips
-                    val minMeasure = (allMeasurements.minOrNull() ?: 60.0) - 5
-                    val maxMeasure = (allMeasurements.maxOrNull() ?: 100.0) + 5
-
-                    Canvas(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                    ) {
-                        val chartHeight = size.height - 40f
-                        val chartWidth = size.width
-
-                        // 胸围折线
-                        if (chests.size >= 2) {
-                            drawSmoothLine(
-                                points = chests.mapIndexed { index, chest ->
-                                    val x = (index.toFloat() / (chests.size - 1)) * chartWidth
-                                    val y = chartHeight - ((chest - minMeasure) / (maxMeasure - minMeasure) * chartHeight).toFloat() + 20
-                                    Offset(x, y)
-                                },
-                                color = chestColor
-                            )
-                            chests.forEachIndexed { index, chest ->
-                                val x = (index.toFloat() / (chests.size - 1)) * chartWidth
-                                val y = chartHeight - ((chest - minMeasure) / (maxMeasure - minMeasure) * chartHeight).toFloat() + 20
-                                drawCircle(color = chestColor, radius = 4f, center = Offset(x, y))
-                            }
-                        }
-
-                        // 腰围折线
-                        if (waists.size >= 2) {
-                            drawSmoothLine(
-                                points = waists.mapIndexed { index, waist ->
-                                    val x = (index.toFloat() / (waists.size - 1)) * chartWidth
-                                    val y = chartHeight - ((waist - minMeasure) / (maxMeasure - minMeasure) * chartHeight).toFloat() + 20
-                                    Offset(x, y)
-                                },
-                                color = waistColor
-                            )
-                            waists.forEachIndexed { index, waist ->
-                                val x = (index.toFloat() / (waists.size - 1)) * chartWidth
-                                val y = chartHeight - ((waist - minMeasure) / (maxMeasure - minMeasure) * chartHeight).toFloat() + 20
-                                drawCircle(color = waistColor, radius = 4f, center = Offset(x, y))
-                            }
-                        }
-
-                        // 臀围折线
-                        if (hips.size >= 2) {
-                            drawSmoothLine(
-                                points = hips.mapIndexed { index, hip ->
-                                    val x = (index.toFloat() / (hips.size - 1)) * chartWidth
-                                    val y = chartHeight - ((hip - minMeasure) / (maxMeasure - minMeasure) * chartHeight).toFloat() + 20
-                                    Offset(x, y)
-                                },
-                                color = hipColor
-                            )
-                            hips.forEachIndexed { index, hip ->
-                                val x = (index.toFloat() / (hips.size - 1)) * chartWidth
-                                val y = chartHeight - ((hip - minMeasure) / (maxMeasure - minMeasure) * chartHeight).toFloat() + 20
-                                drawCircle(color = hipColor, radius = 4f, center = Offset(x, y))
-                            }
-                        }
-                    }
-
-                    // 统计信息
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        chests.lastOrNull()?.let { StatItem("胸围", "${String.format("%.1f", it)} cm") }
-                        waists.lastOrNull()?.let { StatItem("腰围", "${String.format("%.1f", it)} cm") }
-                        hips.lastOrNull()?.let { StatItem("臀围", "${String.format("%.1f", it)} cm") }
                     }
                 }
             }
