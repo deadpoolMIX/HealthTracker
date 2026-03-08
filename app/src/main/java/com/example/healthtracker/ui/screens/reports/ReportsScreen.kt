@@ -325,15 +325,6 @@ private fun NutritionChartCard(
     val proteinColor = NutrientColors.Protein
     val fatColor = NutrientColors.Fat
 
-    // 根据周期筛选数据
-    val displayData = if (period == 0) {
-        // 周模式：只显示最近7天
-        data.sortedBy { it.date }.takeLast(7)
-    } else {
-        // 月模式：按周聚合
-        aggregateByWeek(data)
-    }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -364,7 +355,7 @@ private fun NutritionChartCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            if (displayData.isEmpty()) {
+            if (data.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -373,105 +364,191 @@ private fun NutritionChartCard(
                 ) {
                     Text("暂无摄入数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-            } else {
-                // 数据汇总
-                val avgCalories = if (displayData.isNotEmpty()) displayData.sumOf { it.calories } / displayData.size else 0.0
-                val avgCarbs = if (displayData.isNotEmpty()) displayData.sumOf { it.carbs } / displayData.size else 0.0
-                val avgProtein = if (displayData.isNotEmpty()) displayData.sumOf { it.protein } / displayData.size else 0.0
-                val avgFat = if (displayData.isNotEmpty()) displayData.sumOf { it.fat } / displayData.size else 0.0
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    StatItemCompact("热量", String.format("%.0f", avgCalories), "kcal", MaterialTheme.colorScheme.error)
-                    StatItemCompact("碳水", String.format("%.0f", avgCarbs), "g", carbsColor)
-                    StatItemCompact("蛋白", String.format("%.0f", avgProtein), "g", proteinColor)
-                    StatItemCompact("脂肪", String.format("%.0f", avgFat), "g", fatColor)
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // 堆叠柱状图
-                val maxNutrient = maxOf(
-                    displayData.maxOfOrNull { it.carbs + it.protein + it.fat } ?: 100.0,
-                    100.0
+            } else if (period == 0) {
+                // 周模式：只显示最近7天
+                WeeklyNutritionChartContent(
+                    data = data.sortedBy { it.date }.takeLast(7),
+                    carbsColor = carbsColor,
+                    proteinColor = proteinColor,
+                    fatColor = fatColor
                 )
+            } else {
+                // 月模式：按周聚合
+                val weeklyData = aggregateByWeek(data)
+                MonthlyNutritionChartContent(
+                    weeklyData = weeklyData,
+                    carbsColor = carbsColor,
+                    proteinColor = proteinColor,
+                    fatColor = fatColor
+                )
+            }
+        }
+    }
+}
 
-                Row(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // 柱状图区域
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Canvas(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                        ) {
-                            val barCount = displayData.size
-                            val totalSpacing = size.width * 0.25f
-                            val totalBarWidth = size.width - totalSpacing
-                            val barWidth = totalBarWidth / barCount
-                            val spacing = totalSpacing / (barCount + 1)
-                            val chartHeight = size.height
+/**
+ * 周模式营养素图表内容
+ */
+@Composable
+private fun WeeklyNutritionChartContent(
+    data: List<DailyNutrition>,
+    carbsColor: Color,
+    proteinColor: Color,
+    fatColor: Color
+) {
+    // 数据汇总
+    val avgCalories = data.sumOf { it.calories } / data.size
+    val avgCarbs = data.sumOf { it.carbs } / data.size
+    val avgProtein = data.sumOf { it.protein } / data.size
+    val avgFat = data.sumOf { it.fat } / data.size
 
-                            displayData.forEachIndexed { index, day ->
-                                val x = spacing + index * (barWidth + spacing)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        StatItemCompact("热量", String.format("%.0f", avgCalories), "kcal", MaterialTheme.colorScheme.error)
+        StatItemCompact("碳水", String.format("%.0f", avgCarbs), "g", carbsColor)
+        StatItemCompact("蛋白", String.format("%.0f", avgProtein), "g", proteinColor)
+        StatItemCompact("脂肪", String.format("%.0f", avgFat), "g", fatColor)
+    }
 
-                                val carbsHeight = (day.carbs / maxNutrient * chartHeight * 0.95f).toFloat()
-                                val proteinHeight = (day.protein / maxNutrient * chartHeight * 0.95f).toFloat()
-                                val fatHeight = (day.fat / maxNutrient * chartHeight * 0.95f).toFloat()
+    Spacer(modifier = Modifier.height(12.dp))
 
-                                // 碳水 - 底部
-                                drawRect(
-                                    color = carbsColor,
-                                    topLeft = Offset(x, chartHeight - carbsHeight),
-                                    size = Size(barWidth, carbsHeight)
-                                )
-                                // 蛋白质 - 中间
-                                drawRect(
-                                    color = proteinColor,
-                                    topLeft = Offset(x, chartHeight - carbsHeight - proteinHeight),
-                                    size = Size(barWidth, proteinHeight)
-                                )
-                                // 脂肪 - 顶部
-                                drawRect(
-                                    color = fatColor,
-                                    topLeft = Offset(x, chartHeight - carbsHeight - proteinHeight - fatHeight),
-                                    size = Size(barWidth, fatHeight)
-                                )
-                            }
-                        }
+    // 堆叠柱状图
+    val maxNutrient = maxOf(
+        data.maxOfOrNull { it.carbs + it.protein + it.fat } ?: 100.0,
+        100.0
+    )
 
-                        // X轴标签
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            displayData.forEach { day ->
-                                val label = if (period == 0) {
-                                    // 周模式：显示日期
-                                    val cal = Calendar.getInstance()
-                                    cal.timeInMillis = day.date
-                                    "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}"
-                                } else {
-                                    // 月模式：显示周标签
-                                    (day as? WeeklyNutritionDisplay)?.weekLabel ?: ""
-                                }
-                                Text(
-                                    text = label,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.weight(1f),
-                                    textAlign = TextAlign.Center,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                    }
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.weight(1f)) {
+            Canvas(
+                modifier = Modifier.fillMaxWidth().height(200.dp)
+            ) {
+                val barCount = data.size
+                val totalSpacing = size.width * 0.25f
+                val totalBarWidth = size.width - totalSpacing
+                val barWidth = totalBarWidth / barCount
+                val spacing = totalSpacing / (barCount + 1)
+                val chartHeight = size.height
+
+                data.forEachIndexed { index, day ->
+                    val x = spacing + index * (barWidth + spacing)
+
+                    val carbsHeight = (day.carbs / maxNutrient * chartHeight * 0.95f).toFloat()
+                    val proteinHeight = (day.protein / maxNutrient * chartHeight * 0.95f).toFloat()
+                    val fatHeight = (day.fat / maxNutrient * chartHeight * 0.95f).toFloat()
+
+                    drawRect(carbsColor, Offset(x, chartHeight - carbsHeight), Size(barWidth, carbsHeight))
+                    drawRect(proteinColor, Offset(x, chartHeight - carbsHeight - proteinHeight), Size(barWidth, proteinHeight))
+                    drawRect(fatColor, Offset(x, chartHeight - carbsHeight - proteinHeight - fatHeight), Size(barWidth, fatHeight))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                data.forEach { day ->
+                    val cal = Calendar.getInstance()
+                    cal.timeInMillis = day.date
+                    Text(
+                        text = "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 月模式营养素图表内容
+ */
+@Composable
+private fun MonthlyNutritionChartContent(
+    weeklyData: List<WeeklyNutritionDisplay>,
+    carbsColor: Color,
+    proteinColor: Color,
+    fatColor: Color
+) {
+    if (weeklyData.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxWidth().height(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("暂无摄入数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        return
+    }
+
+    // 数据汇总
+    val avgCalories = weeklyData.sumOf { it.calories } / weeklyData.size
+    val avgCarbs = weeklyData.sumOf { it.carbs } / weeklyData.size
+    val avgProtein = weeklyData.sumOf { it.protein } / weeklyData.size
+    val avgFat = weeklyData.sumOf { it.fat } / weeklyData.size
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        StatItemCompact("热量", String.format("%.0f", avgCalories), "kcal", MaterialTheme.colorScheme.error)
+        StatItemCompact("碳水", String.format("%.0f", avgCarbs), "g", carbsColor)
+        StatItemCompact("蛋白", String.format("%.0f", avgProtein), "g", proteinColor)
+        StatItemCompact("脂肪", String.format("%.0f", avgFat), "g", fatColor)
+    }
+
+    Spacer(modifier = Modifier.height(12.dp))
+
+    val maxNutrient = maxOf(
+        weeklyData.maxOfOrNull { it.carbs + it.protein + it.fat } ?: 100.0,
+        100.0
+    )
+
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.weight(1f)) {
+            Canvas(
+                modifier = Modifier.fillMaxWidth().height(200.dp)
+            ) {
+                val barCount = weeklyData.size
+                val totalSpacing = size.width * 0.35f
+                val totalBarWidth = size.width - totalSpacing
+                val barWidth = totalBarWidth / barCount
+                val spacing = totalSpacing / (barCount + 1)
+                val chartHeight = size.height
+
+                weeklyData.forEachIndexed { index, week ->
+                    val x = spacing + index * (barWidth + spacing)
+
+                    val carbsHeight = (week.carbs / maxNutrient * chartHeight * 0.95f).toFloat()
+                    val proteinHeight = (week.protein / maxNutrient * chartHeight * 0.95f).toFloat()
+                    val fatHeight = (week.fat / maxNutrient * chartHeight * 0.95f).toFloat()
+
+                    drawRect(carbsColor, Offset(x, chartHeight - carbsHeight), Size(barWidth, carbsHeight))
+                    drawRect(proteinColor, Offset(x, chartHeight - carbsHeight - proteinHeight), Size(barWidth, proteinHeight))
+                    drawRect(fatColor, Offset(x, chartHeight - carbsHeight - proteinHeight - fatHeight), Size(barWidth, fatHeight))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                weeklyData.forEach { week ->
+                    Text(
+                        text = week.weekLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        maxLines = 1
+                    )
                 }
             }
         }
