@@ -1,6 +1,7 @@
 package com.example.healthtracker.ui.screens.reports
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -161,35 +162,80 @@ private fun SleepSummaryCard(
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(20.dp)
         ) {
             Text(
                 text = "睡眠总结",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // 统计项采用更清晰的布局
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                StatItem("平均入睡", avgSleepTime)
-                StatItem("平均起床", avgWakeTime)
-                StatItem("平均时长", formatSleepDuration(avgDuration))
+                // 平均入睡
+                SummaryItem(
+                    label = "平均入睡",
+                    value = avgSleepTime,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // 分隔线
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(48.dp)
+                        .padding(vertical = 8.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                )
+
+                // 平均起床
+                SummaryItem(
+                    label = "平均起床",
+                    value = avgWakeTime,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // 分隔线
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(48.dp)
+                        .padding(vertical = 8.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                )
+
+                // 平均时长
+                SummaryItem(
+                    label = "平均时长",
+                    value = formatSleepDuration(avgDuration),
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun StatItem(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun SummaryItem(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Text(
             text = value,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
@@ -438,19 +484,29 @@ private fun MonthSleepChart(
     primaryColor: Color,
     onSurfaceVariantColor: Color
 ) {
-    // 按周分组，只使用实际存在的数据
+    // 按固定日期区间划分为4周（剩余天数不计入）
+    // 第1周：1-7日，第2周：8-14日，第3周：15-21日，第4周：22-28日
     val calendar = Calendar.getInstance()
 
-    // 将数据按周分组
+    // 将数据按固定周区间分组
     val weeklyGroups = mutableMapOf<Int, MutableList<SleepRecordEntity>>()
 
     data.forEach { record ->
         calendar.timeInMillis = record.date
-        val weekOfMonth = calendar.get(Calendar.WEEK_OF_MONTH)
-        if (!weeklyGroups.containsKey(weekOfMonth)) {
-            weeklyGroups[weekOfMonth] = mutableListOf()
+        val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
+        // 只计算1-28日的数据，超过28日的不计入
+        if (dayOfMonth <= 28) {
+            val weekNum = when {
+                dayOfMonth <= 7 -> 1
+                dayOfMonth <= 14 -> 2
+                dayOfMonth <= 21 -> 3
+                else -> 4
+            }
+            if (!weeklyGroups.containsKey(weekNum)) {
+                weeklyGroups[weekNum] = mutableListOf()
+            }
+            weeklyGroups[weekNum]?.add(record)
         }
-        weeklyGroups[weekOfMonth]?.add(record)
     }
 
     // 按周号排序，只保留有数据的周
