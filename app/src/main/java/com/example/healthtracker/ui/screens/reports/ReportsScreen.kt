@@ -63,11 +63,23 @@ fun ReportsScreen(
             TopAppBar(
                 title = { Text("数据报表", fontWeight = FontWeight.Medium) },
                 actions = {
-                    IconButton(onClick = { viewModel.showSettingsDialog() }) {
-                        Icon(Icons.Default.Settings, contentDescription = "报表设置")
+                    // 上周/上周切换按钮
+                    IconButton(
+                        onClick = { viewModel.setPeriodOffset(uiState.periodOffset + 1) },
+                        enabled = uiState.periodOffset < 12
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "上一周期")
                     }
-                    IconButton(onClick = onNavigateToDataExport) {
-                        Icon(Icons.Default.Download, contentDescription = "导出数据")
+                    Text(
+                        text = viewModel.getPeriodLabel(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    IconButton(
+                        onClick = { viewModel.setPeriodOffset(uiState.periodOffset - 1) },
+                        enabled = uiState.periodOffset > 0
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "下一周期")
                     }
                 }
             )
@@ -140,46 +152,16 @@ fun ReportsScreen(
             ) {
                 // 周期选择
                 item {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    // 周/月选择
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // 周/月选择
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            periods.forEachIndexed { index, period ->
-                                FilterChip(
-                                    selected = uiState.selectedPeriod == index,
-                                    onClick = { viewModel.setPeriod(index) },
-                                    label = { Text(period) }
-                                )
-                            }
-                        }
-
-                        // 上周/上月切换
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(
-                                onClick = { viewModel.setPeriodOffset(uiState.periodOffset + 1) },
-                                enabled = uiState.periodOffset < 12
-                            ) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "上一周期")
-                            }
-                            Text(
-                                text = viewModel.getPeriodLabel(),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
+                        periods.forEachIndexed { index, period ->
+                            FilterChip(
+                                selected = uiState.selectedPeriod == index,
+                                onClick = { viewModel.setPeriod(index) },
+                                label = { Text(period) }
                             )
-                            IconButton(
-                                onClick = { viewModel.setPeriodOffset(uiState.periodOffset - 1) },
-                                enabled = uiState.periodOffset > 0
-                            ) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "下一周期")
-                            }
                         }
                     }
                 }
