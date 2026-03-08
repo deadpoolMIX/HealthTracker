@@ -222,15 +222,28 @@ class ReportsViewModel @Inject constructor(
         return _uiState.value.sleepData.map { it.duration }.average().toLong()
     }
 
-    // 获取平均入睡时间
+    // 获取平均入睡时间（处理跨午夜情况）
     fun getAverageSleepTime(): String {
         if (_uiState.value.sleepData.isEmpty()) return "--:--"
+
+        // 入睡时间通常在 18:00 - 次日 06:00 之间
+        // 对于凌晨入睡（0-12点）的时间，加 24 小时处理
         val avgMinutes = _uiState.value.sleepData.map {
             val cal = Calendar.getInstance()
             cal.timeInMillis = it.sleepTime
-            cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+            val hour = cal.get(Calendar.HOUR_OF_DAY)
+            val minute = cal.get(Calendar.MINUTE)
+            // 如果是凌晨（0-12点），视为 24+ 小时
+            if (hour < 12) {
+                (hour + 24) * 60 + minute
+            } else {
+                hour * 60 + minute
+            }
         }.average().toInt()
-        return String.format("%02d:%02d", avgMinutes / 60, avgMinutes % 60)
+
+        // 转换回正常时间
+        val actualMinutes = avgMinutes % (24 * 60)
+        return String.format("%02d:%02d", actualMinutes / 60, actualMinutes % 60)
     }
 
     // 获取平均起床时间
