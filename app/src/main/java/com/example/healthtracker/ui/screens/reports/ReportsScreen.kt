@@ -1193,10 +1193,10 @@ private fun WeekSleepChartWithTimeAxis(
                 timePoints.forEach { (hourContinuous, _) ->
                     val lineY = (hourContinuous.toFloat() - startHour.toFloat()) / totalHours.toFloat() * chartHeight
                     drawLine(
-                        color = onSurfaceVariantColor.copy(alpha = 0.5f),
+                        color = onSurfaceVariantColor,
                         start = Offset(0f, lineY),
                         end = Offset(chartWidth, lineY),
-                        strokeWidth = 1f,
+                        strokeWidth = 0.5f,
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
                     )
                 }
@@ -1399,10 +1399,10 @@ private fun MonthSleepChartWithTimeAxis(
                 timePoints.forEach { (hourContinuous, _) ->
                     val lineY = (hourContinuous.toFloat() - startHour.toFloat()) / totalHours.toFloat() * chartHeight
                     drawLine(
-                        color = onSurfaceVariantColor.copy(alpha = 0.5f),
+                        color = onSurfaceVariantColor,
                         start = Offset(0f, lineY),
                         end = Offset(chartWidth, lineY),
-                        strokeWidth = 1f,
+                        strokeWidth = 0.5f,
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
                     )
                 }
