@@ -70,7 +70,8 @@ fun SleepDetailScreen(
                     period = uiState.selectedPeriod,
                     periodOffset = uiState.periodOffset,
                     yearPage = uiState.yearPage,
-                    onYearPageChange = { viewModel.setYearPage(it) }
+                    onYearPageChange = { viewModel.setYearPage(it) },
+                    periodLabel = viewModel.getPeriodLabel()
                 )
             }
 
@@ -204,7 +205,8 @@ private fun SleepChartCard(
     period: Int,
     periodOffset: Int,
     yearPage: Int,
-    onYearPageChange: (Int) -> Unit
+    onYearPageChange: (Int) -> Unit,
+    periodLabel: String
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -226,33 +228,45 @@ private fun SleepChartCard(
                     fontWeight = FontWeight.Bold
                 )
 
-                // 年模式时显示翻页箭头
-                if (period == 2) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(
-                            onClick = { onYearPageChange(0) },
-                            enabled = yearPage == 1
-                        ) {
-                            Icon(
-                                Icons.Default.KeyboardArrowLeft,
-                                contentDescription = "上一页",
-                                tint = if (yearPage == 0) onSurfaceVariantColor.copy(alpha = 0.3f) else primaryColor
-                            )
-                        }
-                        Text(
-                            text = "${yearPage + 1}/2",
-                            style = MaterialTheme.typography.labelMedium
+                // 显示当前周期标签（如"本月"、"上月"等）
+                Text(
+                    text = periodLabel,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = onSurfaceVariantColor
+                )
+            }
+
+            // 年模式时显示翻页箭头
+            if (period == 2) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { onYearPageChange(0) },
+                        enabled = yearPage == 1
+                    ) {
+                        Icon(
+                            Icons.Default.KeyboardArrowLeft,
+                            contentDescription = "上一页",
+                            tint = if (yearPage == 0) onSurfaceVariantColor.copy(alpha = 0.3f) else primaryColor
                         )
-                        IconButton(
-                            onClick = { onYearPageChange(1) },
-                            enabled = yearPage == 0
-                        ) {
-                            Icon(
-                                Icons.Default.KeyboardArrowRight,
-                                contentDescription = "下一页",
-                                tint = if (yearPage == 1) onSurfaceVariantColor.copy(alpha = 0.3f) else primaryColor
-                            )
-                        }
+                    }
+                    Text(
+                        text = "${yearPage + 1}/2",
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    IconButton(
+                        onClick = { onYearPageChange(1) },
+                        enabled = yearPage == 0
+                    ) {
+                        Icon(
+                            Icons.Default.KeyboardArrowRight,
+                            contentDescription = "下一页",
+                            tint = if (yearPage == 1) onSurfaceVariantColor.copy(alpha = 0.3f) else primaryColor
+                        )
                     }
                 }
             }
@@ -261,7 +275,7 @@ private fun SleepChartCard(
 
             when (period) {
                 0 -> WeekSleepChart(data = sleepData, primaryColor = primaryColor, onSurfaceVariantColor = onSurfaceVariantColor)
-                1 -> MonthSleepChart(data = sleepData, periodOffset = periodOffset, primaryColor = primaryColor, onSurfaceVariantColor = onSurfaceVariantColor)
+                1 -> MonthSleepChart(data = sleepData, primaryColor = primaryColor, onSurfaceVariantColor = onSurfaceVariantColor)
                 2 -> YearSleepChart(
                     data = sleepData,
                     page = yearPage,
@@ -281,19 +295,15 @@ private const val CHART_START_HOUR = 22f
 private const val CHART_END_HOUR = 36f // 12:00 + 24
 
 /**
- * 将时间转换为图表坐标（0-14小时范围）
- * 入睡时间：晚上22点之后显示在图表顶部，凌晨0-6点显示在中间
- * 起床时间：早上6-12点显示在图表底部
+ * 将时间转换为图表坐标
  */
-private fun convertToChartHour(hour: Int, minute: Int, isWakeTime: Boolean = false): Float {
+private fun convertToChartHour(hour: Int, minute: Int): Float {
     val h = hour + minute / 60f
     return when {
         // 凌晨时间 0:00-12:00 加24小时变成 24-36
         h < 12f -> h + 24f
-        // 下午12:00-18:00 保持在原位置或映射到图表范围外
-        h < 18f -> h + 24f // 12:00-18:00 -> 36-42（超出图表，会显示在底部）
-        // 晚上18:00-22:00 映射到图表范围
-        h < 22f -> 22f // 18:00-22:00 显示在图表顶部
+        // 下午12:00-22:00 显示在图表顶部或范围外
+        h < 22f -> 22f
         // 晚上22:00-24:00 保持原值
         else -> h
     }
@@ -305,6 +315,7 @@ private fun WeekSleepChart(
     primaryColor: Color,
     onSurfaceVariantColor: Color
 ) {
+    // 只取最近7天的实际数据
     val sortedData = data.sortedBy { it.date }.takeLast(7)
 
     if (sortedData.isEmpty()) {
@@ -376,16 +387,14 @@ private fun WeekSleepChart(
                     calSleep.timeInMillis = sleep.sleepTime
                     val sleepHourChart = convertToChartHour(
                         calSleep.get(Calendar.HOUR_OF_DAY),
-                        calSleep.get(Calendar.MINUTE),
-                        isWakeTime = false
+                        calSleep.get(Calendar.MINUTE)
                     )
 
                     val calWake = Calendar.getInstance()
                     calWake.timeInMillis = sleep.wakeTime
                     val wakeHourChart = convertToChartHour(
                         calWake.get(Calendar.HOUR_OF_DAY),
-                        calWake.get(Calendar.MINUTE),
-                        isWakeTime = true
+                        calWake.get(Calendar.MINUTE)
                     )
 
                     val x = spacing + index * (barWidth + spacing)
@@ -428,64 +437,53 @@ private fun WeekSleepChart(
 @Composable
 private fun MonthSleepChart(
     data: List<SleepRecordEntity>,
-    periodOffset: Int,
     primaryColor: Color,
     onSurfaceVariantColor: Color
 ) {
-    // 计算四周的数据 - 与 ViewModel 的日期范围逻辑一致
+    // 按周分组，只使用实际存在的数据
     val calendar = Calendar.getInstance()
-    val now = System.currentTimeMillis()
-    calendar.timeInMillis = now
-    calendar.add(Calendar.MONTH, -periodOffset)
-    calendar.set(Calendar.DAY_OF_MONTH, 1)
-    calendar.set(Calendar.HOUR_OF_DAY, 0)
-    calendar.set(Calendar.MINUTE, 0)
-    calendar.set(Calendar.SECOND, 0)
-    calendar.set(Calendar.MILLISECOND, 0)
 
-    val monthlyData = mutableListOf<WeeklySleepChartData>()
+    // 将数据按周分组
+    val weeklyGroups = mutableMapOf<Int, MutableList<SleepRecordEntity>>()
 
-    // 将一个月分成4周
-    for (i in 0 until 4) {
-        val weekStart = calendar.timeInMillis
-        calendar.add(Calendar.DAY_OF_MONTH, 6)
-        calendar.set(Calendar.HOUR_OF_DAY, 23)
-        calendar.set(Calendar.MINUTE, 59)
-        calendar.set(Calendar.SECOND, 59)
-        val weekEnd = calendar.timeInMillis
+    data.forEach { record ->
+        calendar.timeInMillis = record.date
+        val weekOfMonth = calendar.get(Calendar.WEEK_OF_MONTH)
+        if (!weeklyGroups.containsKey(weekOfMonth)) {
+            weeklyGroups[weekOfMonth] = mutableListOf()
+        }
+        weeklyGroups[weekOfMonth]?.add(record)
+    }
 
-        val weekRecords = data.filter { it.date in weekStart..weekEnd }
+    // 按周号排序，只保留有数据的周
+    val weeklyData = weeklyGroups.keys.sorted().mapNotNull { weekNum ->
+        val records = weeklyGroups[weekNum] ?: return@mapNotNull null
 
-        val avgSleepHour = if (weekRecords.isNotEmpty()) {
-            weekRecords.map { record ->
-                val cal = Calendar.getInstance()
-                cal.timeInMillis = record.sleepTime
-                convertToChartHour(
-                    cal.get(Calendar.HOUR_OF_DAY),
-                    cal.get(Calendar.MINUTE),
-                    isWakeTime = false
-                )
-            }.average().toFloat()
-        } else 23f
+        val avgSleepHour = records.map { record ->
+            val cal = Calendar.getInstance()
+            cal.timeInMillis = record.sleepTime
+            convertToChartHour(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
+        }.average().toFloat()
 
-        val avgWakeHour = if (weekRecords.isNotEmpty()) {
-            weekRecords.map { record ->
-                val cal = Calendar.getInstance()
-                cal.timeInMillis = record.wakeTime
-                convertToChartHour(
-                    cal.get(Calendar.HOUR_OF_DAY),
-                    cal.get(Calendar.MINUTE),
-                    isWakeTime = true
-                )
-            }.average().toFloat()
-        } else 31f // 默认07:00，即31
+        val avgWakeHour = records.map { record ->
+            val cal = Calendar.getInstance()
+            cal.timeInMillis = record.wakeTime
+            convertToChartHour(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
+        }.average().toFloat()
 
-        monthlyData.add(WeeklySleepChartData("第${i + 1}周", avgSleepHour, avgWakeHour))
+        WeeklySleepChartData("第$weekNum周", avgSleepHour, avgWakeHour)
+    }
 
-        calendar.add(Calendar.DAY_OF_MONTH, 1)
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
+    if (weeklyData.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("暂无睡眠数据", color = onSurfaceVariantColor)
+        }
+        return
     }
 
     val totalHours = CHART_END_HOUR - CHART_START_HOUR
@@ -521,7 +519,7 @@ private fun MonthSleepChart(
             ) {
                 val chartHeight = size.height
                 val chartWidth = size.width
-                val barCount = monthlyData.size
+                val barCount = weeklyData.size
                 val totalSpacing = chartWidth * 0.4f
                 val totalBarWidth = chartWidth - totalSpacing
                 val barWidth = totalBarWidth / barCount
@@ -540,7 +538,7 @@ private fun MonthSleepChart(
                 }
 
                 // 绘制柱状图
-                monthlyData.forEachIndexed { index, week ->
+                weeklyData.forEachIndexed { index, week ->
                     val x = spacing + index * (barWidth + spacing)
                     val sleepY = ((week.avgSleepHour - CHART_START_HOUR) / totalHours * chartHeight).coerceIn(0f, chartHeight)
                     val wakeY = ((week.avgWakeHour - CHART_START_HOUR) / totalHours * chartHeight).coerceIn(0f, chartHeight)
@@ -561,7 +559,7 @@ private fun MonthSleepChart(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                monthlyData.forEach { week ->
+                weeklyData.forEach { week ->
                     Text(
                         text = week.weekLabel,
                         style = MaterialTheme.typography.labelSmall,
@@ -585,42 +583,67 @@ private fun YearSleepChart(
 ) {
     val calendar = Calendar.getInstance()
 
-    // 按月分组计算平均睡眠时间
-    val monthlyData = (1..12).map { month ->
-        val monthRecords = data.filter { record ->
-            calendar.timeInMillis = record.date
-            calendar.get(Calendar.MONTH) + 1 == month
+    // 按月分组，只使用实际存在的数据
+    val monthlyGroups = mutableMapOf<Int, MutableList<SleepRecordEntity>>()
+
+    data.forEach { record ->
+        calendar.timeInMillis = record.date
+        val month = calendar.get(Calendar.MONTH) + 1 // 1-12
+        if (!monthlyGroups.containsKey(month)) {
+            monthlyGroups[month] = mutableListOf()
         }
+        monthlyGroups[month]?.add(record)
+    }
 
-        val avgSleepHour = if (monthRecords.isNotEmpty()) {
-            monthRecords.map { record ->
-                val cal = Calendar.getInstance()
-                cal.timeInMillis = record.sleepTime
-                convertToChartHour(
-                    cal.get(Calendar.HOUR_OF_DAY),
-                    cal.get(Calendar.MINUTE),
-                    isWakeTime = false
-                )
-            }.average().toFloat()
-        } else 23f
+    // 转换为图表数据，只保留有数据的月份
+    val monthlyData = monthlyGroups.keys.sorted().mapNotNull { month ->
+        val records = monthlyGroups[month] ?: return@mapNotNull null
 
-        val avgWakeHour = if (monthRecords.isNotEmpty()) {
-            monthRecords.map { record ->
-                val cal = Calendar.getInstance()
-                cal.timeInMillis = record.wakeTime
-                convertToChartHour(
-                    cal.get(Calendar.HOUR_OF_DAY),
-                    cal.get(Calendar.MINUTE),
-                    isWakeTime = true
-                )
-            }.average().toFloat()
-        } else 31f // 默认07:00，即31
+        val avgSleepHour = records.map { record ->
+            val cal = Calendar.getInstance()
+            cal.timeInMillis = record.sleepTime
+            convertToChartHour(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
+        }.average().toFloat()
+
+        val avgWakeHour = records.map { record ->
+            val cal = Calendar.getInstance()
+            cal.timeInMillis = record.wakeTime
+            convertToChartHour(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
+        }.average().toFloat()
 
         MonthlySleepChartData("${month}月", month, avgSleepHour, avgWakeHour)
     }
 
-    // 根据 page 选择显示的月份
-    val displayData = if (page == 0) monthlyData.take(6) else monthlyData.takeLast(6)
+    if (monthlyData.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("暂无睡眠数据", color = onSurfaceVariantColor)
+        }
+        return
+    }
+
+    // 根据 page 过滤数据
+    val displayData = if (page == 0) {
+        monthlyData.filter { it.monthIndex <= 6 }
+    } else {
+        monthlyData.filter { it.monthIndex > 6 }
+    }
+
+    if (displayData.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("暂无睡眠数据", color = onSurfaceVariantColor)
+        }
+        return
+    }
 
     val totalHours = CHART_END_HOUR - CHART_START_HOUR
 
@@ -724,6 +747,7 @@ private data class MonthlySleepChartData(
 )
 
 private fun formatSleepDuration(durationMinutes: Long): String {
+    if (durationMinutes <= 0) return "0m"
     val hours = durationMinutes / 60
     val minutes = durationMinutes % 60
     return if (hours > 0) "${hours}h${minutes}m" else "${minutes}m"

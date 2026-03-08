@@ -50,21 +50,24 @@ class SleepDetailViewModel @Inject constructor(
 
     fun getPeriodLabel(): String {
         val offset = _uiState.value.periodOffset
+        val calendar = Calendar.getInstance()
+
         return when (_uiState.value.selectedPeriod) {
-            0 -> when (offset) {
-                0 -> "本周"
-                1 -> "上周"
-                else -> "${offset}周前"
+            0 -> { // 周
+                calendar.add(Calendar.WEEK_OF_YEAR, -offset)
+                val month = calendar.get(Calendar.MONTH) + 1
+                val day = calendar.get(Calendar.DAY_OF_MONTH)
+                "${month}月${day}日起"
             }
-            1 -> when (offset) {
-                0 -> "本月"
-                1 -> "上月"
-                else -> "${offset}个月前"
+            1 -> { // 月
+                calendar.add(Calendar.MONTH, -offset)
+                val year = calendar.get(Calendar.YEAR)
+                val month = calendar.get(Calendar.MONTH) + 1
+                "${year}年${month}月"
             }
-            else -> when (offset) {
-                0 -> "本年"
-                1 -> "上年"
-                else -> "${offset}年前"
+            else -> { // 年
+                calendar.add(Calendar.YEAR, -offset)
+                "${calendar.get(Calendar.YEAR)}年"
             }
         }
     }
