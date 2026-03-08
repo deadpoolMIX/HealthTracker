@@ -20,7 +20,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.healthtracker.ui.theme.NutrientColors
 import java.util.Calendar
 import java.util.Locale
 
@@ -130,9 +132,10 @@ private fun NutritionChartCard(
     data: List<DailyNutrition>,
     period: Int
 ) {
-    val carbsColor = MaterialTheme.colorScheme.primary
-    val proteinColor = MaterialTheme.colorScheme.secondary
-    val fatColor = MaterialTheme.colorScheme.tertiary
+    // 使用统一的营养素颜色
+    val carbsColor = NutrientColors.Carbs
+    val proteinColor = NutrientColors.Protein
+    val fatColor = NutrientColors.Fat
 
     // 点击的柱状图索引
     var selectedIndex by remember { mutableStateOf(-1) }
@@ -194,90 +197,100 @@ private fun NutritionChartCard(
                 // 找出所有数据的最大总量，用于等比例缩放
                 val maxValue = data.maxOf { it.carbs + it.protein + it.fat }.toFloat().coerceAtLeast(1f)
 
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .pointerInput(data) {
-                            detectTapGestures { offset ->
-                                val barWidth = size.width / data.size * 0.6f
-                                val spacing = size.width / data.size * 0.4f
+                // 修复对齐问题：使用与标签相同的布局方式
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .pointerInput(data) {
+                                detectTapGestures { offset ->
+                                    val barCount = data.size
+                                    val totalSpacing = size.width * 0.3f
+                                    val totalBarWidth = size.width - totalSpacing
+                                    val barWidth = totalBarWidth / barCount
+                                    val spacing = totalSpacing / (barCount + 1)
 
-                                data.forEachIndexed { index, _ ->
-                                    val barStart = index * (barWidth + spacing) + spacing / 2
-                                    val barEnd = barStart + barWidth
-                                    if (offset.x in barStart..barEnd) {
-                                        selectedIndex = index
-                                        return@detectTapGestures
+                                    data.forEachIndexed { index, _ ->
+                                        val barStart = spacing + index * (barWidth + spacing)
+                                        val barEnd = barStart + barWidth
+                                        if (offset.x in barStart..barEnd) {
+                                            selectedIndex = index
+                                            return@detectTapGestures
+                                        }
                                     }
                                 }
                             }
+                    ) {
+                        val barCount = data.size
+                        val totalSpacing = size.width * 0.3f // 总间距占30%
+                        val totalBarWidth = size.width - totalSpacing // 柱状图总宽度占70%
+                        val barWidth = totalBarWidth / barCount
+                        val spacing = totalSpacing / (barCount + 1) // 每个间隔
+
+                        data.forEachIndexed { index, day ->
+                            val x = spacing + index * (barWidth + spacing)
+
+                            // 堆叠柱状图 - 按实际数值等比例缩放
+                            val dayTotal = day.carbs + day.protein + day.fat
+                            val totalHeight: Float = (dayTotal / maxValue * size.height).toFloat()
+                            val carbsHeight: Float = if (dayTotal > 0) (day.carbs / dayTotal * totalHeight).toFloat() else 0f
+                            val proteinHeight: Float = if (dayTotal > 0) (day.protein / dayTotal * totalHeight).toFloat() else 0f
+                            val fatHeight: Float = if (dayTotal > 0) (day.fat / dayTotal * totalHeight).toFloat() else 0f
+
+                            // 绘制脂肪（底部）
+                            drawRect(
+                                color = fatColor,
+                                topLeft = Offset(x, size.height - fatHeight),
+                                size = Size(barWidth, fatHeight)
+                            )
+
+                            // 绘制蛋白质（中间）
+                            drawRect(
+                                color = proteinColor,
+                                topLeft = Offset(x, size.height - fatHeight - proteinHeight),
+                                size = Size(barWidth, proteinHeight)
+                            )
+
+                            // 绘制碳水（顶部）
+                            drawRect(
+                                color = carbsColor,
+                                topLeft = Offset(x, size.height - fatHeight - proteinHeight - carbsHeight),
+                                size = Size(barWidth, carbsHeight)
+                            )
                         }
-                ) {
-                    val totalWidth = size.width
-                    val barWidth = totalWidth / data.size * 0.6f
-                    val spacing = totalWidth / data.size * 0.4f
-
-                    data.forEachIndexed { index, day ->
-                        val x = index * (barWidth + spacing) + spacing / 2
-
-                        // 堆叠柱状图 - 按实际数值等比例缩放
-                        val dayTotal = day.carbs + day.protein + day.fat
-                        val totalHeight: Float = (dayTotal / maxValue * size.height).toFloat()
-                        val carbsHeight: Float = if (dayTotal > 0) (day.carbs / dayTotal * totalHeight).toFloat() else 0f
-                        val proteinHeight: Float = if (dayTotal > 0) (day.protein / dayTotal * totalHeight).toFloat() else 0f
-                        val fatHeight: Float = if (dayTotal > 0) (day.fat / dayTotal * totalHeight).toFloat() else 0f
-
-                        // 绘制脂肪（底部）
-                        drawRect(
-                            color = fatColor,
-                            topLeft = Offset(x, size.height - fatHeight),
-                            size = Size(barWidth, fatHeight)
-                        )
-
-                        // 绘制蛋白质（中间）
-                        drawRect(
-                            color = proteinColor,
-                            topLeft = Offset(x, size.height - fatHeight - proteinHeight),
-                            size = Size(barWidth, proteinHeight)
-                        )
-
-                        // 绘制碳水（顶部）
-                        drawRect(
-                            color = carbsColor,
-                            topLeft = Offset(x, size.height - fatHeight - proteinHeight - carbsHeight),
-                            size = Size(barWidth, carbsHeight)
-                        )
                     }
-                }
 
-                // X轴标签
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    data.forEach { day ->
-                        val cal = Calendar.getInstance()
-                        cal.timeInMillis = day.date
-                        val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
-                        val dayLabel = when (dayOfWeek) {
-                            Calendar.MONDAY -> "一"
-                            Calendar.TUESDAY -> "二"
-                            Calendar.WEDNESDAY -> "三"
-                            Calendar.THURSDAY -> "四"
-                            Calendar.FRIDAY -> "五"
-                            Calendar.SATURDAY -> "六"
-                            Calendar.SUNDAY -> "日"
-                            else -> ""
+                    // X轴标签 - 与柱状图对齐
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        data.forEach { day ->
+                            val cal = Calendar.getInstance()
+                            cal.timeInMillis = day.date
+                            val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
+                            val dayLabel = when (dayOfWeek) {
+                                Calendar.MONDAY -> "一"
+                                Calendar.TUESDAY -> "二"
+                                Calendar.WEDNESDAY -> "三"
+                                Calendar.THURSDAY -> "四"
+                                Calendar.FRIDAY -> "五"
+                                Calendar.SATURDAY -> "六"
+                                Calendar.SUNDAY -> "日"
+                                else -> ""
+                            }
+                            Text(
+                                text = dayLabel,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Center,
+                                maxLines = 1
+                            )
                         }
-                        Text(
-                            text = dayLabel,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f),
-                            textAlign = TextAlign.Center
-                        )
                     }
                 }
             }
@@ -324,9 +337,10 @@ private fun NutritionWeeklyChartCard(
     title: String,
     data: List<WeeklyNutrition>
 ) {
-    val carbsColor = MaterialTheme.colorScheme.primary
-    val proteinColor = MaterialTheme.colorScheme.secondary
-    val fatColor = MaterialTheme.colorScheme.tertiary
+    // 使用统一的营养素颜色
+    val carbsColor = NutrientColors.Carbs
+    val proteinColor = NutrientColors.Protein
+    val fatColor = NutrientColors.Fat
 
     // 点击的柱状图索引
     var selectedIndex by remember { mutableStateOf(-1) }
@@ -385,77 +399,87 @@ private fun NutritionWeeklyChartCard(
                 // 找出所有数据的最大总量，用于等比例缩放
                 val maxValue = data.maxOf { it.carbs + it.protein + it.fat }.toFloat().coerceAtLeast(1f)
 
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .pointerInput(data) {
-                            detectTapGestures { offset ->
-                                val barWidth = size.width / data.size * 0.5f
-                                val spacing = size.width / data.size * 0.5f
+                // 修复对齐问题：使用与标签相同的布局方式
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .pointerInput(data) {
+                                detectTapGestures { offset ->
+                                    val barCount = data.size
+                                    val totalSpacing = size.width * 0.4f
+                                    val totalBarWidth = size.width - totalSpacing
+                                    val barWidth = totalBarWidth / barCount
+                                    val spacing = totalSpacing / (barCount + 1)
 
-                                data.forEachIndexed { index, _ ->
-                                    val barStart = index * (barWidth + spacing) + spacing / 2
-                                    val barEnd = barStart + barWidth
-                                    if (offset.x in barStart..barEnd) {
-                                        selectedIndex = index
-                                        return@detectTapGestures
+                                    data.forEachIndexed { index, _ ->
+                                        val barStart = spacing + index * (barWidth + spacing)
+                                        val barEnd = barStart + barWidth
+                                        if (offset.x in barStart..barEnd) {
+                                            selectedIndex = index
+                                            return@detectTapGestures
+                                        }
                                     }
                                 }
                             }
+                    ) {
+                        val barCount = data.size
+                        val totalSpacing = size.width * 0.4f // 总间距占40%
+                        val totalBarWidth = size.width - totalSpacing // 柱状图总宽度占60%
+                        val barWidth = totalBarWidth / barCount
+                        val spacing = totalSpacing / (barCount + 1) // 每个间隔
+
+                        data.forEachIndexed { index, week ->
+                            val x = spacing + index * (barWidth + spacing)
+
+                            // 堆叠柱状图 - 按实际数值等比例缩放
+                            val weekTotal = week.carbs + week.protein + week.fat
+                            val totalHeight = (weekTotal / maxValue * size.height).toFloat()
+                            val carbsHeight: Float = if (weekTotal > 0) (week.carbs / weekTotal * totalHeight).toFloat() else 0f
+                            val proteinHeight: Float = if (weekTotal > 0) (week.protein / weekTotal * totalHeight).toFloat() else 0f
+                            val fatHeight: Float = if (weekTotal > 0) (week.fat / weekTotal * totalHeight).toFloat() else 0f
+
+                            // 绘制脂肪（底部）
+                            drawRect(
+                                color = fatColor,
+                                topLeft = Offset(x, size.height - fatHeight),
+                                size = Size(barWidth, fatHeight)
+                            )
+
+                            // 绘制蛋白质（中间）
+                            drawRect(
+                                color = proteinColor,
+                                topLeft = Offset(x, size.height - fatHeight - proteinHeight),
+                                size = Size(barWidth, proteinHeight)
+                            )
+
+                            // 绘制碳水（顶部）
+                            drawRect(
+                                color = carbsColor,
+                                topLeft = Offset(x, size.height - fatHeight - proteinHeight - carbsHeight),
+                                size = Size(barWidth, carbsHeight)
+                            )
                         }
-                ) {
-                    val totalWidth = size.width
-                    val barWidth = totalWidth / data.size * 0.5f
-                    val spacing = totalWidth / data.size * 0.5f
-
-                    data.forEachIndexed { index, week ->
-                        val x = index * (barWidth + spacing) + spacing / 2
-
-                        // 堆叠柱状图 - 按实际数值等比例缩放
-                        val weekTotal = week.carbs + week.protein + week.fat
-                        val totalHeight = (weekTotal / maxValue * size.height).toFloat()
-                        val carbsHeight: Float = if (weekTotal > 0) (week.carbs / weekTotal * totalHeight).toFloat() else 0f
-                        val proteinHeight: Float = if (weekTotal > 0) (week.protein / weekTotal * totalHeight).toFloat() else 0f
-                        val fatHeight: Float = if (weekTotal > 0) (week.fat / weekTotal * totalHeight).toFloat() else 0f
-
-                        // 绘制脂肪（底部）
-                        drawRect(
-                            color = fatColor,
-                            topLeft = Offset(x, size.height - fatHeight),
-                            size = Size(barWidth, fatHeight)
-                        )
-
-                        // 绘制蛋白质（中间）
-                        drawRect(
-                            color = proteinColor,
-                            topLeft = Offset(x, size.height - fatHeight - proteinHeight),
-                            size = Size(barWidth, proteinHeight)
-                        )
-
-                        // 绘制碳水（顶部）
-                        drawRect(
-                            color = carbsColor,
-                            topLeft = Offset(x, size.height - fatHeight - proteinHeight - carbsHeight),
-                            size = Size(barWidth, carbsHeight)
-                        )
                     }
-                }
 
-                // X轴标签
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    data.forEach { week ->
-                        Text(
-                            text = week.weekLabel,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f),
-                            textAlign = TextAlign.Center
-                        )
+                    // X轴标签 - 显示"第一周、第二周"等
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        data.forEach { week ->
+                            Text(
+                                text = week.weekLabel,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Center,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
             }
@@ -491,6 +515,11 @@ private fun AverageIntakeCard(
 ) {
     val periodLabel = if (period == 0) "每日" else "每周"
 
+    // 使用统一的营养素颜色
+    val carbsColor = NutrientColors.Carbs
+    val proteinColor = NutrientColors.Protein
+    val fatColor = NutrientColors.Fat
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -519,19 +548,19 @@ private fun AverageIntakeCard(
                     label = "碳水",
                     value = String.format(Locale.getDefault(), "%.0f", avgCarbs),
                     unit = "g",
-                    color = MaterialTheme.colorScheme.primary
+                    color = carbsColor
                 )
                 StatItem(
                     label = "蛋白质",
                     value = String.format(Locale.getDefault(), "%.0f", avgProtein),
                     unit = "g",
-                    color = MaterialTheme.colorScheme.secondary
+                    color = proteinColor
                 )
                 StatItem(
                     label = "脂肪",
                     value = String.format(Locale.getDefault(), "%.0f", avgFat),
                     unit = "g",
-                    color = MaterialTheme.colorScheme.tertiary
+                    color = fatColor
                 )
             }
         }
@@ -547,6 +576,11 @@ private fun TotalIntakeCard(
     period: Int
 ) {
     val periodLabel = if (period == 0) "7天" else "4周"
+
+    // 使用统一的营养素颜色
+    val carbsColor = NutrientColors.Carbs
+    val proteinColor = NutrientColors.Protein
+    val fatColor = NutrientColors.Fat
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -576,19 +610,19 @@ private fun TotalIntakeCard(
                     label = "碳水",
                     value = String.format(Locale.getDefault(), "%.0f", totalCarbs),
                     unit = "g",
-                    color = MaterialTheme.colorScheme.primary
+                    color = carbsColor
                 )
                 StatItem(
                     label = "蛋白质",
                     value = String.format(Locale.getDefault(), "%.0f", totalProtein),
                     unit = "g",
-                    color = MaterialTheme.colorScheme.secondary
+                    color = proteinColor
                 )
                 StatItem(
                     label = "脂肪",
                     value = String.format(Locale.getDefault(), "%.0f", totalFat),
                     unit = "g",
-                    color = MaterialTheme.colorScheme.tertiary
+                    color = fatColor
                 )
             }
         }

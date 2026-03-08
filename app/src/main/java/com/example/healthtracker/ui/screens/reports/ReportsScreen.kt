@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.healthtracker.data.local.entity.BodyRecordEntity
 import com.example.healthtracker.data.local.entity.SleepRecordEntity
+import com.example.healthtracker.ui.theme.NutrientColors
 import com.example.healthtracker.util.DateTimeUtils
 import java.util.Calendar
 import kotlin.math.sqrt
@@ -319,9 +320,10 @@ private fun NutritionChartCard(
     period: Int,
     onClick: () -> Unit = {}
 ) {
-    val carbsColor = MaterialTheme.colorScheme.primary
-    val proteinColor = MaterialTheme.colorScheme.secondary
-    val fatColor = MaterialTheme.colorScheme.tertiary
+    // 使用统一的营养素颜色
+    val carbsColor = NutrientColors.Carbs
+    val proteinColor = NutrientColors.Protein
+    val fatColor = NutrientColors.Fat
 
     Card(
         modifier = Modifier
@@ -382,67 +384,76 @@ private fun NutritionChartCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // 堆叠柱状图
+                // 堆叠柱状图 - 修复对齐问题
                 val sortedData = data.sortedBy { it.date }
                 val maxNutrient = maxOf(
                     sortedData.maxOfOrNull { it.carbs + it.protein + it.fat } ?: 100.0,
                     100.0
                 )
 
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
+                // 使用 Box 包含 Canvas 和标签，确保对齐
+                Column(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    val barWidth = size.width / (sortedData.size * 1.8f)
-                    val spacing = barWidth * 0.8f
-                    val chartHeight = size.height - 30f
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                    ) {
+                        val barCount = sortedData.size
+                        val totalSpacing = size.width * 0.3f // 总间距占30%
+                        val totalBarWidth = size.width - totalSpacing // 柱状图总宽度占70%
+                        val barWidth = totalBarWidth / barCount
+                        val spacing = totalSpacing / (barCount + 1) // 每个间隔
+                        val chartHeight = size.height - 10f // 留出底部空间
 
-                    sortedData.forEachIndexed { index, day ->
-                        val x = index * (barWidth + spacing) + spacing / 2
+                        sortedData.forEachIndexed { index, day ->
+                            val x = spacing + index * (barWidth + spacing)
 
-                        // 堆叠柱状图：碳水(下) -> 蛋白质(中) -> 脂肪(上)
-                        val carbsHeight = (day.carbs / maxNutrient * chartHeight).toFloat()
-                        val proteinHeight = (day.protein / maxNutrient * chartHeight).toFloat()
-                        val fatHeight = (day.fat / maxNutrient * chartHeight).toFloat()
+                            // 堆叠柱状图：碳水(下) -> 蛋白质(中) -> 脂肪(上)
+                            val carbsHeight = (day.carbs / maxNutrient * chartHeight).toFloat()
+                            val proteinHeight = (day.protein / maxNutrient * chartHeight).toFloat()
+                            val fatHeight = (day.fat / maxNutrient * chartHeight).toFloat()
 
-                        // 碳水 - 底部
-                        drawRect(
-                            color = carbsColor,
-                            topLeft = Offset(x, chartHeight - carbsHeight),
-                            size = Size(barWidth, carbsHeight)
-                        )
-                        // 蛋白质 - 中间
-                        drawRect(
-                            color = proteinColor,
-                            topLeft = Offset(x, chartHeight - carbsHeight - proteinHeight),
-                            size = Size(barWidth, proteinHeight)
-                        )
-                        // 脂肪 - 顶部
-                        drawRect(
-                            color = fatColor,
-                            topLeft = Offset(x, chartHeight - carbsHeight - proteinHeight - fatHeight),
-                            size = Size(barWidth, fatHeight)
-                        )
+                            // 碳水 - 底部
+                            drawRect(
+                                color = carbsColor,
+                                topLeft = Offset(x, chartHeight - carbsHeight),
+                                size = Size(barWidth, carbsHeight)
+                            )
+                            // 蛋白质 - 中间
+                            drawRect(
+                                color = proteinColor,
+                                topLeft = Offset(x, chartHeight - carbsHeight - proteinHeight),
+                                size = Size(barWidth, proteinHeight)
+                            )
+                            // 脂肪 - 顶部
+                            drawRect(
+                                color = fatColor,
+                                topLeft = Offset(x, chartHeight - carbsHeight - proteinHeight - fatHeight),
+                                size = Size(barWidth, fatHeight)
+                            )
+                        }
                     }
-                }
 
-                // 日期标签
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    sortedData.takeLast(7).forEach { day ->
-                        val cal = Calendar.getInstance()
-                        cal.timeInMillis = day.date
-                        Text(
-                            text = "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f),
-                            textAlign = TextAlign.Center
-                        )
+                    // 日期标签 - 与柱状图对齐
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        sortedData.forEach { day ->
+                            val cal = Calendar.getInstance()
+                            cal.timeInMillis = day.date
+                            Text(
+                                text = "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Center,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
             }
