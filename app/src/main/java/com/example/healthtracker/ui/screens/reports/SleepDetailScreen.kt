@@ -268,7 +268,9 @@ private fun SummaryItem(
                     else MaterialTheme.typography.headlineSmall.copy(fontSize = valueFontSize),
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
-            maxLines = 1
+            maxLines = 1,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
