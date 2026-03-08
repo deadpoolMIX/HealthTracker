@@ -10,8 +10,8 @@ object NutrientColors {
     // 碳水化合物 - 海蓝色
     val Carbs = Color(0xFF2196F3)
 
-    // 蛋白质 - 亮黄色
-    val Protein = Color(0xFFFFEB3B)
+    // 蛋白质 - 草绿色
+    val Protein = Color(0xFF4CAF50)
 
     // 脂肪 - 血红色（亮一点的）
     val Fat = Color(0xFFE53935)
