@@ -440,21 +440,21 @@ private fun WeeklyNutritionChartContent(
 
     Spacer(modifier = Modifier.height(12.dp))
 
-    // 堆叠柱状图 - 带y轴
-    val maxNutrient = maxOf(
-        data.maxOfOrNull { it.carbs + it.protein + it.fat } ?: 100.0,
-        100.0
+    // 堆叠柱状图 - 带y轴（热量）
+    val maxCalories = maxOf(
+        data.maxOfOrNull { it.calories } ?: 500.0,
+        500.0
     )
 
     Row(modifier = Modifier.fillMaxWidth()) {
-        // Y轴标签
+        // Y轴标签（热量）
         Column(
-            modifier = Modifier.width(36.dp).height(200.dp),
+            modifier = Modifier.width(44.dp).height(200.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("${String.format("%.0f", maxNutrient)}g", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("${String.format("%.0f", maxNutrient * 0.5)}g", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("0g", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${String.format("%.0f", maxCalories)}kcal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Text("${String.format("%.0f", maxCalories * 0.5)}kcal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Text("0kcal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
 
         // 图表区域
@@ -472,9 +472,10 @@ private fun WeeklyNutritionChartContent(
                 data.forEachIndexed { index, day ->
                     val x = spacing + index * (barWidth + spacing)
 
-                    val carbsHeight = (day.carbs / maxNutrient * chartHeight * 0.95f).toFloat()
-                    val proteinHeight = (day.protein / maxNutrient * chartHeight * 0.95f).toFloat()
-                    val fatHeight = (day.fat / maxNutrient * chartHeight * 0.95f).toFloat()
+                    // 按热量比例计算高度
+                    val carbsHeight = (day.carbs * 4 / maxCalories * chartHeight * 0.95f).toFloat() // 碳水 4kcal/g
+                    val proteinHeight = (day.protein * 4 / maxCalories * chartHeight * 0.95f).toFloat() // 蛋白 4kcal/g
+                    val fatHeight = (day.fat * 9 / maxCalories * chartHeight * 0.95f).toFloat() // 脂肪 9kcal/g
 
                     drawRect(carbsColor, Offset(x, chartHeight - carbsHeight), Size(barWidth, carbsHeight))
                     drawRect(proteinColor, Offset(x, chartHeight - carbsHeight - proteinHeight), Size(barWidth, proteinHeight))
@@ -542,20 +543,20 @@ private fun MonthlyNutritionChartContent(
 
     Spacer(modifier = Modifier.height(12.dp))
 
-    val maxNutrient = maxOf(
-        weeklyData.maxOfOrNull { it.carbs + it.protein + it.fat } ?: 100.0,
-        100.0
+    val maxCalories = maxOf(
+        weeklyData.maxOfOrNull { it.calories } ?: 500.0,
+        500.0
     )
 
     Row(modifier = Modifier.fillMaxWidth()) {
-        // Y轴标签
+        // Y轴标签（热量）
         Column(
-            modifier = Modifier.width(40.dp).height(200.dp),
+            modifier = Modifier.width(44.dp).height(200.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("${String.format("%.0f", maxNutrient)}g", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("${String.format("%.0f", maxNutrient * 0.5)}g", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("0g", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${String.format("%.0f", maxCalories)}kcal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Text("${String.format("%.0f", maxCalories * 0.5)}kcal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Text("0kcal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
 
         // 图表区域
@@ -573,9 +574,10 @@ private fun MonthlyNutritionChartContent(
                 weeklyData.forEachIndexed { index, week ->
                     val x = spacing + index * (barWidth + spacing)
 
-                    val carbsHeight = (week.carbs / maxNutrient * chartHeight * 0.95f).toFloat()
-                    val proteinHeight = (week.protein / maxNutrient * chartHeight * 0.95f).toFloat()
-                    val fatHeight = (week.fat / maxNutrient * chartHeight * 0.95f).toFloat()
+                    // 按热量比例计算高度
+                    val carbsHeight = (week.carbs * 4 / maxCalories * chartHeight * 0.95f).toFloat()
+                    val proteinHeight = (week.protein * 4 / maxCalories * chartHeight * 0.95f).toFloat()
+                    val fatHeight = (week.fat * 9 / maxCalories * chartHeight * 0.95f).toFloat()
 
                     drawRect(carbsColor, Offset(x, chartHeight - carbsHeight), Size(barWidth, carbsHeight))
                     drawRect(proteinColor, Offset(x, chartHeight - carbsHeight - proteinHeight), Size(barWidth, proteinHeight))
@@ -1129,15 +1131,16 @@ private fun WeekSleepChartWithTimeAxis(
     val totalHours = endHour - startHour // 14小时范围
 
     // 8个时间点（从上到下：22:00, 00:00, 02:00, 04:00, 06:00, 08:00, 10:00, 12:00）
+    // Canvas y=0 是顶部，所以 22:00 对应 y=0，12:00 对应 y=chartHeight
     val timePoints = listOf(
-        36 to "12:00", // 12:00（次日中午）
-        34 to "10:00", // 10:00
-        32 to "08:00", // 08:00
-        30 to "06:00", // 06:00
-        28 to "04:00", // 04:00
-        26 to "02:00", // 02:00
+        22 to "22:00", // 22:00 - 在图表顶部
         24 to "00:00", // 00:00（午夜）
-        22 to "22:00"  // 22:00
+        26 to "02:00", // 02:00
+        28 to "04:00", // 04:00
+        30 to "06:00", // 06:00
+        32 to "08:00", // 08:00
+        34 to "10:00", // 10:00
+        36 to "12:00"  // 12:00（次日中午）- 在图表底部
     )
 
     Row(
@@ -1334,15 +1337,16 @@ private fun MonthSleepChartWithTimeAxis(
     val totalHours = endHour - startHour
 
     // 8个时间点（从上到下：22:00, 00:00, 02:00, 04:00, 06:00, 08:00, 10:00, 12:00）
+    // Canvas y=0 是顶部，所以 22:00 对应 y=0，12:00 对应 y=chartHeight
     val timePoints = listOf(
-        36 to "12:00", // 12:00（次日中午）
-        34 to "10:00", // 10:00
-        32 to "08:00", // 08:00
-        30 to "06:00", // 06:00
-        28 to "04:00", // 04:00
-        26 to "02:00", // 02:00
+        22 to "22:00", // 22:00 - 在图表顶部
         24 to "00:00", // 00:00（午夜）
-        22 to "22:00"  // 22:00
+        26 to "02:00", // 02:00
+        28 to "04:00", // 04:00
+        30 to "06:00", // 06:00
+        32 to "08:00", // 08:00
+        34 to "10:00", // 10:00
+        36 to "12:00"  // 12:00（次日中午）- 在图表底部
     )
 
     Row(
