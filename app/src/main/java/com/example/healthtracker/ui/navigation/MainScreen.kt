@@ -110,8 +110,7 @@ fun MainScreen(
                     label = { Text("报表") }
                 )
             }
-        },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+        }
     ) { paddingValues ->
         NavHost(
             navController = navController,
