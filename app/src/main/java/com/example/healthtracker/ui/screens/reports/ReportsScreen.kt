@@ -144,16 +144,46 @@ fun ReportsScreen(
             ) {
                 // 周期选择
                 item {
-                    Row(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        periods.forEachIndexed { index, period ->
-                            FilterChip(
-                                selected = uiState.selectedPeriod == index,
-                                onClick = { viewModel.setPeriod(index) },
-                                label = { Text(period) }
+                        // 周/月选择
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            periods.forEachIndexed { index, period ->
+                                FilterChip(
+                                    selected = uiState.selectedPeriod == index,
+                                    onClick = { viewModel.setPeriod(index) },
+                                    label = { Text(period) }
+                                )
+                            }
+                        }
+
+                        // 上周/上月切换
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = { viewModel.setPeriodOffset(uiState.periodOffset + 1) },
+                                enabled = uiState.periodOffset < 12
+                            ) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "上一周期")
+                            }
+                            Text(
+                                text = viewModel.getPeriodLabel(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
                             )
+                            IconButton(
+                                onClick = { viewModel.setPeriodOffset(uiState.periodOffset - 1) },
+                                enabled = uiState.periodOffset > 0
+                            ) {
+                                Icon(Icons.Default.ArrowForward, contentDescription = "下一周期")
+                            }
                         }
                     }
                 }
@@ -414,19 +444,30 @@ private fun WeeklyNutritionChartContent(
 
     Spacer(modifier = Modifier.height(12.dp))
 
-    // 堆叠柱状图
+    // 堆叠柱状图 - 带y轴
     val maxNutrient = maxOf(
         data.maxOfOrNull { it.carbs + it.protein + it.fat } ?: 100.0,
         100.0
     )
 
     Row(modifier = Modifier.fillMaxWidth()) {
+        // Y轴标签
+        Column(
+            modifier = Modifier.width(36.dp).height(200.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("${String.format("%.0f", maxNutrient)}g", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${String.format("%.0f", maxNutrient * 0.5)}g", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("0g", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        // 图表区域
         Column(modifier = Modifier.weight(1f)) {
             Canvas(
                 modifier = Modifier.fillMaxWidth().height(200.dp)
             ) {
                 val barCount = data.size
-                val totalSpacing = size.width * 0.25f
+                val totalSpacing = size.width * 0.2f
                 val totalBarWidth = size.width - totalSpacing
                 val barWidth = totalBarWidth / barCount
                 val spacing = totalSpacing / (barCount + 1)
@@ -511,12 +552,23 @@ private fun MonthlyNutritionChartContent(
     )
 
     Row(modifier = Modifier.fillMaxWidth()) {
+        // Y轴标签
+        Column(
+            modifier = Modifier.width(40.dp).height(200.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("${String.format("%.0f", maxNutrient)}g", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${String.format("%.0f", maxNutrient * 0.5)}g", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("0g", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        // 图表区域
         Column(modifier = Modifier.weight(1f)) {
             Canvas(
                 modifier = Modifier.fillMaxWidth().height(200.dp)
             ) {
                 val barCount = weeklyData.size
-                val totalSpacing = size.width * 0.35f
+                val totalSpacing = size.width * 0.3f
                 val totalBarWidth = size.width - totalSpacing
                 val barWidth = totalBarWidth / barCount
                 val spacing = totalSpacing / (barCount + 1)
@@ -1075,25 +1127,29 @@ private fun WeekSleepChartWithTimeAxis(
         return
     }
 
-    // 时间范围：18:00 到 12:00（次日中午）
-    val startHour = 18 // 18:00 开始
+    // 时间范围：22:00 到 12:00（次日中午）
+    val startHour = 22 // 22:00 开始
     val endHour = 36 // 12:00（次日中午，用36表示跨天）
-    val totalHours = endHour - startHour // 18小时范围
+    val totalHours = endHour - startHour // 14小时范围
 
     Row(
         modifier = Modifier.fillMaxWidth()
     ) {
-        // Y轴时间标签
+        // Y轴时间标签 - 8个时间点
         Column(
             modifier = Modifier
-                .width(40.dp)
+                .width(36.dp)
                 .height(200.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("12:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
-            Text("06:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
-            Text("00:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
-            Text("18:00", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor)
+            Text("12点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            Text("10点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            Text("8点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            Text("6点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            Text("4点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            Text("2点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            Text("0点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            Text("22点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
         }
 
         // 图表区域
@@ -1118,7 +1174,7 @@ private fun WeekSleepChartWithTimeAxis(
                     calSleep.timeInMillis = sleep.sleepTime
                     val sleepHour = calSleep.get(Calendar.HOUR_OF_DAY)
                     val sleepMinute = calSleep.get(Calendar.MINUTE)
-                    // 转换为连续小时数（18:00 = 18, 次日2:00 = 26）
+                    // 转换为连续小时数（22:00 = 22, 次日2:00 = 26）
                     var sleepHourContinuous = sleepHour + sleepMinute / 60f
                     if (sleepHourContinuous < startHour) {
                         sleepHourContinuous += 24 // 跨天
@@ -1209,6 +1265,9 @@ private fun MonthSleepChartWithTimeAxis(
 
     val weeklyData = mutableListOf<WeeklySleepTime>()
 
+    // 时间范围：22:00 到 12:00（次日中午）
+    val startHour = 22
+
     for (i in 0 until 4) {
         val weekStart = calendar.timeInMillis
         calendar.add(Calendar.DAY_OF_MONTH, 6)
@@ -1226,7 +1285,7 @@ private fun MonthSleepChartWithTimeAxis(
                 val hour = cal.get(Calendar.HOUR_OF_DAY)
                 val minute = cal.get(Calendar.MINUTE)
                 var h = hour + minute / 60f
-                if (h < 18) h += 24 // 跨天
+                if (h < startHour) h += 24 // 跨天
                 h
             }.average().toFloat()
         } else 23f
@@ -1265,12 +1324,96 @@ private fun MonthSleepChartWithTimeAxis(
         return
     }
 
-    // 时间范围：18:00 到 12:00（次日中午）
-    val startHour = 18
+    // 时间范围：22:00 到 12:00（次日中午）
     val endHour = 36
     val totalHours = endHour - startHour
 
     Row(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        // Y轴时间标签 - 8个时间点
+        Column(
+            modifier = Modifier
+                .width(36.dp)
+                .height(200.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("12点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            Text("10点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            Text("8点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            Text("6点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            Text("4点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            Text("2点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            Text("0点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+            Text("22点", style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
+        }
+
+        // 图表区域
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+            ) {
+                val chartHeight = size.height
+                val chartWidth = size.width
+                val barCount = weeklyData.size
+                val totalSpacing = chartWidth * 0.4f
+                val totalBarWidth = chartWidth - totalSpacing
+                val barWidth = totalBarWidth / barCount
+                val spacing = totalSpacing / (barCount + 1)
+
+                weeklyData.forEachIndexed { index, week ->
+                    val x = spacing + index * (barWidth + spacing)
+
+                    val sleepY = (week.avgSleepHour - startHour) / totalHours * chartHeight
+                    var wakeHour = week.avgWakeHour
+                    if (wakeHour < startHour) wakeHour += 24f
+                    if (wakeHour > endHour) wakeHour = endHour.toFloat()
+                    val wakeY = (wakeHour - startHour) / totalHours * chartHeight
+
+                    // 绘制睡眠柱状图
+                    drawRoundRect(
+                        color = primaryColor.copy(alpha = 0.8f),
+                        topLeft = Offset(x, sleepY),
+                        size = Size(barWidth, wakeY - sleepY),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
+                    )
+                }
+
+                // 绘制午夜线
+                val midnightY = (24 - startHour) / totalHours * chartHeight
+                drawLine(
+                    color = onSurfaceVariantColor.copy(alpha = 0.3f),
+                    start = Offset(0f, midnightY),
+                    end = Offset(chartWidth, midnightY),
+                    strokeWidth = 1f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
+                )
+            }
+
+            // X轴周标签
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                weeklyData.forEach { week ->
+                    Text(
+                        text = week.weekLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = onSurfaceVariantColor,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+    }
+}
         modifier = Modifier.fillMaxWidth()
     ) {
         // Y轴时间标签
