@@ -14,6 +14,7 @@ import javax.inject.Inject
 
 data class NutritionDetailUiState(
     val period: Int = 0, // 0=周, 1=月
+    val periodOffset: Int = 0, // 0=本周/本月, 1=上周/上月, 2=上上周等
     val dailyData: List<DailyNutrition> = emptyList(),
     val weeklyData: List<WeeklyNutrition> = emptyList(),
     val avgCalories: Double = 0.0,
@@ -50,8 +51,30 @@ class NutritionDetailViewModel @Inject constructor(
     }
 
     fun setPeriod(period: Int) {
-        _uiState.value = _uiState.value.copy(period = period)
+        _uiState.value = _uiState.value.copy(period = period, periodOffset = 0)
         loadData()
+    }
+
+    fun setPeriodOffset(offset: Int) {
+        _uiState.value = _uiState.value.copy(periodOffset = offset.coerceAtLeast(0))
+        loadData()
+    }
+
+    fun getPeriodLabel(): String {
+        val offset = _uiState.value.periodOffset
+        return if (_uiState.value.period == 0) {
+            when (offset) {
+                0 -> "本周"
+                1 -> "上周"
+                else -> "${offset}周前"
+            }
+        } else {
+            when (offset) {
+                0 -> "本月"
+                1 -> "上月"
+                else -> "${offset}个月前"
+            }
+        }
     }
 
     private fun loadData() {
@@ -60,23 +83,40 @@ class NutritionDetailViewModel @Inject constructor(
 
             val calendar = Calendar.getInstance()
             val now = System.currentTimeMillis()
+            val offset = _uiState.value.periodOffset
 
             val (startDate, endDate) = when (_uiState.value.period) {
-                0 -> { // 周 - 最近7天
-                    val end = DateTimeUtils.getEndOfDay(now)
-                    val start = DateTimeUtils.getStartOfDay(DateTimeUtils.getNDaysAgo(6, now))
-                    Pair(start, end)
-                }
-                1 -> { // 月 - 最近4周
-                    val end = DateTimeUtils.getEndOfDay(now)
+                0 -> { // 周 - 根据偏移量获取
                     calendar.timeInMillis = now
-                    calendar.add(Calendar.WEEK_OF_YEAR, -3)
+                    calendar.add(Calendar.WEEK_OF_YEAR, -offset)
                     calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
                     calendar.set(Calendar.HOUR_OF_DAY, 0)
                     calendar.set(Calendar.MINUTE, 0)
                     calendar.set(Calendar.SECOND, 0)
                     calendar.set(Calendar.MILLISECOND, 0)
-                    Pair(calendar.timeInMillis, end)
+                    val start = calendar.timeInMillis
+                    calendar.add(Calendar.DAY_OF_MONTH, 6)
+                    calendar.set(Calendar.HOUR_OF_DAY, 23)
+                    calendar.set(Calendar.MINUTE, 59)
+                    calendar.set(Calendar.SECOND, 59)
+                    val end = calendar.timeInMillis
+                    Pair(start, end)
+                }
+                1 -> { // 月 - 根据偏移量获取
+                    calendar.timeInMillis = now
+                    calendar.add(Calendar.MONTH, -offset)
+                    calendar.set(Calendar.DAY_OF_MONTH, 1)
+                    calendar.set(Calendar.HOUR_OF_DAY, 0)
+                    calendar.set(Calendar.MINUTE, 0)
+                    calendar.set(Calendar.SECOND, 0)
+                    calendar.set(Calendar.MILLISECOND, 0)
+                    val start = calendar.timeInMillis
+                    calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
+                    calendar.set(Calendar.HOUR_OF_DAY, 23)
+                    calendar.set(Calendar.MINUTE, 59)
+                    calendar.set(Calendar.SECOND, 59)
+                    val end = calendar.timeInMillis
+                    Pair(start, end)
                 }
                 else -> Pair(DateTimeUtils.getStartOfDay(now), DateTimeUtils.getEndOfDay(now))
             }
