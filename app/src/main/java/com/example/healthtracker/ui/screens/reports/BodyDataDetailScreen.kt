@@ -1,20 +1,18 @@
 package com.example.healthtracker.ui.screens.reports
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -150,14 +148,14 @@ fun BodyDataDetailScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(onClick = { viewModel.navigateWeek(-1) }) {
-                                Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "前一组")
+                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "前一组")
                             }
                             Text(
                                 text = "显示 ${uiState.weeklyData.size} 周数据",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             IconButton(onClick = { viewModel.navigateWeek(1) }) {
-                                Icon(Icons.Default.KeyboardArrowRight, contentDescription = "后一组")
+                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "后一组")
                             }
                         }
                     }
