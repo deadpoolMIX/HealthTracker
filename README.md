@@ -1,4 +1,4 @@
-# 🏃 HealthTracker
+# <img src="icon.png" alt="HealthTracker" width="40" height="40"> HealthTracker
 
 > 一款简洁纯粹的本地健康记录应用，专为健身人群打造
 
