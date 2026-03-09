@@ -272,7 +272,7 @@ private fun BodyTrendChart(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "$dataLabel趋势",
+                text = "${dataLabel}趋势",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -533,7 +533,7 @@ private fun WeeklyBodyTrendChart(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "$dataLabel趋势（周中位数）",
+                text = "${dataLabel}趋势（周中位数）",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -748,7 +748,7 @@ private fun DataChangeCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "$dataLabel变化",
+                text = "${dataLabel}变化",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
