@@ -740,9 +740,6 @@ private fun WeeklyBodyTrendChart(
                         }
                     }
                 }
-                        textAlign = TextAlign.End
-                    )
-                }
             }
         }
     }
