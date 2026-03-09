@@ -307,10 +307,16 @@ private fun BodyTrendChart(
                         Text("暂无${dataLabel}数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else {
-                    // 计算数据范围（添加10%的边距）
-                    val minVal = (values.minOrNull() ?: 0.0) * 0.9
-                    val maxVal = (values.maxOrNull() ?: 100.0) * 1.1
-                    val range = (maxVal - minVal).coerceAtLeast(1.0)
+                    // 动态自适应缩放：以数据范围为中心，添加5%边距
+                    val dataMin = values.minOrNull() ?: 0.0
+                    val dataMax = values.maxOrNull() ?: 100.0
+                    val dataRange = (dataMax - dataMin).coerceAtLeast(0.1) // 最小范围防止除零
+
+                    // 使用数据范围的10%作为上下边距，确保波动清晰可见
+                    val padding = dataRange * 0.1
+                    val minVal = dataMin - padding
+                    val maxVal = dataMax + padding
+                    val range = (maxVal - minVal).coerceAtLeast(0.1)
 
                     // 生成图表数据点
                     val chartPoints = values.mapIndexedNotNull { index, value ->
@@ -348,12 +354,12 @@ private fun BodyTrendChart(
                             val chartWidth = size.width
                             val chartHeight = size.height
 
-                            // 绘制Y轴虚线参考线
+                            // 绘制Y轴虚线参考线（更淡的透明度）
                             val dashPathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
                             repeat(5) { i ->
                                 val y = (i * chartHeight / 4)
                                 drawLine(
-                                    color = Color.Gray.copy(alpha = 0.3f),
+                                    color = Color.Gray.copy(alpha = 0.15f),
                                     start = Offset(0f, y),
                                     end = Offset(chartWidth, y),
                                     strokeWidth = 1f,
@@ -395,11 +401,24 @@ private fun BodyTrendChart(
                                     style = Stroke(width = 2.5f)
                                 )
 
-                                // 绘制数据点
+                                // 绘制数据点（带发光效果）
                                 points.forEach { point ->
+                                    // 外圈光晕
+                                    drawCircle(
+                                        color = lineColor.copy(alpha = 0.2f),
+                                        radius = 8f,
+                                        center = point
+                                    )
+                                    // 内圈实心点
                                     drawCircle(
                                         color = lineColor,
                                         radius = 4f,
+                                        center = point
+                                    )
+                                    // 白色中心高光
+                                    drawCircle(
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        radius = 1.5f,
                                         center = point
                                     )
                                 }
@@ -408,6 +427,12 @@ private fun BodyTrendChart(
                                 val point = chartPoints.first()
                                 val x = chartWidth / 2
                                 val y = chartHeight - ((point.second - minVal) / range * chartHeight).toFloat()
+                                // 外圈光晕
+                                drawCircle(
+                                    color = lineColor.copy(alpha = 0.2f),
+                                    radius = 10f,
+                                    center = Offset(x, y)
+                                )
                                 drawCircle(
                                     color = lineColor,
                                     radius = 6f,
@@ -458,15 +483,6 @@ private fun BodyTrendChart(
                             }
                         }
                     }
-
-                    // 单位标签
-                    Text(
-                        text = "单位: $unit",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.End
-                    )
                 }
             }
         }
@@ -568,10 +584,15 @@ private fun WeeklyBodyTrendChart(
                         Text("暂无${dataLabel}数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else {
-                    // 计算数据范围
-                    val minVal = (values.minOrNull() ?: 0.0) * 0.9
-                    val maxVal = (values.maxOrNull() ?: 100.0) * 1.1
-                    val range = (maxVal - minVal).coerceAtLeast(1.0)
+                    // 动态自适应缩放：以数据范围为中心，添加10%边距
+                    val dataMin = values.minOrNull() ?: 0.0
+                    val dataMax = values.maxOrNull() ?: 100.0
+                    val dataRange = (dataMax - dataMin).coerceAtLeast(0.1)
+
+                    val padding = dataRange * 0.1
+                    val minVal = dataMin - padding
+                    val maxVal = dataMax + padding
+                    val range = (maxVal - minVal).coerceAtLeast(0.1)
 
                     // Y轴刻度
                     val yLabels = (0..4).map { i ->
@@ -592,12 +613,12 @@ private fun WeeklyBodyTrendChart(
                             val chartWidth = size.width
                             val chartHeight = size.height
 
-                            // 绘制Y轴虚线参考线
+                            // 绘制Y轴虚线参考线（更淡的透明度）
                             val dashPathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
                             repeat(5) { i ->
                                 val y = (i * chartHeight / 4)
                                 drawLine(
-                                    color = Color.Gray.copy(alpha = 0.3f),
+                                    color = Color.Gray.copy(alpha = 0.15f),
                                     start = Offset(0f, y),
                                     end = Offset(chartWidth, y),
                                     strokeWidth = 1f,
@@ -639,17 +660,35 @@ private fun WeeklyBodyTrendChart(
                                     style = Stroke(width = 2.5f)
                                 )
 
-                                // 绘制数据点
+                                // 绘制数据点（带发光效果）
                                 points.forEach { point ->
+                                    // 外圈光晕
+                                    drawCircle(
+                                        color = lineColor.copy(alpha = 0.2f),
+                                        radius = 8f,
+                                        center = point
+                                    )
+                                    // 内圈实心点
                                     drawCircle(
                                         color = lineColor,
                                         radius = 4f,
+                                        center = point
+                                    )
+                                    // 白色中心高光
+                                    drawCircle(
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        radius = 1.5f,
                                         center = point
                                     )
                                 }
                             } else if (values.size == 1) {
                                 val x = chartWidth / 2
                                 val y = chartHeight - ((values[0] - minVal) / range * chartHeight).toFloat()
+                                drawCircle(
+                                    color = lineColor.copy(alpha = 0.2f),
+                                    radius = 10f,
+                                    center = Offset(x, y)
+                                )
                                 drawCircle(
                                     color = lineColor,
                                     radius = 6f,
@@ -700,12 +739,7 @@ private fun WeeklyBodyTrendChart(
                             }
                         }
                     }
-
-                    Text(
-                        text = "单位: $unit",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth(),
+                }
                         textAlign = TextAlign.End
                     )
                 }
