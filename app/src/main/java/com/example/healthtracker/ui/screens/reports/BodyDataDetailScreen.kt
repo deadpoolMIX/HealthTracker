@@ -2,6 +2,7 @@ package com.example.healthtracker.ui.screens.reports
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,7 +20,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -104,14 +105,14 @@ fun BodyDataDetailScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         FilterChip(
-                            selected = uiState.filterMode == 0,
-                            onClick = { viewModel.setFilterMode(0) },
-                            label = { Text("自定义时间段") }
-                        )
-                        FilterChip(
                             selected = uiState.filterMode == 1,
                             onClick = { viewModel.setFilterMode(1) },
                             label = { Text("周") }
+                        )
+                        FilterChip(
+                            selected = uiState.filterMode == 0,
+                            onClick = { viewModel.setFilterMode(0) },
+                            label = { Text("自定义时间段") }
                         )
                     }
                 }
@@ -178,9 +179,10 @@ fun BodyDataDetailScreen(
 
                 // 数据变化卡片
                 item {
-                    DataChangeCard(
+                    val statistics = viewModel.getStatistics()
+                    DataSummaryCard(
                         dataType = uiState.selectedDataType,
-                        changeValue = viewModel.getChangeValue()
+                        statistics = statistics
                     )
                 }
 
@@ -349,7 +351,7 @@ private fun BodyTrendChart(
                         Canvas(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(start = 50.dp, top = 10.dp, end = 10.dp, bottom = 30.dp)
+                                .padding(start = 40.dp, top = 10.dp, end = 10.dp, bottom = 30.dp)
                         ) {
                             val chartWidth = size.width
                             val chartHeight = size.height
@@ -441,12 +443,12 @@ private fun BodyTrendChart(
                             }
                         }
 
-                        // Y轴标签
+                        // Y轴标签（更紧凑）
                         Column(
                             modifier = Modifier
                                 .align(Alignment.CenterStart)
                                 .padding(top = 10.dp, bottom = 30.dp)
-                                .width(50.dp)
+                                .width(40.dp)
                                 .height(180.dp),
                             verticalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -455,8 +457,8 @@ private fun BodyTrendChart(
                                     text = label,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 10.sp,
-                                    textAlign = TextAlign.End,
+                                    fontSize = 9.sp,
+                                    maxLines = 1,
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
@@ -467,7 +469,7 @@ private fun BodyTrendChart(
                             Row(
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .padding(start = 50.dp, end = 10.dp)
+                                    .padding(start = 40.dp, end = 10.dp)
                                     .fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
@@ -540,6 +542,69 @@ private fun WeeklyBodyTrendChart(
         else -> "体重" to "kg"
     }
 
+    // 点击的数据点索引
+    var selectedPointIndex by remember { mutableStateOf(-1) }
+
+    // 详情弹窗
+    if (selectedPointIndex >= 0 && selectedPointIndex < weeklyData.size) {
+        val selectedWeek = weeklyData[selectedPointIndex]
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = selectedWeek.startDate
+
+        val (medianValue, avgValue) = when (dataType) {
+            0 -> selectedWeek.medianWeight to selectedWeek.avgWeight
+            1 -> selectedWeek.medianBodyFat to selectedWeek.avgBodyFat
+            2 -> selectedWeek.medianMuscle to selectedWeek.avgMuscle
+            else -> null to null
+        }
+
+        AlertDialog(
+            onDismissRequest = { selectedPointIndex = -1 },
+            title = { Text("第${selectedWeek.weekOfYear}周", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "中位数",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = if (medianValue != null) "${String.format("%.1f", medianValue)} $unit" else "--",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = lineColor
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "平均数",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = if (avgValue != null) "${String.format("%.1f", avgValue)} $unit" else "--",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedPointIndex = -1 }) {
+                    Text("关闭")
+                }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -608,7 +673,34 @@ private fun WeeklyBodyTrendChart(
                         Canvas(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(start = 50.dp, top = 10.dp, end = 10.dp, bottom = 30.dp)
+                                .padding(start = 40.dp, top = 10.dp, end = 10.dp, bottom = 30.dp)
+                                .pointerInput(weeklyData) {
+                                    detectTapGestures { offset ->
+                                        // 计算点击位置对应的数据点
+                                        val chartWidth = size.width
+                                        val chartHeight = size.height
+                                        val paddingStart = 40.dp.toPx()
+
+                                        // 检查点击是否在图表区域内
+                                        if (offset.x >= paddingStart && values.size >= 1) {
+                                            val adjustedX = offset.x - paddingStart
+                                            val pointSpacing = if (values.size > 1) chartWidth / (values.size - 1) else 0f
+
+                                            values.forEachIndexed { index, _ ->
+                                                val pointX = if (values.size > 1) {
+                                                    index * pointSpacing
+                                                } else {
+                                                    chartWidth / 2
+                                                }
+                                                // 检查是否点击在数据点附近（20px范围内）
+                                                if (kotlin.math.abs(adjustedX - pointX) < 30f) {
+                                                    selectedPointIndex = index
+                                                    return@detectTapGestures
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                         ) {
                             val chartWidth = size.width
                             val chartHeight = size.height
@@ -697,12 +789,12 @@ private fun WeeklyBodyTrendChart(
                             }
                         }
 
-                        // Y轴标签
+                        // Y轴标签（更紧凑）
                         Column(
                             modifier = Modifier
                                 .align(Alignment.CenterStart)
                                 .padding(top = 10.dp, bottom = 30.dp)
-                                .width(50.dp)
+                                .width(40.dp)
                                 .height(180.dp),
                             verticalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -711,8 +803,8 @@ private fun WeeklyBodyTrendChart(
                                     text = label,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 10.sp,
-                                    textAlign = TextAlign.End,
+                                    fontSize = 9.sp,
+                                    maxLines = 1,
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
@@ -723,7 +815,7 @@ private fun WeeklyBodyTrendChart(
                             Row(
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .padding(start = 50.dp, end = 10.dp)
+                                    .padding(start = 40.dp, end = 10.dp)
                                     .fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
@@ -746,9 +838,9 @@ private fun WeeklyBodyTrendChart(
 }
 
 @Composable
-private fun DataChangeCard(
+private fun DataSummaryCard(
     dataType: Int,
-    changeValue: String
+    statistics: StatisticsData
 ) {
     val (dataLabel, unit) = when (dataType) {
         0 -> "体重" to "kg"
@@ -757,8 +849,8 @@ private fun DataChangeCard(
         else -> "体重" to "kg"
     }
 
-    val isPositive = changeValue.startsWith("+")
-    val isNegative = changeValue.startsWith("-")
+    val isPositive = statistics.change.startsWith("+")
+    val isNegative = statistics.change.startsWith("-")
     val changeColor = when {
         isNegative -> MaterialTheme.colorScheme.primary // 下降用主色
         isPositive -> MaterialTheme.colorScheme.error // 上升用错误色
@@ -773,30 +865,120 @@ private fun DataChangeCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(16.dp)
         ) {
             Text(
-                text = "${dataLabel}变化",
+                text = "数据总结",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    text = changeValue,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = changeColor
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = unit,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            // 第一行：变化和平均
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                // 变化
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = statistics.change,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = changeColor
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = unit,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        text = "变化",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // 平均
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = if (statistics.avg != null) String.format("%.1f", statistics.avg) else "--",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = unit,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        text = "平均",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 第二行：最高和最低
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                // 最高
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = if (statistics.max != null) String.format("%.1f", statistics.max) else "--",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = unit,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        text = "最高",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // 最低
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = if (statistics.min != null) String.format("%.1f", statistics.min) else "--",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = unit,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        text = "最低",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

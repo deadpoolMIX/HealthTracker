@@ -12,6 +12,13 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import javax.inject.Inject
 
+data class StatisticsData(
+    val change: String = "--",
+    val max: Double? = null,
+    val min: Double? = null,
+    val avg: Double? = null
+)
+
 data class BodyDataDetailUiState(
     val filterMode: Int = 1, // 0=自定义时间, 1=以周为点（默认周）
     val selectedDataType: Int = 0, // 0=体重, 1=体脂, 2=肌肉
@@ -31,7 +38,10 @@ data class WeeklyBodyData(
     val endDate: Long,
     val medianWeight: Double?,
     val medianBodyFat: Double?,
-    val medianMuscle: Double?
+    val medianMuscle: Double?,
+    val avgWeight: Double? = null,
+    val avgBodyFat: Double? = null,
+    val avgMuscle: Double? = null
 )
 
 @HiltViewModel
@@ -138,7 +148,10 @@ class BodyDataDetailViewModel @Inject constructor(
                     endDate = weekEnd,
                     medianWeight = calculateMedian(weekRecords.mapNotNull { it.weight }),
                     medianBodyFat = calculateMedian(weekRecords.mapNotNull { it.bodyFatRate }),
-                    medianMuscle = calculateMedian(weekRecords.mapNotNull { it.muscleMass })
+                    medianMuscle = calculateMedian(weekRecords.mapNotNull { it.muscleMass }),
+                    avgWeight = calculateAverage(weekRecords.mapNotNull { it.weight }),
+                    avgBodyFat = calculateAverage(weekRecords.mapNotNull { it.bodyFatRate }),
+                    avgMuscle = calculateAverage(weekRecords.mapNotNull { it.muscleMass })
                 )
             }.sortedWith(compareBy({ it.year }, { it.weekOfYear }))
 
@@ -165,6 +178,60 @@ class BodyDataDetailViewModel @Inject constructor(
             (sorted[mid - 1] + sorted[mid]) / 2.0
         } else {
             sorted[mid]
+        }
+    }
+
+    private fun calculateAverage(values: List<Double>): Double? {
+        if (values.isEmpty()) return null
+        return values.sum() / values.size
+    }
+
+    // 获取统计数据
+    fun getStatistics(): StatisticsData {
+        val state = _uiState.value
+
+        return when (state.filterMode) {
+            0 -> {
+                val data = state.rawData
+                val values = when (state.selectedDataType) {
+                    0 -> data.mapNotNull { it.weight }
+                    1 -> data.mapNotNull { it.bodyFatRate }
+                    2 -> data.mapNotNull { it.muscleMass }
+                    else -> emptyList()
+                }
+
+                if (values.isEmpty()) {
+                    StatisticsData()
+                } else {
+                    StatisticsData(
+                        change = getChangeValue(),
+                        max = values.maxOrNull(),
+                        min = values.minOrNull(),
+                        avg = values.sum() / values.size
+                    )
+                }
+            }
+            1 -> {
+                val data = state.weeklyData
+                val values = when (state.selectedDataType) {
+                    0 -> data.mapNotNull { it.medianWeight }
+                    1 -> data.mapNotNull { it.medianBodyFat }
+                    2 -> data.mapNotNull { it.medianMuscle }
+                    else -> emptyList()
+                }
+
+                if (values.isEmpty()) {
+                    StatisticsData()
+                } else {
+                    StatisticsData(
+                        change = getChangeValue(),
+                        max = values.maxOrNull(),
+                        min = values.minOrNull(),
+                        avg = values.sum() / values.size
+                    )
+                }
+            }
+            else -> StatisticsData()
         }
     }
 
