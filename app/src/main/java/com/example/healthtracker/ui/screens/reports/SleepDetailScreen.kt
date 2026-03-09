@@ -394,6 +394,18 @@ private fun WeekSleepChart(
 ) {
     val sortedData = data.sortedBy { it.date }.takeLast(7)
 
+    if (sortedData.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("暂无睡眠数据", color = onSurfaceVariantColor)
+        }
+        return
+    }
+
     // 点击选中的索引
     var selectedIndex by remember { mutableIntStateOf(-1) }
 
@@ -427,18 +439,6 @@ private fun WeekSleepChart(
         )
     }
 
-    if (sortedData.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("暂无睡眠数据", color = onSurfaceVariantColor)
-        }
-        return
-    }
-
     val totalHours = CHART_END_HOUR - CHART_START_HOUR
 
     val timePoints = listOf(
@@ -464,6 +464,7 @@ private fun WeekSleepChart(
             }
         }
 
+        // 图表区域 - 柱子在Canvas中绘制，标签使用Compose布局
         Column(modifier = Modifier.weight(1f)) {
             Canvas(
                 modifier = Modifier
@@ -472,15 +473,17 @@ private fun WeekSleepChart(
                     .clip(RoundedCornerShape(8.dp))
                     .pointerInput(sortedData) {
                         detectTapGestures { offset ->
-                            val barCount = sortedData.size
-                            val totalSpacing = size.width * 0.25f
-                            val totalBarWidth = size.width - totalSpacing
-                            val barWidth = totalBarWidth / barCount.toFloat()
-                            val spacing = totalSpacing / (barCount + 1)
+                            val chartWidth = size.width
+
+                            val fixedBarCount = 7
+                            val totalSpacing = chartWidth * 0.25f
+                            val totalBarWidth = chartWidth - totalSpacing
+                            val fixedBarWidth = totalBarWidth / fixedBarCount.toFloat()
+                            val spacing = totalSpacing / (fixedBarCount + 1)
 
                             sortedData.forEachIndexed { index, _ ->
-                                val barStart = spacing + index * (barWidth + spacing)
-                                val barEnd = barStart + barWidth
+                                val barStart = spacing + index * (fixedBarWidth + spacing)
+                                val barEnd = barStart + fixedBarWidth
                                 if (offset.x >= barStart && offset.x <= barEnd && offset.y >= 0f && offset.y <= size.height) {
                                     selectedIndex = index
                                     return@detectTapGestures
@@ -491,11 +494,12 @@ private fun WeekSleepChart(
             ) {
                 val chartHeight = size.height
                 val chartWidth = size.width
-                val barCount = sortedData.size
+
+                val fixedBarCount = 7
                 val totalSpacing = chartWidth * 0.25f
                 val totalBarWidth = chartWidth - totalSpacing
-                val barWidth = totalBarWidth / barCount.toFloat()
-                val spacing = totalSpacing / (barCount + 1)
+                val fixedBarWidth = totalBarWidth / fixedBarCount.toFloat()
+                val spacing = totalSpacing / (fixedBarCount + 1)
 
                 // 绘制虚线
                 timePoints.forEach { (hourContinuous, _) ->
@@ -509,7 +513,7 @@ private fun WeekSleepChart(
                     )
                 }
 
-                // 绘制柱状图
+                // 绘制柱子
                 sortedData.forEachIndexed { index, sleep ->
                     val calSleep = Calendar.getInstance()
                     calSleep.timeInMillis = sleep.sleepTime
@@ -525,7 +529,7 @@ private fun WeekSleepChart(
                         calWake.get(Calendar.MINUTE)
                     )
 
-                    val x = spacing + index * (barWidth + spacing)
+                    val x = spacing + index * (fixedBarWidth + spacing)
                     val sleepY = ((sleepHourChart - CHART_START_HOUR) / totalHours * chartHeight).coerceIn(0f, chartHeight)
                     val wakeY = ((wakeHourChart - CHART_START_HOUR) / totalHours * chartHeight).coerceIn(0f, chartHeight)
 
@@ -533,29 +537,35 @@ private fun WeekSleepChart(
                         drawRoundRect(
                             color = if (selectedIndex == index) primaryColor else primaryColor.copy(alpha = 0.8f),
                             topLeft = Offset(x, sleepY),
-                            size = Size(barWidth, wakeY - sleepY),
+                            size = Size(fixedBarWidth, wakeY - sleepY),
                             cornerRadius = CornerRadius(4f, 4f)
                         )
                     }
                 }
             }
 
+            // X轴标签 - 使用Compose布局，固定7个槽位
             Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.Start
             ) {
-                sortedData.forEach { sleep ->
-                    val cal = Calendar.getInstance()
-                    cal.timeInMillis = sleep.date
-                    Text(
-                        text = "${cal.get(Calendar.DAY_OF_MONTH)}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = onSurfaceVariantColor,
+                repeat(7) { slotIndex ->
+                    Box(
                         modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center,
-                        maxLines = 1
-                    )
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (slotIndex < sortedData.size) {
+                            val cal = Calendar.getInstance()
+                            cal.timeInMillis = sortedData[slotIndex].date
+                            Text(
+                                text = "${cal.get(Calendar.DAY_OF_MONTH)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = onSurfaceVariantColor,
+                                maxLines = 1
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -2,6 +2,7 @@ package com.example.healthtracker.ui.screens.reports
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -215,104 +216,123 @@ private fun NutritionChartCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 柱状图
+            // 柱状图 - 柱子和标签都使用Compose布局，确保精确对齐
             if (data.isNotEmpty()) {
                 // 找出所有数据的最大总量，用于等比例缩放
                 val maxValue = data.maxOf { it.carbs + it.protein + it.fat }.toFloat().coerceAtLeast(1f)
 
-                // 修复对齐问题：使用与标签相同的布局方式
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Canvas(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .pointerInput(data) {
-                                detectTapGestures { offset ->
-                                    val barCount = data.size
-                                    val totalSpacing = size.width * 0.3f
-                                    val totalBarWidth = size.width - totalSpacing
-                                    val barWidth = totalBarWidth / barCount
-                                    val spacing = totalSpacing / (barCount + 1)
+                // 使用Box来模拟Canvas布局，柱子和标签都用Compose组件
+                Box(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // 绘制区域
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // 柱状图区域
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            // 固定7格布局
+                            repeat(7) { slotIndex ->
+                                // 查找这个位置是否有数据
+                                val dataIndex = slotIndex.coerceAtMost(data.size - 1)
+                                val hasData = slotIndex < data.size
+                                val day = data.getOrNull(slotIndex)
 
-                                    data.forEachIndexed { index, _ ->
-                                        val barStart = spacing + index * (barWidth + spacing)
-                                        val barEnd = barStart + barWidth
-                                        if (offset.x in barStart..barEnd) {
-                                            selectedIndex = index
-                                            return@detectTapGestures
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                        .clickable(enabled = hasData && day != null) {
+                                            selectedIndex = slotIndex
+                                        },
+                                    contentAlignment = Alignment.BottomCenter
+                                ) {
+                                    if (hasData && day != null) {
+                                        val dayTotal = day.carbs + day.protein + day.fat
+                                        val maxHeight = 200.dp
+                                        val totalHeight = (dayTotal / maxValue * maxHeight.value).dp.coerceAtMost(maxHeight)
+                                        val carbsHeight = if (dayTotal > 0) (day.carbs / dayTotal * totalHeight.value).dp else 0.dp
+                                        val proteinHeight = if (dayTotal > 0) (day.protein / dayTotal * totalHeight.value).dp else 0.dp
+                                        val fatHeight = if (dayTotal > 0) (day.fat / dayTotal * totalHeight.value).dp else 0.dp
+
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth(0.7f)
+                                                .height(totalHeight),
+                                            verticalArrangement = Arrangement.Bottom
+                                        ) {
+                                            // 碳水（顶部）
+                                            if (carbsHeight.value > 0) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(carbsHeight)
+                                                        .background(carbsColor)
+                                                )
+                                            }
+                                            // 蛋白质（中间）
+                                            if (proteinHeight.value > 0) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(proteinHeight)
+                                                        .background(proteinColor)
+                                                )
+                                            }
+                                            // 脂肪（底部）
+                                            if (fatHeight.value > 0) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(fatHeight)
+                                                        .background(fatColor)
+                                                )
+                                            }
                                         }
                                     }
                                 }
                             }
-                    ) {
-                        val barCount = data.size
-                        val totalSpacing = size.width * 0.3f // 总间距占30%
-                        val totalBarWidth = size.width - totalSpacing // 柱状图总宽度占70%
-                        val barWidth = totalBarWidth / barCount
-                        val spacing = totalSpacing / (barCount + 1) // 每个间隔
-
-                        data.forEachIndexed { index, day ->
-                            val x = spacing + index * (barWidth + spacing)
-
-                            // 堆叠柱状图 - 按实际数值等比例缩放
-                            val dayTotal = day.carbs + day.protein + day.fat
-                            val totalHeight: Float = (dayTotal / maxValue * size.height).toFloat()
-                            val carbsHeight: Float = if (dayTotal > 0) (day.carbs / dayTotal * totalHeight).toFloat() else 0f
-                            val proteinHeight: Float = if (dayTotal > 0) (day.protein / dayTotal * totalHeight).toFloat() else 0f
-                            val fatHeight: Float = if (dayTotal > 0) (day.fat / dayTotal * totalHeight).toFloat() else 0f
-
-                            // 绘制脂肪（底部）
-                            drawRect(
-                                color = fatColor,
-                                topLeft = Offset(x, size.height - fatHeight),
-                                size = Size(barWidth, fatHeight)
-                            )
-
-                            // 绘制蛋白质（中间）
-                            drawRect(
-                                color = proteinColor,
-                                topLeft = Offset(x, size.height - fatHeight - proteinHeight),
-                                size = Size(barWidth, proteinHeight)
-                            )
-
-                            // 绘制碳水（顶部）
-                            drawRect(
-                                color = carbsColor,
-                                topLeft = Offset(x, size.height - fatHeight - proteinHeight - carbsHeight),
-                                size = Size(barWidth, carbsHeight)
-                            )
                         }
-                    }
 
-                    // X轴标签 - 与柱状图对齐
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        data.forEach { day ->
-                            val cal = Calendar.getInstance()
-                            cal.timeInMillis = day.date
-                            val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
-                            val dayLabel = when (dayOfWeek) {
-                                Calendar.MONDAY -> "一"
-                                Calendar.TUESDAY -> "二"
-                                Calendar.WEDNESDAY -> "三"
-                                Calendar.THURSDAY -> "四"
-                                Calendar.FRIDAY -> "五"
-                                Calendar.SATURDAY -> "六"
-                                Calendar.SUNDAY -> "日"
-                                else -> ""
+                        // X轴标签 - 与柱子相同的布局
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            repeat(7) { slotIndex ->
+                                val day = data.getOrNull(slotIndex)
+
+                                Box(
+                                    modifier = Modifier.weight(1f),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (day != null) {
+                                        val cal = Calendar.getInstance()
+                                        cal.timeInMillis = day.date
+                                        val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
+                                        val dayLabel = when (dayOfWeek) {
+                                            Calendar.MONDAY -> "一"
+                                            Calendar.TUESDAY -> "二"
+                                            Calendar.WEDNESDAY -> "三"
+                                            Calendar.THURSDAY -> "四"
+                                            Calendar.FRIDAY -> "五"
+                                            Calendar.SATURDAY -> "六"
+                                            Calendar.SUNDAY -> "日"
+                                            else -> ""
+                                        }
+                                        Text(
+                                            text = dayLabel,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
                             }
-                            Text(
-                                text = dayLabel,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.weight(1f),
-                                textAlign = TextAlign.Center,
-                                maxLines = 1
-                            )
                         }
                     }
                 }

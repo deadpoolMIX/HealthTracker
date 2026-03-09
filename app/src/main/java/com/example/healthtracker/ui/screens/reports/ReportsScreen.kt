@@ -379,6 +379,7 @@ private fun NutritionChartCard(
 
 /**
  * 周模式营养素图表内容
+ * 柱子和标签都使用Compose布局，确保精确对齐
  */
 @Composable
 private fun WeeklyNutritionChartContent(
@@ -389,11 +390,11 @@ private fun WeeklyNutritionChartContent(
 ) {
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-    // 数据汇总
-    val avgCalories = data.sumOf { it.calories } / data.size
-    val avgCarbs = data.sumOf { it.carbs } / data.size
-    val avgProtein = data.sumOf { it.protein } / data.size
-    val avgFat = data.sumOf { it.fat } / data.size
+    // 数据汇总（基于实际数据）
+    val avgCalories = if (data.isNotEmpty()) data.sumOf { it.calories } / data.size else 0.0
+    val avgCarbs = if (data.isNotEmpty()) data.sumOf { it.carbs } / data.size else 0.0
+    val avgProtein = if (data.isNotEmpty()) data.sumOf { it.protein } / data.size else 0.0
+    val avgFat = if (data.isNotEmpty()) data.sumOf { it.fat } / data.size else 0.0
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -414,7 +415,7 @@ private fun WeeklyNutritionChartContent(
     )
 
     Row(modifier = Modifier.fillMaxWidth()) {
-        // Y轴标签（热量，不带单位）
+        // Y轴标签
         Column(
             modifier = Modifier.width(32.dp).height(200.dp),
             verticalArrangement = Arrangement.SpaceBetween
@@ -424,62 +425,88 @@ private fun WeeklyNutritionChartContent(
             Text("0", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
 
-        // 图表区域
+        // 图表区域 - 固定7格布局
         Column(modifier = Modifier.weight(1f)) {
-            Canvas(
-                modifier = Modifier.fillMaxWidth().height(200.dp)
+            // 柱状图
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                verticalAlignment = Alignment.Bottom
             ) {
-                val barCount = data.size
-                val totalSpacing = size.width * 0.2f
-                val totalBarWidth = size.width - totalSpacing
-                val barWidth = totalBarWidth / barCount
-                val spacing = totalSpacing / (barCount + 1)
-                val chartHeight = size.height
-                val chartWidth = size.width
+                // 固定7格，柱子和标签天然对齐
+                repeat(7) { slotIndex ->
+                    val day = data.getOrNull(slotIndex)
 
-                // 先绘制虚线（在柱状图下面）
-                val linePositions = listOf(0f, 0.5f, 1f)
-                linePositions.forEach { ratio ->
-                    val lineY = chartHeight * ratio * 0.95f
-                    drawLine(
-                        color = onSurfaceVariantColor.copy(alpha = 0.2f),
-                        start = Offset(0f, lineY),
-                        end = Offset(chartWidth, lineY),
-                        strokeWidth = 1f,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
-                    )
-                }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        contentAlignment = Alignment.BottomCenter
+                    ) {
+                        if (day != null) {
+                            val maxHeight = 200f
+                            val carbsHeight = (day.carbs * 4 / maxCalories * maxHeight).toFloat()
+                            val proteinHeight = (day.protein * 4 / maxCalories * maxHeight).toFloat()
+                            val fatHeight = (day.fat * 9 / maxCalories * maxHeight).toFloat()
+                            val totalHeight = carbsHeight + proteinHeight + fatHeight
 
-                data.forEachIndexed { index, day ->
-                    val x = spacing + index * (barWidth + spacing)
-
-                    // 按热量比例计算高度
-                    val carbsHeight = (day.carbs * 4 / maxCalories * chartHeight * 0.95f).toFloat() // 碳水 4kcal/g
-                    val proteinHeight = (day.protein * 4 / maxCalories * chartHeight * 0.95f).toFloat() // 蛋白 4kcal/g
-                    val fatHeight = (day.fat * 9 / maxCalories * chartHeight * 0.95f).toFloat() // 脂肪 9kcal/g
-
-                    drawRect(carbsColor, Offset(x, chartHeight - carbsHeight), Size(barWidth, carbsHeight))
-                    drawRect(proteinColor, Offset(x, chartHeight - carbsHeight - proteinHeight), Size(barWidth, proteinHeight))
-                    drawRect(fatColor, Offset(x, chartHeight - carbsHeight - proteinHeight - fatHeight), Size(barWidth, fatHeight))
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.7f)
+                                    .height(totalHeight.dp.coerceAtMost(200.dp)),
+                                verticalArrangement = Arrangement.Bottom
+                            ) {
+                                if (fatHeight > 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(fatHeight.dp)
+                                            .background(fatColor)
+                                    )
+                                }
+                                if (proteinHeight > 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(proteinHeight.dp)
+                                            .background(proteinColor)
+                                    )
+                                }
+                                if (carbsHeight > 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(carbsHeight.dp)
+                                            .background(carbsColor)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
+            // X轴标签 - 与柱子相同的布局
             Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                data.forEach { day ->
-                    val cal = Calendar.getInstance()
-                    cal.timeInMillis = day.date
-                    Text(
-                        text = "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Row(modifier = Modifier.fillMaxWidth()) {
+                repeat(7) { slotIndex ->
+                    val day = data.getOrNull(slotIndex)
+
+                    Box(
                         modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center,
-                        maxLines = 1
-                    )
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (day != null) {
+                            val cal = Calendar.getInstance()
+                            cal.timeInMillis = day.date
+                            Text(
+                                text = "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -846,129 +873,16 @@ private fun BodyDataChartCard(
                         .fillMaxWidth()
                         .height(220.dp)
                 ) {
-                    Canvas(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(start = 50.dp, top = 10.dp, end = 10.dp, bottom = 30.dp)
-                    ) {
-                        val chartWidth = size.width
-                        val chartHeight = size.height
-
-                        // 绘制Y轴虚线参考线（更淡的透明度）
-                        val dashPathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
-                        repeat(5) { i ->
-                            val y = (i * chartHeight / 4)
-                            drawLine(
-                                color = Color.Gray.copy(alpha = 0.15f),
-                                start = Offset(0f, y),
-                                end = Offset(chartWidth, y),
-                                strokeWidth = 1f,
-                                pathEffect = dashPathEffect
-                            )
-                        }
-
-                        // 绘制折线
-                        if (values.size >= 2) {
-                            val points = values.mapIndexed { index, value ->
-                                val x = if (values.size > 1) {
-                                    (index.toFloat() / (values.size - 1)) * chartWidth
-                                } else {
-                                    chartWidth / 2
-                                }
-                                val y = chartHeight - ((value - minVal) / range * chartHeight).toFloat()
-                                Offset(x, y)
-                            }
-
-                            // 绘制平滑曲线
-                            val path = Path()
-                            path.moveTo(points[0].x, points[0].y)
-
-                            for (i in 1 until points.size) {
-                                val prev = points[i - 1]
-                                val curr = points[i]
-                                val midX = (prev.x + curr.x) / 2
-
-                                path.cubicTo(
-                                    midX, prev.y,
-                                    midX, curr.y,
-                                    curr.x, curr.y
-                                )
-                            }
-
-                            drawPath(
-                                path = path,
-                                color = lineColor,
-                                style = Stroke(width = 2.5f)
-                            )
-
-                            // 绘制数据点（带发光效果）
-                            points.forEach { point ->
-                                // 外圈光晕
-                                drawCircle(
-                                    color = lineColor.copy(alpha = 0.2f),
-                                    radius = 8f,
-                                    center = point
-                                )
-                                // 内圈实心点
-                                drawCircle(
-                                    color = lineColor,
-                                    radius = 4f,
-                                    center = point
-                                )
-                                // 白色中心高光
-                                drawCircle(
-                                    color = Color.White.copy(alpha = 0.6f),
-                                    radius = 1.5f,
-                                    center = point
-                                )
-                            }
-                        } else if (values.size == 1) {
-                            val x = chartWidth / 2
-                            val y = chartHeight - ((values[0] - minVal) / range * chartHeight).toFloat()
-                            drawCircle(
-                                color = lineColor.copy(alpha = 0.2f),
-                                radius = 10f,
-                                center = Offset(x, y)
-                            )
-                            drawCircle(
-                                color = lineColor,
-                                radius = 6f,
-                                center = Offset(x, y)
-                            )
-                        }
-                    }
-
-                    // Y轴标签
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .padding(top = 10.dp, bottom = 30.dp)
-                            .width(50.dp)
-                            .height(180.dp),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        yLabels.forEach { label ->
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 10.sp,
-                                textAlign = TextAlign.End,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-
-                    // X轴标签
-                    if (xLabels.isNotEmpty()) {
-                        Row(
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        // Y轴标签 - 宽度32dp，与营养素摄入区块一致
+                        Column(
                             modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(start = 50.dp, end = 10.dp)
-                                .fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                                .width(32.dp)
+                                .padding(top = 10.dp, bottom = 30.dp)
+                                .height(200.dp),
+                            verticalArrangement = Arrangement.SpaceBetween
                         ) {
-                            xLabels.forEach { label ->
+                            yLabels.forEach { label ->
                                 Text(
                                     text = label,
                                     style = MaterialTheme.typography.labelSmall,
@@ -976,6 +890,125 @@ private fun BodyDataChartCard(
                                     fontSize = 10.sp,
                                     maxLines = 1
                                 )
+                            }
+                        }
+
+                        // 图表区域
+                        Column(modifier = Modifier.weight(1f)) {
+                            Canvas(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp)
+                                    .padding(top = 10.dp, end = 10.dp, bottom = 30.dp)
+                            ) {
+                                val chartWidth = size.width
+                                val chartHeight = size.height
+
+                                // 绘制Y轴虚线参考线（更淡的透明度）
+                                val dashPathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
+                                repeat(5) { i ->
+                                    val y = (i * chartHeight / 4)
+                                    drawLine(
+                                        color = Color.Gray.copy(alpha = 0.15f),
+                                        start = Offset(0f, y),
+                                        end = Offset(chartWidth, y),
+                                        strokeWidth = 1f,
+                                        pathEffect = dashPathEffect
+                                    )
+                                }
+
+                                // 绘制折线
+                                if (values.size >= 2) {
+                                    // 数据点和标签使用相同的坐标计算：SpaceBetween 布局
+                                    val points = values.mapIndexed { index, value ->
+                                        // SpaceBetween 布局：第一个点在最左边，最后一个点在最右边
+                                        val x = if (values.size > 1) {
+                                            (index.toFloat() / (values.size - 1)) * chartWidth
+                                        } else {
+                                            0f // 单个数据点放在最左边
+                                        }
+                                        val y = chartHeight - ((value - minVal) / range * chartHeight).toFloat()
+                                        Offset(x, y)
+                                    }
+
+                                    // 绘制平滑曲线
+                                    val path = Path()
+                                    path.moveTo(points[0].x, points[0].y)
+
+                                    for (i in 1 until points.size) {
+                                        val prev = points[i - 1]
+                                        val curr = points[i]
+                                        val midX = (prev.x + curr.x) / 2
+
+                                        path.cubicTo(
+                                            midX, prev.y,
+                                            midX, curr.y,
+                                            curr.x, curr.y
+                                        )
+                                    }
+
+                                    drawPath(
+                                        path = path,
+                                        color = lineColor,
+                                        style = Stroke(width = 2.5f)
+                                    )
+
+                                    // 绘制数据点（带发光效果）
+                                    points.forEach { point ->
+                                        // 外圈光晕
+                                        drawCircle(
+                                            color = lineColor.copy(alpha = 0.2f),
+                                            radius = 8f,
+                                            center = point
+                                        )
+                                        // 内圈实心点
+                                        drawCircle(
+                                            color = lineColor,
+                                            radius = 4f,
+                                            center = point
+                                        )
+                                        // 白色中心高光
+                                        drawCircle(
+                                            color = Color.White.copy(alpha = 0.6f),
+                                            radius = 1.5f,
+                                            center = point
+                                        )
+                                    }
+                                } else if (values.size == 1) {
+                                    // 单个数据点放在最左边，与标签对齐
+                                    val x = 0f
+                                    val y = chartHeight - ((values[0] - minVal) / range * chartHeight).toFloat()
+                                    drawCircle(
+                                        color = lineColor.copy(alpha = 0.2f),
+                                        radius = 10f,
+                                        center = Offset(x, y)
+                                    )
+                                    drawCircle(
+                                        color = lineColor,
+                                        radius = 6f,
+                                        center = Offset(x, y)
+                                    )
+                                }
+                            }
+
+                            // X轴标签
+                            if (xLabels.isNotEmpty()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(end = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    xLabels.forEach { label ->
+                                        Text(
+                                            text = label,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 10.sp,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -1111,6 +1144,7 @@ private fun SleepChartCard(
 
 /**
  * 周模式睡眠图表 - y轴显示时间，柱状图顶部是入睡时间，底部是起床时间
+ * 柱子和标签都使用Compose布局，确保精确对齐
  */
 @Composable
 private fun WeekSleepChartWithTimeAxis(
@@ -1133,27 +1167,25 @@ private fun WeekSleepChartWithTimeAxis(
     }
 
     // 时间范围：22:00 到 12:00（次日中午）
-    val startHour = 22 // 22:00 开始
-    val endHour = 36 // 12:00（次日中午，用36表示跨天）
-    val totalHours = endHour - startHour // 14小时范围
+    val startHour = 22
+    val endHour = 36
+    val totalHours = endHour - startHour
 
-    // 8个时间点（从上到下：22:00, 00:00, 02:00, 04:00, 06:00, 08:00, 10:00, 12:00）
-    // Canvas y=0 是顶部，所以 22:00 对应 y=0，12:00 对应 y=chartHeight
     val timePoints = listOf(
-        22 to "22:00", // 22:00 - 在图表顶部
-        24 to "00:00", // 00:00（午夜）
-        26 to "02:00", // 02:00
-        28 to "04:00", // 04:00
-        30 to "06:00", // 06:00
-        32 to "08:00", // 08:00
-        34 to "10:00", // 10:00
-        36 to "12:00"  // 12:00（次日中午）- 在图表底部
+        22 to "22:00",
+        24 to "00:00",
+        26 to "02:00",
+        28 to "04:00",
+        30 to "06:00",
+        32 to "08:00",
+        34 to "10:00",
+        36 to "12:00"
     )
 
     Row(
         modifier = Modifier.fillMaxWidth()
     ) {
-        // Y轴时间标签 - 8个时间点
+        // Y轴时间标签
         Column(
             modifier = Modifier
                 .width(40.dp)
@@ -1165,10 +1197,9 @@ private fun WeekSleepChartWithTimeAxis(
             }
         }
 
-        // 图表区域
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
+        // 图表区域 - 固定7格布局
+        Column(modifier = Modifier.weight(1f)) {
+            // 柱状图 - 使用Canvas绘制（睡眠图表需要精确的时间坐标）
             Canvas(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1176,13 +1207,12 @@ private fun WeekSleepChartWithTimeAxis(
             ) {
                 val chartHeight = size.height
                 val chartWidth = size.width
-                val barCount = sortedData.size
-                val totalSpacing = chartWidth * 0.25f
-                val totalBarWidth = chartWidth - totalSpacing
-                val barWidth = totalBarWidth / barCount
-                val spacing = totalSpacing / (barCount + 1)
 
-                // 先绘制所有时间点的虚线（在柱状图下面）
+                // 固定柱子宽度
+                val fixedBarWidth = chartWidth / 7f * 0.7f
+                val slotWidth = chartWidth / 7f
+
+                // 先绘制虚线
                 timePoints.forEach { (hourContinuous, _) ->
                     val lineY = (hourContinuous.toFloat() - startHour.toFloat()) / totalHours.toFloat() * chartHeight
                     drawLine(
@@ -1194,15 +1224,15 @@ private fun WeekSleepChartWithTimeAxis(
                     )
                 }
 
+                // 绘制柱子 - 固定在7个位置
                 sortedData.forEachIndexed { index, sleep ->
                     val calSleep = Calendar.getInstance()
                     calSleep.timeInMillis = sleep.sleepTime
                     val sleepHour = calSleep.get(Calendar.HOUR_OF_DAY)
                     val sleepMinute = calSleep.get(Calendar.MINUTE)
-                    // 转换为连续小时数（22:00 = 22, 次日2:00 = 26）
                     var sleepHourContinuous = sleepHour + sleepMinute / 60f
                     if (sleepHourContinuous < startHour) {
-                        sleepHourContinuous += 24 // 跨天
+                        sleepHourContinuous += 24
                     }
 
                     val calWake = Calendar.getInstance()
@@ -1211,47 +1241,46 @@ private fun WeekSleepChartWithTimeAxis(
                     val wakeMinute = calWake.get(Calendar.MINUTE)
                     var wakeHourContinuous = wakeHour + wakeMinute / 60f
                     if (wakeHourContinuous < startHour) {
-                        wakeHourContinuous += 24 // 跨天
+                        wakeHourContinuous += 24
                     }
-                    // 起床时间如果超过12:00，也算作次日
                     if (wakeHourContinuous > endHour) {
                         wakeHourContinuous = endHour.toFloat()
                     }
 
-                    // 计算柱状图位置
-                    val x = spacing + index * (barWidth + spacing)
-                    // y轴：顶部是入睡时间，底部是起床时间
+                    // 柱子位置：固定在对应的slot中
+                    val x = index * slotWidth + (slotWidth - fixedBarWidth) / 2
                     val sleepY = (sleepHourContinuous - startHour) / totalHours * chartHeight
                     val wakeY = (wakeHourContinuous - startHour) / totalHours * chartHeight
 
-                    // 绘制睡眠柱状图
                     drawRoundRect(
                         color = primaryColor.copy(alpha = 0.8f),
                         topLeft = Offset(x, sleepY),
-                        size = Size(barWidth, wakeY - sleepY),
+                        size = Size(fixedBarWidth, wakeY - sleepY),
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
                     )
                 }
             }
 
-            // X轴日期标签
+            // X轴标签 - 与柱子相同的布局
             Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                sortedData.forEach { sleep ->
-                    val cal = Calendar.getInstance()
-                    cal.timeInMillis = sleep.date
-                    val dayLabel = "${cal.get(Calendar.DAY_OF_MONTH)}"
-                    Text(
-                        text = dayLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = onSurfaceVariantColor,
+            Row(modifier = Modifier.fillMaxWidth()) {
+                repeat(7) { slotIndex ->
+                    val sleep = sortedData.getOrNull(slotIndex)
+
+                    Box(
                         modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center,
-                        maxLines = 1
-                    )
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (sleep != null) {
+                            val cal = Calendar.getInstance()
+                            cal.timeInMillis = sleep.date
+                            Text(
+                                text = "${cal.get(Calendar.DAY_OF_MONTH)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = onSurfaceVariantColor
+                            )
+                        }
+                    }
                 }
             }
         }

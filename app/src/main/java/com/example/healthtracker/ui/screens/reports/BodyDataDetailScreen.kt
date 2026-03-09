@@ -2,7 +2,6 @@ package com.example.healthtracker.ui.screens.reports
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,13 +19,11 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.healthtracker.data.local.entity.BodyRecordEntity
 import java.util.Calendar
-import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -426,9 +423,9 @@ private fun BodyTrendChart(
                                     )
                                 }
                             } else if (chartPoints.size == 1) {
-                                // 只有一个数据点
+                                // 只有一个数据点 - 放在最左边与标签对齐
                                 val point = chartPoints.first()
-                                val x = chartWidth / 2
+                                val x = 0f // 与标签对齐，放在最左边
                                 val y = chartHeight - ((point.second - minVal) / range * chartHeight).toFloat()
                                 // 外圈光晕
                                 drawCircle(
@@ -675,33 +672,6 @@ private fun WeeklyBodyTrendChart(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(start = 40.dp, top = 10.dp, end = 10.dp, bottom = 30.dp)
-                                .pointerInput(weeklyData) {
-                                    detectTapGestures { offset ->
-                                        // 计算点击位置对应的数据点
-                                        val chartWidth = size.width
-                                        val chartHeight = size.height
-                                        val paddingStart = 40.dp.toPx()
-
-                                        // 检查点击是否在图表区域内
-                                        if (offset.x >= paddingStart && values.size >= 1) {
-                                            val adjustedX = offset.x - paddingStart
-                                            val pointSpacing: Float = if (values.size > 1) chartWidth.toFloat() / (values.size - 1) else 0f
-
-                                            values.forEachIndexed { index, _ ->
-                                                val pointX: Float = if (values.size > 1) {
-                                                    index * pointSpacing
-                                                } else {
-                                                    chartWidth / 2f
-                                                }
-                                                // 检查是否点击在数据点附近（30px范围内）
-                                                if (abs(adjustedX - pointX) < 30f) {
-                                                    selectedPointIndex = index
-                                                    return@detectTapGestures
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
                         ) {
                             val chartWidth = size.width
                             val chartHeight = size.height
@@ -721,11 +691,13 @@ private fun WeeklyBodyTrendChart(
 
                             // 绘制折线
                             if (values.size >= 2) {
+                                // 固定槽位：数据点和标签使用相同的坐标计算
                                 val points = values.mapIndexed { index, value ->
+                                    // 使用固定槽位计算 X 坐标，与标签布局一致
                                     val x = if (values.size > 1) {
                                         (index.toFloat() / (values.size - 1)) * chartWidth
                                     } else {
-                                        chartWidth / 2
+                                        0f // 单个数据点放在最左边，与标签对齐
                                     }
                                     val y = chartHeight - ((value - minVal) / range * chartHeight).toFloat()
                                     Offset(x, y)
@@ -775,7 +747,8 @@ private fun WeeklyBodyTrendChart(
                                     )
                                 }
                             } else if (values.size == 1) {
-                                val x = chartWidth / 2
+                                // 单个数据点放在最左边，与标签对齐
+                                val x = 0f
                                 val y = chartHeight - ((values[0] - minVal) / range * chartHeight).toFloat()
                                 drawCircle(
                                     color = lineColor.copy(alpha = 0.2f),
@@ -811,7 +784,7 @@ private fun WeeklyBodyTrendChart(
                             }
                         }
 
-                        // X轴标签（周数）
+                        // X轴标签（周数）- 可点击
                         if (weeklyData.isNotEmpty()) {
                             Row(
                                 modifier = Modifier
@@ -820,13 +793,19 @@ private fun WeeklyBodyTrendChart(
                                     .fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                weeklyData.forEach { week ->
+                                weeklyData.forEachIndexed { index, week ->
                                     Text(
                                         text = "W${week.weekOfYear}",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = if (selectedPointIndex == index)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 10.sp,
-                                        maxLines = 1
+                                        maxLines = 1,
+                                        modifier = Modifier.clickable {
+                                            selectedPointIndex = index
+                                        }
                                     )
                                 }
                             }
