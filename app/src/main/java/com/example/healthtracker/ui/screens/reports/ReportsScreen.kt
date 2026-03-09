@@ -723,15 +723,22 @@ private fun BodyDataChartCard(
     period: Int,
     onClick: () -> Unit = {}
 ) {
-    // 数据类型选择：0=体重体脂肌肉，1=三围
-    var dataType by remember { mutableIntStateOf(0) }
+    // 数据类型选择：0=体重, 1=体脂, 2=肌肉
+    var selectedDataType by remember { mutableIntStateOf(0) }
 
-    val weightColor = MaterialTheme.colorScheme.primary
-    val bodyFatColor = MaterialTheme.colorScheme.error
-    val muscleColor = MaterialTheme.colorScheme.tertiary
-    val chestColor = MaterialTheme.colorScheme.primary
-    val waistColor = MaterialTheme.colorScheme.secondary
-    val hipColor = MaterialTheme.colorScheme.tertiary
+    val lineColor = when (selectedDataType) {
+        0 -> MaterialTheme.colorScheme.primary
+        1 -> MaterialTheme.colorScheme.error
+        2 -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.primary
+    }
+
+    val (dataLabel, unit) = when (selectedDataType) {
+        0 -> "体重" to "kg"
+        1 -> "体脂" to "%"
+        2 -> "肌肉" to "kg"
+        else -> "体重" to "kg"
+    }
 
     Card(
         modifier = Modifier
@@ -754,18 +761,21 @@ private fun BodyDataChartCard(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                // 隐藏三围切换按钮
             }
 
-            // 图例
-            Spacer(modifier = Modifier.height(8.dp))
+            // 数据类型选择（单选）
+            Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                LegendItem("体重", weightColor)
-                LegendItem("体脂", bodyFatColor)
-                LegendItem("肌肉", muscleColor)
+                listOf("体重", "体脂", "肌肉").forEachIndexed { index, label ->
+                    FilterChip(
+                        selected = selectedDataType == index,
+                        onClick = { selectedDataType = index },
+                        label = { Text(label, fontSize = 12.sp) }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -773,142 +783,190 @@ private fun BodyDataChartCard(
             // 折线图
             val sortedData = data.sortedBy { it.date }
 
-            if (dataType == 0) {
-                // 体重、体脂、肌肉量
-                val hasValidData = sortedData.any { it.weight != null || it.bodyFatRate != null || it.muscleMass != null }
+            // 提取选中类型的数据值
+            val values = sortedData.mapNotNull { entity ->
+                when (selectedDataType) {
+                    0 -> entity.weight
+                    1 -> entity.bodyFatRate
+                    2 -> entity.muscleMass
+                    else -> entity.weight
+                }
+            }
 
-                if (!hasValidData) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("暂无身体数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                } else {
-                    // 提取所有数据（保留 null 值位置）
-                    val weights = sortedData.map { it.weight }
-                    val bodyFats = sortedData.map { it.bodyFatRate }
-                    val muscles = sortedData.map { it.muscleMass }
-                    val dataCount = sortedData.size
+            if (values.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("暂无${dataLabel}数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else {
+                // 计算数据范围
+                val minVal = (values.minOrNull() ?: 0.0) * 0.9
+                val maxVal = (values.maxOrNull() ?: 100.0) * 1.1
+                val range = (maxVal - minVal).coerceAtLeast(1.0)
 
-                    // 计算范围（忽略 null 值）
-                    val validWeights = weights.filterNotNull()
-                    val validBodyFats = bodyFats.filterNotNull()
-                    val validMuscles = muscles.filterNotNull()
+                // Y轴刻度（5个刻度）
+                val yLabels = (0..4).map { i ->
+                    val value = maxVal - (range * i / 4)
+                    String.format("%.1f", value)
+                }
 
-                    val minWeight = (validWeights.minOrNull() ?: 50.0) - 2
-                    val maxWeight = (validWeights.maxOrNull() ?: 80.0) + 2
-                    val minBodyFat = (validBodyFats.minOrNull() ?: 15.0) - 2
-                    val maxBodyFat = (validBodyFats.maxOrNull() ?: 25.0) + 2
-                    val minMuscle = (validMuscles.minOrNull() ?: 30.0) - 2
-                    val maxMuscle = (validMuscles.maxOrNull() ?: 50.0) + 2
+                // X轴标签（智能选择显示）
+                val xLabels = remember(sortedData) {
+                    if (sortedData.size <= 7) {
+                        sortedData.map { entity ->
+                            val calendar = Calendar.getInstance()
+                            calendar.timeInMillis = entity.date
+                            "${calendar.get(Calendar.DAY_OF_MONTH)}日"
+                        }
+                    } else {
+                        // 数据量较大，选择3个关键日期
+                        val first = sortedData.first()
+                        val middle = sortedData[sortedData.size / 2]
+                        val last = sortedData.last()
 
-                    // 生成 x 轴标签
-                    val xLabels = remember(sortedData, period) {
-                        if (period == 0) {
-                            // 周视图：显示每天的日期（如 "7日"）
-                            sortedData.map { entity ->
-                                val calendar = Calendar.getInstance()
-                                calendar.timeInMillis = entity.date
-                                "${calendar.get(Calendar.DAY_OF_MONTH)}日"
-                            }
-                        } else {
-                            // 月视图：显示周号（如 "第1周"）
-                            sortedData.mapIndexed { index, _ ->
-                                "第${index + 1}周"
-                            }
+                        listOf(first, middle, last).map { entity ->
+                            val calendar = Calendar.getInstance()
+                            calendar.timeInMillis = entity.date
+                            "${calendar.get(Calendar.MONTH) + 1}/${calendar.get(Calendar.DAY_OF_MONTH)}"
                         }
                     }
+                }
 
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                ) {
                     Canvas(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
+                            .fillMaxSize()
+                            .padding(start = 50.dp, top = 10.dp, end = 10.dp, bottom = 30.dp)
                     ) {
-                        val chartHeight = size.height - 40f
                         val chartWidth = size.width
+                        val chartHeight = size.height
 
-                        // 绘制平滑曲线
-                        // 体重折线 - 只绘制非 null 的连续数据点
-                        val weightPoints = weights.mapIndexedNotNull { index, weight ->
-                            weight?.let {
-                                val x = if (dataCount > 1) (index.toFloat() / (dataCount - 1)) * chartWidth else chartWidth / 2
-                                val y = chartHeight - ((it - minWeight) / (maxWeight - minWeight) * chartHeight).toFloat() + 20
-                                Offset(x, y)
-                            }
-                        }
-                        if (weightPoints.size >= 2) {
-                            drawSmoothLine(points = weightPoints, color = weightColor)
-                            weightPoints.forEach { point ->
-                                drawCircle(color = weightColor, radius = 4f, center = point)
-                            }
-                        } else if (weightPoints.size == 1) {
-                            drawCircle(color = weightColor, radius = 4f, center = weightPoints.first())
+                        // 绘制Y轴虚线参考线
+                        val dashPathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
+                        repeat(5) { i ->
+                            val y = (i * chartHeight / 4)
+                            drawLine(
+                                color = Color.Gray.copy(alpha = 0.3f),
+                                start = Offset(0f, y),
+                                end = Offset(chartWidth, y),
+                                strokeWidth = 1f,
+                                pathEffect = dashPathEffect
+                            )
                         }
 
-                        // 体脂折线
-                        val bodyFatPoints = bodyFats.mapIndexedNotNull { index, bodyFat ->
-                            bodyFat?.let {
-                                val x = if (dataCount > 1) (index.toFloat() / (dataCount - 1)) * chartWidth else chartWidth / 2
-                                val y = chartHeight - ((it - minBodyFat) / (maxBodyFat - minBodyFat) * chartHeight).toFloat() + 20
+                        // 绘制折线
+                        if (values.size >= 2) {
+                            val points = values.mapIndexed { index, value ->
+                                val x = if (values.size > 1) {
+                                    (index.toFloat() / (values.size - 1)) * chartWidth
+                                } else {
+                                    chartWidth / 2
+                                }
+                                val y = chartHeight - ((value - minVal) / range * chartHeight).toFloat()
                                 Offset(x, y)
                             }
-                        }
-                        if (bodyFatPoints.size >= 2) {
-                            drawSmoothLine(points = bodyFatPoints, color = bodyFatColor)
-                            bodyFatPoints.forEach { point ->
-                                drawCircle(color = bodyFatColor, radius = 4f, center = point)
-                            }
-                        } else if (bodyFatPoints.size == 1) {
-                            drawCircle(color = bodyFatColor, radius = 4f, center = bodyFatPoints.first())
-                        }
 
-                        // 肌肉量折线
-                        val musclePoints = muscles.mapIndexedNotNull { index, muscle ->
-                            muscle?.let {
-                                val x = if (dataCount > 1) (index.toFloat() / (dataCount - 1)) * chartWidth else chartWidth / 2
-                                val y = chartHeight - ((it - minMuscle) / (maxMuscle - minMuscle) * chartHeight).toFloat() + 20
-                                Offset(x, y)
+                            // 绘制平滑曲线
+                            val path = Path()
+                            path.moveTo(points[0].x, points[0].y)
+
+                            for (i in 1 until points.size) {
+                                val prev = points[i - 1]
+                                val curr = points[i]
+                                val midX = (prev.x + curr.x) / 2
+
+                                path.cubicTo(
+                                    midX, prev.y,
+                                    midX, curr.y,
+                                    curr.x, curr.y
+                                )
                             }
-                        }
-                        if (musclePoints.size >= 2) {
-                            drawSmoothLine(points = musclePoints, color = muscleColor)
-                            musclePoints.forEach { point ->
-                                drawCircle(color = muscleColor, radius = 4f, center = point)
+
+                            drawPath(
+                                path = path,
+                                color = lineColor,
+                                style = Stroke(width = 2.5f)
+                            )
+
+                            // 绘制数据点
+                            points.forEach { point ->
+                                drawCircle(
+                                    color = lineColor,
+                                    radius = 4f,
+                                    center = point
+                                )
                             }
-                        } else if (musclePoints.size == 1) {
-                            drawCircle(color = muscleColor, radius = 4f, center = musclePoints.first())
+                        } else if (values.size == 1) {
+                            val x = chartWidth / 2
+                            val y = chartHeight - ((values[0] - minVal) / range * chartHeight).toFloat()
+                            drawCircle(
+                                color = lineColor,
+                                radius = 6f,
+                                center = Offset(x, y)
+                            )
                         }
                     }
 
-                    // X 轴标签
+                    // Y轴标签
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(top = 10.dp, bottom = 30.dp)
+                            .width(50.dp)
+                            .height(180.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        yLabels.forEach { label ->
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 10.sp,
+                                textAlign = TextAlign.End,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+
+                    // X轴标签
                     if (xLabels.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(start = 50.dp, end = 10.dp)
+                                .fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             xLabels.forEach { label ->
                                 Text(
                                     text = label,
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 10.sp,
+                                    maxLines = 1
                                 )
                             }
                         }
                     }
+                }
 
-                    // 统计信息
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        validWeights.lastOrNull()?.let { StatItem("体重", "${String.format("%.1f", it)} kg") }
-                        validBodyFats.lastOrNull()?.let { StatItem("体脂", "${String.format("%.1f", it)}%") }
-                        validMuscles.lastOrNull()?.let { StatItem("肌肉", "${String.format("%.1f", it)} kg") }
+                // 最新数据统计
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    val latestValue = values.lastOrNull()
+                    latestValue?.let {
+                        StatItem(dataLabel, "${String.format("%.1f", it)} $unit")
                     }
                 }
             }

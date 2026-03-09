@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -68,7 +71,6 @@ fun BodyDataDetailScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 }
-                // 隐藏三围切换按钮
             )
         }
     ) { paddingValues ->
@@ -89,6 +91,14 @@ fun BodyDataDetailScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // 数据类型选择（单选）
+                item {
+                    DataTypeSelector(
+                        selectedType = uiState.selectedDataType,
+                        onTypeSelected = { viewModel.setSelectedDataType(it) }
+                    )
+                }
+
                 // 筛选模式切换
                 item {
                     Row(
@@ -98,12 +108,12 @@ fun BodyDataDetailScreen(
                         FilterChip(
                             selected = uiState.filterMode == 0,
                             onClick = { viewModel.setFilterMode(0) },
-                            label = { Text("自定义时间") }
+                            label = { Text("自定义时间段") }
                         )
                         FilterChip(
                             selected = uiState.filterMode == 1,
                             onClick = { viewModel.setFilterMode(1) },
-                            label = { Text("以周为点") }
+                            label = { Text("周") }
                         )
                     }
                 }
@@ -131,42 +141,77 @@ fun BodyDataDetailScreen(
                     }
                 }
 
-                // 折线图区块
+                // 周模式导航
+                if (uiState.filterMode == 1) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = { viewModel.navigateWeek(-1) }) {
+                                Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "前一组")
+                            }
+                            Text(
+                                text = "显示 ${uiState.weeklyData.size} 周数据",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            IconButton(onClick = { viewModel.navigateWeek(1) }) {
+                                Icon(Icons.Default.KeyboardArrowRight, contentDescription = "后一组")
+                            }
+                        }
+                    }
+                }
+
+                // 折线图
                 item {
                     if (uiState.filterMode == 0) {
-                        BodyLineChartCard(
+                        BodyTrendChart(
                             data = uiState.rawData,
-                            dataType = uiState.dataType
+                            dataType = uiState.selectedDataType
                         )
                     } else {
-                        WeeklyBodyLineChartCard(
-                            data = uiState.weeklyData,
-                            dataType = uiState.dataType
+                        WeeklyBodyTrendChart(
+                            weeklyData = uiState.weeklyData,
+                            dataType = uiState.selectedDataType
                         )
                     }
                 }
 
-                // 数据变化总结区块
+                // 数据变化卡片
                 item {
-                    if (uiState.dataType == 0) {
-                        BodyChangeCard(
-                            weightChange = viewModel.getChangeData().first,
-                            bodyFatChange = viewModel.getChangeData().second,
-                            muscleChange = viewModel.getChangeData().third
-                        )
-                    } else {
-                        MeasurementsChangeCard(
-                            chestChange = viewModel.getMeasurementsChangeData().first,
-                            waistChange = viewModel.getMeasurementsChangeData().second,
-                            hipChange = viewModel.getMeasurementsChangeData().third
-                        )
-                    }
+                    DataChangeCard(
+                        dataType = uiState.selectedDataType,
+                        changeValue = viewModel.getChangeValue()
+                    )
                 }
 
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DataTypeSelector(
+    selectedType: Int,
+    onTypeSelected: (Int) -> Unit
+) {
+    val types = listOf("体重", "体脂", "肌肉")
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        types.forEachIndexed { index, label ->
+            FilterChip(
+                selected = selectedType == index,
+                onClick = { onTypeSelected(index) },
+                label = { Text(label) },
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
@@ -203,19 +248,21 @@ private fun DateSelector(
     }
 }
 
+/**
+ * 身体数据趋势图表 - 自定义时间段模式
+ */
 @Composable
-private fun BodyLineChartCard(
+private fun BodyTrendChart(
     data: List<BodyRecordEntity>,
     dataType: Int
 ) {
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val secondaryColor = MaterialTheme.colorScheme.secondary
-    val tertiaryColor = MaterialTheme.colorScheme.tertiary
+    val lineColor = MaterialTheme.colorScheme.primary
 
-    val (line1Label, line2Label, line3Label) = if (dataType == 0) {
-        Triple("体重", "体脂", "肌肉")
-    } else {
-        Triple("胸围", "腰围", "臀围")
+    val (dataLabel, unit) = when (dataType) {
+        0 -> "体重" to "kg"
+        1 -> "体脂" to "%"
+        2 -> "肌肉" to "kg"
+        else -> "体重" to "kg"
     }
 
     Card(
@@ -225,22 +272,10 @@ private fun BodyLineChartCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "数据趋势",
+                text = "$dataLabel趋势",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 图例
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                LegendItem(line1Label, primaryColor)
-                LegendItem(line2Label, secondaryColor)
-                LegendItem(line3Label, tertiaryColor)
-            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -248,186 +283,249 @@ private fun BodyLineChartCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp),
+                        .height(220.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
-                // 计算数据范围
-                val values1 = if (dataType == 0) data.mapNotNull { it.weight } else data.mapNotNull { it.chest }
-                val values2 = if (dataType == 0) data.mapNotNull { it.bodyFatRate } else data.mapNotNull { it.waist }
-                val values3 = if (dataType == 0) data.mapNotNull { it.muscleMass } else data.mapNotNull { it.hip }
-
-                val max1 = (values1.maxOrNull() ?: 100.0).toFloat().coerceAtLeast(1f)
-                val max2 = (values2.maxOrNull() ?: 100.0).toFloat().coerceAtLeast(1f)
-                val max3 = (values3.maxOrNull() ?: 100.0).toFloat().coerceAtLeast(1f)
-
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                ) {
-                    val chartHeight = size.height - 20f
-                    val pointSpacing = size.width / (data.size - 1).coerceAtLeast(1)
-
-                    // 绘制三条折线
-                    drawSmoothLine(values1, max1, chartHeight, pointSpacing, primaryColor)
-                    drawSmoothLine(values2, max2, chartHeight, pointSpacing, secondaryColor)
-                    drawSmoothLine(values3, max3, chartHeight, pointSpacing, tertiaryColor)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun WeeklyBodyLineChartCard(
-    data: List<WeeklyBodyData>,
-    dataType: Int
-) {
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val secondaryColor = MaterialTheme.colorScheme.secondary
-    val tertiaryColor = MaterialTheme.colorScheme.tertiary
-
-    val (line1Label, line2Label, line3Label) = if (dataType == 0) {
-        Triple("体重", "体脂", "肌肉")
-    } else {
-        Triple("胸围", "腰围", "臀围")
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "数据趋势（周中位数）",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 图例
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                LegendItem(line1Label, primaryColor)
-                LegendItem(line2Label, secondaryColor)
-                LegendItem(line3Label, tertiaryColor)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (data.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            } else {
-                val values1 = if (dataType == 0) data.mapNotNull { it.medianWeight } else data.mapNotNull { it.medianChest }
-                val values2 = if (dataType == 0) data.mapNotNull { it.medianBodyFat } else data.mapNotNull { it.medianWaist }
-                val values3 = if (dataType == 0) data.mapNotNull { it.medianMuscle } else data.mapNotNull { it.medianHip }
-
-                val max1 = (values1.maxOrNull() ?: 100.0).toFloat().coerceAtLeast(1f)
-                val max2 = (values2.maxOrNull() ?: 100.0).toFloat().coerceAtLeast(1f)
-                val max3 = (values3.maxOrNull() ?: 100.0).toFloat().coerceAtLeast(1f)
-
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                ) {
-                    val chartHeight = size.height - 20f
-                    val pointSpacing = size.width / (data.size - 1).coerceAtLeast(1)
-
-                    drawSmoothLine(values1, max1, chartHeight, pointSpacing, primaryColor)
-                    drawSmoothLine(values2, max2, chartHeight, pointSpacing, secondaryColor)
-                    drawSmoothLine(values3, max3, chartHeight, pointSpacing, tertiaryColor)
-                }
-
-                // X轴标签
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    data.forEach { week ->
-                        Text(
-                            text = "第${week.weekOfYear}周",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f),
-                            textAlign = TextAlign.Center,
-                            maxLines = 1
-                        )
+                // 提取数据值
+                val values = data.mapNotNull { entity ->
+                    when (dataType) {
+                        0 -> entity.weight
+                        1 -> entity.bodyFatRate
+                        2 -> entity.muscleMass
+                        else -> entity.weight
                     }
                 }
+
+                if (values.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("暂无${dataLabel}数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    // 计算数据范围（添加10%的边距）
+                    val minVal = (values.minOrNull() ?: 0.0) * 0.9
+                    val maxVal = (values.maxOrNull() ?: 100.0) * 1.1
+                    val range = (maxVal - minVal).coerceAtLeast(1.0)
+
+                    // 生成图表数据点
+                    val chartPoints = values.mapIndexedNotNull { index, value ->
+                        val entity = data.getOrNull(index) ?: return@mapIndexedNotNull null
+                        val actualValue = when (dataType) {
+                            0 -> entity.weight
+                            1 -> entity.bodyFatRate
+                            2 -> entity.muscleMass
+                            else -> entity.weight
+                        }
+                        actualValue?.let { index to it }
+                    }
+
+                    // Y轴刻度（5个刻度）
+                    val yLabels = (0..4).map { i ->
+                        val value = maxVal - (range * i / 4)
+                        String.format("%.1f", value)
+                    }
+
+                    // X轴标签（智能选择显示）
+                    val xLabels = remember(data) {
+                        generateXLabels(data)
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp)
+                    ) {
+                        Canvas(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(start = 50.dp, top = 10.dp, end = 10.dp, bottom = 30.dp)
+                        ) {
+                            val chartWidth = size.width
+                            val chartHeight = size.height
+
+                            // 绘制Y轴虚线参考线
+                            val dashPathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
+                            repeat(5) { i ->
+                                val y = (i * chartHeight / 4)
+                                drawLine(
+                                    color = Color.Gray.copy(alpha = 0.3f),
+                                    start = Offset(0f, y),
+                                    end = Offset(chartWidth, y),
+                                    strokeWidth = 1f,
+                                    pathEffect = dashPathEffect
+                                )
+                            }
+
+                            // 绘制折线
+                            if (chartPoints.size >= 2) {
+                                val points = chartPoints.map { (index, value) ->
+                                    val x = if (values.size > 1) {
+                                        (index.toFloat() / (values.size - 1)) * chartWidth
+                                    } else {
+                                        chartWidth / 2
+                                    }
+                                    val y = chartHeight - ((value - minVal) / range * chartHeight).toFloat()
+                                    Offset(x, y)
+                                }
+
+                                // 绘制平滑曲线
+                                val path = Path()
+                                path.moveTo(points[0].x, points[0].y)
+
+                                for (i in 1 until points.size) {
+                                    val prev = points[i - 1]
+                                    val curr = points[i]
+                                    val midX = (prev.x + curr.x) / 2
+
+                                    path.cubicTo(
+                                        midX, prev.y,
+                                        midX, curr.y,
+                                        curr.x, curr.y
+                                    )
+                                }
+
+                                drawPath(
+                                    path = path,
+                                    color = lineColor,
+                                    style = Stroke(width = 2.5f)
+                                )
+
+                                // 绘制数据点
+                                points.forEach { point ->
+                                    drawCircle(
+                                        color = lineColor,
+                                        radius = 4f,
+                                        center = point
+                                    )
+                                }
+                            } else if (chartPoints.size == 1) {
+                                // 只有一个数据点
+                                val point = chartPoints.first()
+                                val x = chartWidth / 2
+                                val y = chartHeight - ((point.second - minVal) / range * chartHeight).toFloat()
+                                drawCircle(
+                                    color = lineColor,
+                                    radius = 6f,
+                                    center = Offset(x, y)
+                                )
+                            }
+                        }
+
+                        // Y轴标签
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                                .padding(top = 10.dp, bottom = 30.dp)
+                                .width(50.dp)
+                                .height(180.dp),
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            yLabels.forEach { label ->
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 10.sp,
+                                    textAlign = TextAlign.End,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+
+                        // X轴标签
+                        if (xLabels.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(start = 50.dp, end = 10.dp)
+                                    .fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                xLabels.forEach { label ->
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 10.sp,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // 单位标签
+                    Text(
+                        text = "单位: $unit",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.End
+                    )
+                }
             }
         }
     }
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSmoothLine(
-    values: List<Double>,
-    maxValue: Float,
-    chartHeight: Float,
-    pointSpacing: Float,
-    color: Color
-) {
-    if (values.size < 2) return
+/**
+ * 生成智能X轴标签
+ */
+private fun generateXLabels(data: List<BodyRecordEntity>): List<String> {
+    if (data.isEmpty()) return emptyList()
 
-    val path = Path()
-    val points = values.mapIndexed { index, value ->
-        val x = index * pointSpacing
-        val y = chartHeight - (value.toFloat() / maxValue * chartHeight)
-        Offset(x, y)
+    val cal = Calendar.getInstance()
+
+    if (data.size <= 7) {
+        // 7天或更少，显示所有日期
+        return data.map { entity ->
+            cal.timeInMillis = entity.date
+            "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}"
+        }
     }
 
-    // 使用贝塞尔曲线绘制平滑曲线
-    path.moveTo(points[0].x, points[0].y)
+    // 数据量较大，选择3个关键日期显示
+    val first = data.first()
+    val middle = data[data.size / 2]
+    val last = data.last()
 
-    for (i in 1 until points.size) {
-        val prev = points[i - 1]
-        val curr = points[i]
-        val midX = (prev.x + curr.x) / 2
-
-        path.cubicTo(
-            midX, prev.y,
-            midX, curr.y,
-            curr.x, curr.y
-        )
-    }
-
-    drawPath(
-        path = path,
-        color = color,
-        style = Stroke(width = 2.5f)
+    return listOf(
+        formatDateLabel(first.date),
+        formatDateLabel(middle.date),
+        formatDateLabel(last.date)
     )
-
-    // 绘制数据点
-    points.forEach { point ->
-        drawCircle(
-            color = color,
-            radius = 4f,
-            center = point
-        )
-    }
 }
 
+private fun formatDateLabel(timestamp: Long): String {
+    val cal = Calendar.getInstance()
+    cal.timeInMillis = timestamp
+    return "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}"
+}
+
+/**
+ * 身体数据趋势图表 - 周模式
+ */
 @Composable
-private fun BodyChangeCard(
-    weightChange: String,
-    bodyFatChange: String,
-    muscleChange: String
+private fun WeeklyBodyTrendChart(
+    weeklyData: List<WeeklyBodyData>,
+    dataType: Int
 ) {
+    val lineColor = MaterialTheme.colorScheme.primary
+
+    val (dataLabel, unit) = when (dataType) {
+        0 -> "体重" to "kg"
+        1 -> "体脂" to "%"
+        2 -> "肌肉" to "kg"
+        else -> "体重" to "kg"
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -435,105 +533,243 @@ private fun BodyChangeCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "数据变化",
+                text = "$dataLabel趋势（周中位数）",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                ChangeItem(label = "体重", change = weightChange, unit = "kg")
-                ChangeItem(label = "体脂", change = bodyFatChange, unit = "%")
-                ChangeItem(label = "肌肉", change = muscleChange, unit = "kg")
+            if (weeklyData.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else {
+                // 提取数据值
+                val values = weeklyData.mapNotNull { week ->
+                    when (dataType) {
+                        0 -> week.medianWeight
+                        1 -> week.medianBodyFat
+                        2 -> week.medianMuscle
+                        else -> week.medianWeight
+                    }
+                }
+
+                if (values.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("暂无${dataLabel}数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    // 计算数据范围
+                    val minVal = (values.minOrNull() ?: 0.0) * 0.9
+                    val maxVal = (values.maxOrNull() ?: 100.0) * 1.1
+                    val range = (maxVal - minVal).coerceAtLeast(1.0)
+
+                    // Y轴刻度
+                    val yLabels = (0..4).map { i ->
+                        val value = maxVal - (range * i / 4)
+                        String.format("%.1f", value)
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp)
+                    ) {
+                        Canvas(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(start = 50.dp, top = 10.dp, end = 10.dp, bottom = 30.dp)
+                        ) {
+                            val chartWidth = size.width
+                            val chartHeight = size.height
+
+                            // 绘制Y轴虚线参考线
+                            val dashPathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
+                            repeat(5) { i ->
+                                val y = (i * chartHeight / 4)
+                                drawLine(
+                                    color = Color.Gray.copy(alpha = 0.3f),
+                                    start = Offset(0f, y),
+                                    end = Offset(chartWidth, y),
+                                    strokeWidth = 1f,
+                                    pathEffect = dashPathEffect
+                                )
+                            }
+
+                            // 绘制折线
+                            if (values.size >= 2) {
+                                val points = values.mapIndexed { index, value ->
+                                    val x = if (values.size > 1) {
+                                        (index.toFloat() / (values.size - 1)) * chartWidth
+                                    } else {
+                                        chartWidth / 2
+                                    }
+                                    val y = chartHeight - ((value - minVal) / range * chartHeight).toFloat()
+                                    Offset(x, y)
+                                }
+
+                                // 绘制平滑曲线
+                                val path = Path()
+                                path.moveTo(points[0].x, points[0].y)
+
+                                for (i in 1 until points.size) {
+                                    val prev = points[i - 1]
+                                    val curr = points[i]
+                                    val midX = (prev.x + curr.x) / 2
+
+                                    path.cubicTo(
+                                        midX, prev.y,
+                                        midX, curr.y,
+                                        curr.x, curr.y
+                                    )
+                                }
+
+                                drawPath(
+                                    path = path,
+                                    color = lineColor,
+                                    style = Stroke(width = 2.5f)
+                                )
+
+                                // 绘制数据点
+                                points.forEach { point ->
+                                    drawCircle(
+                                        color = lineColor,
+                                        radius = 4f,
+                                        center = point
+                                    )
+                                }
+                            } else if (values.size == 1) {
+                                val x = chartWidth / 2
+                                val y = chartHeight - ((values[0] - minVal) / range * chartHeight).toFloat()
+                                drawCircle(
+                                    color = lineColor,
+                                    radius = 6f,
+                                    center = Offset(x, y)
+                                )
+                            }
+                        }
+
+                        // Y轴标签
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                                .padding(top = 10.dp, bottom = 30.dp)
+                                .width(50.dp)
+                                .height(180.dp),
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            yLabels.forEach { label ->
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 10.sp,
+                                    textAlign = TextAlign.End,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+
+                        // X轴标签（周数）
+                        if (weeklyData.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(start = 50.dp, end = 10.dp)
+                                    .fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                weeklyData.forEach { week ->
+                                    Text(
+                                        text = "W${week.weekOfYear}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 10.sp,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = "单位: $unit",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.End
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun MeasurementsChangeCard(
-    chestChange: String,
-    waistChange: String,
-    hipChange: String
+private fun DataChangeCard(
+    dataType: Int,
+    changeValue: String
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "三围变化",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                ChangeItem(label = "胸围", change = chestChange, unit = "cm")
-                ChangeItem(label = "腰围", change = waistChange, unit = "cm")
-                ChangeItem(label = "臀围", change = hipChange, unit = "cm")
-            }
-        }
+    val (dataLabel, unit) = when (dataType) {
+        0 -> "体重" to "kg"
+        1 -> "体脂" to "%"
+        2 -> "肌肉" to "kg"
+        else -> "体重" to "kg"
     }
-}
 
-@Composable
-private fun ChangeItem(label: String, change: String, unit: String) {
-    val isPositive = change.startsWith("+")
-    val isNegative = change.startsWith("-")
-    val color = when {
-        isNegative -> MaterialTheme.colorScheme.primary
-        isPositive -> MaterialTheme.colorScheme.error
+    val isPositive = changeValue.startsWith("+")
+    val isNegative = changeValue.startsWith("-")
+    val changeColor = when {
+        isNegative -> MaterialTheme.colorScheme.primary // 下降用主色
+        isPositive -> MaterialTheme.colorScheme.error // 上升用错误色
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-                text = change,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
-            Spacer(modifier = Modifier.width(2.dp))
-            Text(
-                text = unit,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun LegendItem(label: String, color: Color) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
             modifier = Modifier
-                .width(16.dp)
-                .height(2.dp)
-                .background(color)
-        )
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "$dataLabel变化",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    text = changeValue,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = changeColor
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = unit,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 

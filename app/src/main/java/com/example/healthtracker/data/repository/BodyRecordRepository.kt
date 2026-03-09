@@ -27,6 +27,8 @@ class BodyRecordRepository @Inject constructor(
 
     fun getAllRecords(): Flow<List<BodyRecordEntity>> = bodyRecordDao.getAllRecords()
 
+    suspend fun getAllRecordsSync(): List<BodyRecordEntity> = bodyRecordDao.getAllRecordsSync()
+
     suspend fun insertRecord(record: BodyRecordEntity): Long =
         bodyRecordDao.insertRecord(record)
 

@@ -13,12 +13,13 @@ import java.util.Calendar
 import javax.inject.Inject
 
 data class BodyDataDetailUiState(
-    val filterMode: Int = 0, // 0=自定义时间, 1=以周为一点
-    val dataType: Int = 0, // 0=体重体脂肌肉, 1=三围
+    val filterMode: Int = 0, // 0=自定义时间, 1=以周为点
+    val selectedDataType: Int = 0, // 0=体重, 1=体脂, 2=肌肉
     val startDate: Long = System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000L,
     val endDate: Long = System.currentTimeMillis(),
     val rawData: List<BodyRecordEntity> = emptyList(),
     val weeklyData: List<WeeklyBodyData> = emptyList(),
+    val weekOffset: Int = 0, // 周模式的偏移量，0=最近7周
     val isLoading: Boolean = true
 )
 
@@ -26,12 +27,11 @@ data class WeeklyBodyData(
     val year: Int,
     val weekOfYear: Int,
     val weekLabel: String,
+    val startDate: Long,
+    val endDate: Long,
     val medianWeight: Double?,
     val medianBodyFat: Double?,
-    val medianMuscle: Double?,
-    val medianChest: Double?,
-    val medianWaist: Double?,
-    val medianHip: Double?
+    val medianMuscle: Double?
 )
 
 @HiltViewModel
@@ -47,12 +47,12 @@ class BodyDataDetailViewModel @Inject constructor(
     }
 
     fun setFilterMode(mode: Int) {
-        _uiState.value = _uiState.value.copy(filterMode = mode)
+        _uiState.value = _uiState.value.copy(filterMode = mode, weekOffset = 0)
         loadData()
     }
 
-    fun setDataType(type: Int) {
-        _uiState.value = _uiState.value.copy(dataType = type)
+    fun setSelectedDataType(type: Int) {
+        _uiState.value = _uiState.value.copy(selectedDataType = type)
     }
 
     fun setDateRange(start: Long, end: Long) {
@@ -63,18 +63,24 @@ class BodyDataDetailViewModel @Inject constructor(
         loadData()
     }
 
+    fun navigateWeek(direction: Int) {
+        // direction: -1 = 前一组7周, 1 = 后一组7周
+        val newOffset = (_uiState.value.weekOffset + direction).coerceAtLeast(0)
+        _uiState.value = _uiState.value.copy(weekOffset = newOffset)
+        loadData()
+    }
+
     private fun loadData() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
-            val startOfDay = DateTimeUtils.getStartOfDay(_uiState.value.startDate)
-            val endOfDay = DateTimeUtils.getEndOfDay(_uiState.value.endDate)
-
-            val records = bodyRecordRepository.getRecordsBetweenSync(startOfDay, endOfDay)
-
             when (_uiState.value.filterMode) {
                 0 -> {
                     // 自定义时间范围 - 原始数据
+                    val startOfDay = DateTimeUtils.getStartOfDay(_uiState.value.startDate)
+                    val endOfDay = DateTimeUtils.getEndOfDay(_uiState.value.endDate)
+
+                    val records = bodyRecordRepository.getRecordsBetweenSync(startOfDay, endOfDay)
                     _uiState.value = _uiState.value.copy(
                         rawData = records.sortedBy { it.date },
                         weeklyData = emptyList(),
@@ -82,45 +88,71 @@ class BodyDataDetailViewModel @Inject constructor(
                     )
                 }
                 1 -> {
-                    // 以周为一点 - 聚合数据
-                    val weeklyData = aggregateByWeek(records)
-                    _uiState.value = _uiState.value.copy(
-                        rawData = emptyList(),
-                        weeklyData = weeklyData,
-                        isLoading = false
-                    )
+                    // 以周为点 - 加载所有数据，然后聚合
+                    loadWeeklyData()
                 }
             }
         }
     }
 
-    private fun aggregateByWeek(records: List<BodyRecordEntity>): List<WeeklyBodyData> {
-        if (records.isEmpty()) return emptyList()
+    private fun loadWeeklyData() {
+        viewModelScope.launch {
+            // 获取所有身体数据
+            val allRecords = bodyRecordRepository.getAllRecordsSync()
 
-        // 按年+周分组
-        val groupedByWeek = records.groupBy { record ->
-            val cal = Calendar.getInstance()
-            cal.timeInMillis = record.date
-            val year = cal.get(Calendar.YEAR)
-            val weekOfYear = cal.get(Calendar.WEEK_OF_YEAR)
-            Pair(year, weekOfYear)
-        }
+            if (allRecords.isEmpty()) {
+                _uiState.value = _uiState.value.copy(
+                    rawData = emptyList(),
+                    weeklyData = emptyList(),
+                    isLoading = false
+                )
+                return@launch
+            }
 
-        return groupedByWeek.map { (key, weekRecords) ->
-            val (year, weekOfYear) = key
+            // 按年+周分组
+            val groupedByWeek = allRecords.groupBy { record ->
+                val cal = Calendar.getInstance()
+                cal.timeInMillis = record.date
+                val year = cal.get(Calendar.YEAR)
+                val weekOfYear = cal.get(Calendar.WEEK_OF_YEAR)
+                Pair(year, weekOfYear)
+            }
 
-            WeeklyBodyData(
-                year = year,
-                weekOfYear = weekOfYear,
-                weekLabel = "${year}年第${weekOfYear}周",
-                medianWeight = calculateMedian(weekRecords.mapNotNull { it.weight }),
-                medianBodyFat = calculateMedian(weekRecords.mapNotNull { it.bodyFatRate }),
-                medianMuscle = calculateMedian(weekRecords.mapNotNull { it.muscleMass }),
-                medianChest = calculateMedian(weekRecords.mapNotNull { it.chest }),
-                medianWaist = calculateMedian(weekRecords.mapNotNull { it.waist }),
-                medianHip = calculateMedian(weekRecords.mapNotNull { it.hip })
+            val allWeeklyData = groupedByWeek.map { (key, weekRecords) ->
+                val (year, weekOfYear) = key
+
+                // 计算这周的起始和结束日期
+                val cal = Calendar.getInstance()
+                cal.set(Calendar.YEAR, year)
+                cal.set(Calendar.WEEK_OF_YEAR, weekOfYear)
+                cal.set(Calendar.DAY_OF_WEEK, cal.firstDayOfWeek)
+                val weekStart = cal.timeInMillis
+                cal.add(Calendar.DAY_OF_MONTH, 6)
+                val weekEnd = cal.timeInMillis
+
+                WeeklyBodyData(
+                    year = year,
+                    weekOfYear = weekOfYear,
+                    weekLabel = "${year}年第${weekOfYear}周",
+                    startDate = weekStart,
+                    endDate = weekEnd,
+                    medianWeight = calculateMedian(weekRecords.mapNotNull { it.weight }),
+                    medianBodyFat = calculateMedian(weekRecords.mapNotNull { it.bodyFatRate }),
+                    medianMuscle = calculateMedian(weekRecords.mapNotNull { it.muscleMass })
+                )
+            }.sortedWith(compareBy({ it.year }, { it.weekOfYear }))
+
+            // 根据偏移量获取7周数据
+            val startIndex = (allWeeklyData.size - 7 - _uiState.value.weekOffset * 7).coerceAtLeast(0)
+            val endIndex = (startIndex + 7).coerceAtMost(allWeeklyData.size)
+            val visibleWeeklyData = allWeeklyData.subList(startIndex, endIndex)
+
+            _uiState.value = _uiState.value.copy(
+                rawData = emptyList(),
+                weeklyData = visibleWeeklyData,
+                isLoading = false
             )
-        }.sortedWith(compareBy({ it.year }, { it.weekOfYear }))
+        }
     }
 
     private fun calculateMedian(values: List<Double>): Double? {
@@ -136,74 +168,40 @@ class BodyDataDetailViewModel @Inject constructor(
         }
     }
 
-    // 获取变化数据
-    fun getChangeData(): Triple<String, String, String> {
-        val state = _uiState.value
-
-        return when (state.filterMode) {
-            0 -> {
-                // 自定义时间范围
-                val data = state.rawData
-                if (data.size < 2) return Triple("--", "--", "--")
-
-                val first = data.first()
-                val last = data.last()
-
-                val weightChange = calculateChange(first.weight, last.weight)
-                val bodyFatChange = calculateChange(first.bodyFatRate, last.bodyFatRate)
-                val muscleChange = calculateChange(first.muscleMass, last.muscleMass)
-
-                Triple(weightChange, bodyFatChange, muscleChange)
-            }
-            1 -> {
-                // 以周为一点
-                val data = state.weeklyData
-                if (data.size < 2) return Triple("--", "--", "--")
-
-                val first = data.first()
-                val last = data.last()
-
-                val weightChange = calculateChangeNullable(first.medianWeight, last.medianWeight)
-                val bodyFatChange = calculateChangeNullable(first.medianBodyFat, last.medianBodyFat)
-                val muscleChange = calculateChangeNullable(first.medianMuscle, last.medianMuscle)
-
-                Triple(weightChange, bodyFatChange, muscleChange)
-            }
-            else -> Triple("--", "--", "--")
-        }
-    }
-
-    fun getMeasurementsChangeData(): Triple<String, String, String> {
+    // 获取当前选中数据类型的变化
+    fun getChangeValue(): String {
         val state = _uiState.value
 
         return when (state.filterMode) {
             0 -> {
                 val data = state.rawData
-                if (data.size < 2) return Triple("--", "--", "--")
+                if (data.size < 2) return "--"
 
                 val first = data.first()
                 val last = data.last()
 
-                val chestChange = calculateChange(first.chest, last.chest)
-                val waistChange = calculateChange(first.waist, last.waist)
-                val hipChange = calculateChange(first.hip, last.hip)
-
-                Triple(chestChange, waistChange, hipChange)
+                when (state.selectedDataType) {
+                    0 -> calculateChange(first.weight, last.weight)
+                    1 -> calculateChange(first.bodyFatRate, last.bodyFatRate)
+                    2 -> calculateChange(first.muscleMass, last.muscleMass)
+                    else -> "--"
+                }
             }
             1 -> {
                 val data = state.weeklyData
-                if (data.size < 2) return Triple("--", "--", "--")
+                if (data.size < 2) return "--"
 
                 val first = data.first()
                 val last = data.last()
 
-                val chestChange = calculateChangeNullable(first.medianChest, last.medianChest)
-                val waistChange = calculateChangeNullable(first.medianWaist, last.medianWaist)
-                val hipChange = calculateChangeNullable(first.medianHip, last.medianHip)
-
-                Triple(chestChange, waistChange, hipChange)
+                when (state.selectedDataType) {
+                    0 -> calculateChangeNullable(first.medianWeight, last.medianWeight)
+                    1 -> calculateChangeNullable(first.medianBodyFat, last.medianBodyFat)
+                    2 -> calculateChangeNullable(first.medianMuscle, last.medianMuscle)
+                    else -> "--"
+                }
             }
-            else -> Triple("--", "--", "--")
+            else -> "--"
         }
     }
 

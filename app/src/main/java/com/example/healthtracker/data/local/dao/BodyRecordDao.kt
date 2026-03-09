@@ -27,6 +27,9 @@ interface BodyRecordDao {
     @Query("SELECT * FROM body_records ORDER BY date DESC")
     fun getAllRecords(): Flow<List<BodyRecordEntity>>
 
+    @Query("SELECT * FROM body_records ORDER BY date ASC")
+    suspend fun getAllRecordsSync(): List<BodyRecordEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecord(record: BodyRecordEntity): Long
 
