@@ -2,7 +2,6 @@ package com.example.healthtracker.di
 
 import android.content.Context
 import androidx.room.Room
-import com.example.healthtracker.data.local.database.DefaultFoods
 import com.example.healthtracker.data.local.database.HealthTrackerDatabase
 import com.example.healthtracker.data.local.dao.*
 import dagger.Module
@@ -10,7 +9,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.runBlocking
 import javax.inject.Singleton
 
 @Module
@@ -36,23 +34,11 @@ object DatabaseModule {
                 HealthTrackerDatabase.MIGRATION_6_7,
                 HealthTrackerDatabase.MIGRATION_7_8,
                 HealthTrackerDatabase.MIGRATION_8_9,
-                HealthTrackerDatabase.MIGRATION_9_10
+                HealthTrackerDatabase.MIGRATION_9_10,
+                HealthTrackerDatabase.MIGRATION_10_11
             )
             .fallbackToDestructiveMigration()
-            .build().also { db ->
-                // 在数据库创建后初始化默认食品数据
-                runBlocking {
-                    try {
-                        val foodDao = db.foodDao()
-                        val foodCount = foodDao.getFoodCount()
-                        if (foodCount == 0) {
-                            foodDao.insertFoods(DefaultFoods.foods)
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }
-            }
+            .build()
     }
 
     @Provides

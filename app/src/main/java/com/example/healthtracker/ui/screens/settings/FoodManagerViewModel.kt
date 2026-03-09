@@ -66,12 +66,6 @@ class FoodManagerViewModel @Inject constructor(
         }
     }
 
-    fun toggleFavorite(food: FoodEntity) {
-        viewModelScope.launch {
-            foodRepository.toggleFavorite(food.id)
-        }
-    }
-
     // 获取字符的首字母（拼音首字母）
     fun getFirstLetter(char: Char): String {
         return when {

@@ -17,7 +17,7 @@ import com.example.healthtracker.data.local.entity.*
         MealPlanItemEntity::class,
         UserSettingsEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 abstract class HealthTrackerDatabase : RoomDatabase() {
@@ -129,6 +129,35 @@ abstract class HealthTrackerDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE user_settings ADD COLUMN showBodyChart INTEGER NOT NULL DEFAULT 1")
                 db.execSQL("ALTER TABLE user_settings ADD COLUMN showSleepChart INTEGER NOT NULL DEFAULT 1")
                 db.execSQL("ALTER TABLE user_settings ADD COLUMN defaultChartPeriod INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 删除 isFavorite 字段，需要重建 foods 表
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS foods_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        calories REAL NOT NULL,
+                        carbohydrates REAL NOT NULL,
+                        protein REAL NOT NULL,
+                        fat REAL NOT NULL,
+                        icon TEXT NOT NULL,
+                        isCustom INTEGER NOT NULL DEFAULT 0,
+                        unit TEXT,
+                        gramsPerUnit REAL,
+                        createdAt INTEGER NOT NULL
+                    )
+                """)
+                db.execSQL("""
+                    INSERT INTO foods_new (id, name, category, calories, carbohydrates, protein, fat, icon, isCustom, unit, gramsPerUnit, createdAt)
+                    SELECT id, name, category, calories, carbohydrates, protein, fat, icon, isCustom, unit, gramsPerUnit, createdAt
+                    FROM foods
+                """)
+                db.execSQL("DROP TABLE foods")
+                db.execSQL("ALTER TABLE foods_new RENAME TO foods")
             }
         }
     }

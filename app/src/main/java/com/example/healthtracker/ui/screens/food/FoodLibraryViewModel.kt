@@ -50,18 +50,8 @@ class FoodLibraryViewModel @Inject constructor(
     val customFoods = foodRepository.getCustomFoods()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    // 收藏的食物
-    val favoriteFoods = foodRepository.getFavoriteFoods()
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-
     fun setSelectedTab(index: Int) {
         _uiState.value = _uiState.value.copy(selectedTabIndex = index)
-    }
-
-    fun toggleFavorite(food: FoodEntity) {
-        viewModelScope.launch {
-            foodRepository.toggleFavorite(food.id)
-        }
     }
 
     fun addCustomFood(

@@ -11,8 +11,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,7 +19,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.healthtracker.data.local.entity.FoodEntity
@@ -130,7 +127,6 @@ fun FoodManagerScreen(
                             items(foodsInGroup) { food ->
                                 FoodManagerItem(
                                     food = food,
-                                    onFavoriteClick = { viewModel.toggleFavorite(food) },
                                     onDeleteClick = { viewModel.deleteFood(food) }
                                 )
                             }
@@ -168,7 +164,6 @@ fun FoodManagerScreen(
 @Composable
 private fun FoodManagerItem(
     food: FoodEntity,
-    onFavoriteClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
     Card(
@@ -220,15 +215,6 @@ private fun FoodManagerItem(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-            }
-
-            // 收藏按钮
-            IconButton(onClick = onFavoriteClick) {
-                Icon(
-                    imageVector = if (food.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                    contentDescription = if (food.isFavorite) "取消收藏" else "收藏",
-                    tint = if (food.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
 
             // 删除按钮（仅自定义食物显示）

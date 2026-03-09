@@ -44,7 +44,6 @@ class AddCustomFoodViewModel @Inject constructor(
                     fat = fat,
                     icon = icon,
                     isCustom = true,
-                    isFavorite = false,
                     unit = unit,
                     gramsPerUnit = gramsPerUnit
                 )

@@ -17,6 +17,7 @@ import com.example.healthtracker.ui.screens.FoodManagerScreen
 import com.example.healthtracker.ui.screens.settings.DataExportScreen
 import com.example.healthtracker.ui.screens.settings.DataImportScreen
 import com.example.healthtracker.ui.screens.settings.ThemeSettingsScreen
+import com.example.healthtracker.ui.screens.settings.FoodDataImportScreen
 import com.example.healthtracker.ui.screens.mealplan.AddMealPlanScreen
 import com.example.healthtracker.ui.screens.calendar.CalendarScreen
 import com.example.healthtracker.ui.screens.food.AddCustomFoodScreen
@@ -209,7 +210,8 @@ fun HealthTrackerNavGraph(
                 onNavigateToMealPlans = { navController.navigate(Screen.MealPlans.route) },
                 onNavigateToFoodManager = { navController.navigate(Screen.FoodManager.route) },
                 onNavigateToDataExport = { navController.navigate(Screen.DataExport.route) },
-                onNavigateToThemeSettings = { navController.navigate(Screen.ThemeSettings.route) }
+                onNavigateToThemeSettings = { navController.navigate(Screen.ThemeSettings.route) },
+                onNavigateToFoodDataImport = { navController.navigate(Screen.FoodDataImport.route) }
             )
         }
 
@@ -255,6 +257,13 @@ fun HealthTrackerNavGraph(
 
         composable(Screen.DataImport.route) {
             DataImportScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // 食物数据导入
+        composable(Screen.FoodDataImport.route) {
+            FoodDataImportScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

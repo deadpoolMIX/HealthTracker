@@ -9,8 +9,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,9 +31,8 @@ fun FoodLibraryScreen(
     val uiState by viewModel.uiState.collectAsState()
     val recentFoods by viewModel.recentFoods.collectAsState()
     val customFoods by viewModel.customFoods.collectAsState()
-    val favoriteFoods by viewModel.favoriteFoods.collectAsState()
 
-    val tabs = listOf("最近摄入", "自定义食物", "收藏食物")
+    val tabs = listOf("最近摄入", "自定义食物")
 
     Scaffold(
         topBar = {
@@ -78,19 +75,12 @@ fun FoodLibraryScreen(
             when (uiState.selectedTabIndex) {
                 0 -> RecentFoodsTab(
                     foods = recentFoods,
-                    onFoodClick = { food -> onNavigateToEditFood(food.id) },
-                    onFavoriteClick = { viewModel.toggleFavorite(it) }
+                    onFoodClick = { food -> onNavigateToEditFood(food.id) }
                 )
                 1 -> CustomFoodsTab(
                     foods = customFoods,
                     onFoodClick = { food -> onNavigateToEditFood(food.id) },
-                    onFavoriteClick = { viewModel.toggleFavorite(it) },
                     onDeleteClick = { viewModel.deleteCustomFood(it) }
-                )
-                2 -> FavoriteFoodsTab(
-                    foods = favoriteFoods,
-                    onFoodClick = { food -> onNavigateToEditFood(food.id) },
-                    onFavoriteClick = { viewModel.toggleFavorite(it) }
                 )
             }
         }
@@ -100,8 +90,7 @@ fun FoodLibraryScreen(
 @Composable
 private fun RecentFoodsTab(
     foods: List<FoodEntity>,
-    onFoodClick: (FoodEntity) -> Unit,
-    onFavoriteClick: (FoodEntity) -> Unit
+    onFoodClick: (FoodEntity) -> Unit
 ) {
     if (foods.isEmpty()) {
         EmptyState(message = "暂无食物数据\n食物库中的食物将显示在这里")
@@ -114,9 +103,7 @@ private fun RecentFoodsTab(
             items(foods) { food ->
                 FoodItem(
                     food = food,
-                    onClick = { onFoodClick(food) },
-                    onFavoriteClick = { onFavoriteClick(food) },
-                    showFavoriteButton = true
+                    onClick = { onFoodClick(food) }
                 )
             }
         }
@@ -127,7 +114,6 @@ private fun RecentFoodsTab(
 private fun CustomFoodsTab(
     foods: List<FoodEntity>,
     onFoodClick: (FoodEntity) -> Unit,
-    onFavoriteClick: (FoodEntity) -> Unit,
     onDeleteClick: (FoodEntity) -> Unit
 ) {
     if (foods.isEmpty()) {
@@ -142,38 +128,12 @@ private fun CustomFoodsTab(
                 FoodItem(
                     food = food,
                     onClick = { onFoodClick(food) },
-                    onFavoriteClick = { onFavoriteClick(food) },
                     onDeleteClick = { onDeleteClick(food) }
                 )
             }
             // 底部间距给FAB留空间
             item {
                 Spacer(modifier = Modifier.height(60.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun FavoriteFoodsTab(
-    foods: List<FoodEntity>,
-    onFoodClick: (FoodEntity) -> Unit,
-    onFavoriteClick: (FoodEntity) -> Unit
-) {
-    if (foods.isEmpty()) {
-        EmptyState(message = "暂无收藏的食物\n点击食物右侧心形图标收藏")
-    } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(foods) { food ->
-                FoodItem(
-                    food = food,
-                    onClick = { onFoodClick(food) },
-                    onFavoriteClick = { onFavoriteClick(food) }
-                )
             }
         }
     }
@@ -199,9 +159,7 @@ private fun EmptyState(message: String) {
 private fun FoodItem(
     food: FoodEntity,
     onClick: (() -> Unit)? = null,
-    onFavoriteClick: () -> Unit,
-    onDeleteClick: (() -> Unit)? = null,
-    showFavoriteButton: Boolean = true
+    onDeleteClick: (() -> Unit)? = null
 ) {
     Card(
         modifier = Modifier
@@ -249,17 +207,6 @@ private fun FoodItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-
-            // 收藏按钮
-            if (showFavoriteButton) {
-                IconButton(onClick = onFavoriteClick) {
-                    Icon(
-                        imageVector = if (food.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = if (food.isFavorite) "取消收藏" else "收藏",
-                        tint = if (food.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
             }
 
             // 删除按钮（仅自定义食物显示）

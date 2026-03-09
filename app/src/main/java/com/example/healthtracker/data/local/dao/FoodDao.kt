@@ -49,15 +49,7 @@ interface FoodDao {
     @Query("SELECT * FROM foods WHERE isCustom = 1 ORDER BY createdAt DESC")
     fun getCustomFoods(): Flow<List<FoodEntity>>
 
-    // 获取收藏的食物
-    @Query("SELECT * FROM foods WHERE isFavorite = 1 ORDER BY name")
-    fun getFavoriteFoods(): Flow<List<FoodEntity>>
-
-    // 切换收藏状态
-    @Query("UPDATE foods SET isFavorite = NOT isFavorite WHERE id = :id")
-    suspend fun toggleFavorite(id: Long)
-
-    // 设置收藏状态
-    @Query("UPDATE foods SET isFavorite = :isFavorite WHERE id = :id")
-    suspend fun setFavorite(id: Long, isFavorite: Boolean)
+    // 清空所有食物数据
+    @Query("DELETE FROM foods")
+    suspend fun deleteAllFoods()
 }

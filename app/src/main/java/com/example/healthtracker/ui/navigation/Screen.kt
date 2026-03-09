@@ -37,4 +37,7 @@ sealed class Screen(val route: String) {
     // 数据管理
     object DataExport : Screen("data_export")
     object DataImport : Screen("data_import")
+
+    // 食物数据导入
+    object FoodDataImport : Screen("food_data_import")
 }
