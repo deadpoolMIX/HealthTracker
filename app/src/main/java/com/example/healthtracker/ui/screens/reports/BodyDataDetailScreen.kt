@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.healthtracker.data.local.entity.BodyRecordEntity
 import java.util.Calendar
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -684,16 +685,16 @@ private fun WeeklyBodyTrendChart(
                                         // 检查点击是否在图表区域内
                                         if (offset.x >= paddingStart && values.size >= 1) {
                                             val adjustedX = offset.x - paddingStart
-                                            val pointSpacing = if (values.size > 1) chartWidth / (values.size - 1) else 0f
+                                            val pointSpacing: Float = if (values.size > 1) chartWidth.toFloat() / (values.size - 1) else 0f
 
                                             values.forEachIndexed { index, _ ->
-                                                val pointX = if (values.size > 1) {
+                                                val pointX: Float = if (values.size > 1) {
                                                     index * pointSpacing
                                                 } else {
-                                                    chartWidth / 2
+                                                    chartWidth / 2f
                                                 }
-                                                // 检查是否点击在数据点附近（20px范围内）
-                                                if (kotlin.math.abs(adjustedX - pointX) < 30f) {
+                                                // 检查是否点击在数据点附近（30px范围内）
+                                                if (abs(adjustedX - pointX) < 30f) {
                                                     selectedPointIndex = index
                                                     return@detectTapGestures
                                                 }
