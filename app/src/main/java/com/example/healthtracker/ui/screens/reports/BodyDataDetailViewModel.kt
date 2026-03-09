@@ -13,7 +13,7 @@ import java.util.Calendar
 import javax.inject.Inject
 
 data class BodyDataDetailUiState(
-    val filterMode: Int = 0, // 0=自定义时间, 1=以周为点
+    val filterMode: Int = 1, // 0=自定义时间, 1=以周为点（默认周）
     val selectedDataType: Int = 0, // 0=体重, 1=体脂, 2=肌肉
     val startDate: Long = System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000L,
     val endDate: Long = System.currentTimeMillis(),

@@ -61,20 +61,38 @@ class NutritionDetailViewModel @Inject constructor(
     }
 
     fun getPeriodLabel(): String {
+        // 显示图表第一天的日期，如"3.9"
+        val calendar = Calendar.getInstance()
+        val now = System.currentTimeMillis()
         val offset = _uiState.value.periodOffset
-        return if (_uiState.value.period == 0) {
-            when (offset) {
-                0 -> "本周"
-                1 -> "上周"
-                else -> "${offset}周前"
+
+        val startDate = when (_uiState.value.period) {
+            0 -> { // 周
+                calendar.timeInMillis = now
+                calendar.add(Calendar.WEEK_OF_YEAR, -offset)
+                calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                calendar.timeInMillis
             }
-        } else {
-            when (offset) {
-                0 -> "本月"
-                1 -> "上月"
-                else -> "${offset}个月前"
+            1 -> { // 月
+                calendar.timeInMillis = now
+                calendar.add(Calendar.MONTH, -offset)
+                calendar.set(Calendar.DAY_OF_MONTH, 1)
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                calendar.timeInMillis
             }
+            else -> now
         }
+
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = startDate
+        return "${cal.get(Calendar.MONTH) + 1}.${cal.get(Calendar.DAY_OF_MONTH)}"
     }
 
     private fun loadData() {
