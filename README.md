@@ -69,17 +69,24 @@
 
 <div align="center">
 
-| 首页 | 日历 |
-|:---:|:---:|
-| ![首页](app%20screenshots/首页.jpg) | ![日历](app%20screenshots/日历.jpg) |
+<details>
+<summary>📱 点击展开查看截图</summary>
 
-| 营养素摄入页面 | 体重记录页面 |
-|:---:|:---:|
-| ![营养素摄入页面](app%20screenshots/营养素摄入页面.jpg) | ![体重记录页面](app%20screenshots/体重记录页面.jpg) |
+<div style="display: flex; overflow-x: auto; white-space: nowrap; gap: 10px; padding: 10px 0;">
 
-| 睡眠记录页面 |
-|:---:|
-| ![睡眠记录页面](app%20screenshots/睡眠记录页面.jpg) |
+<img src="app%20screenshots/首页.jpg" alt="首页" width="200"/>
+
+<img src="app%20screenshots/日历.jpg" alt="日历" width="200"/>
+
+<img src="app%20screenshots/营养素摄入页面.jpg" alt="营养素摄入页面" width="200"/>
+
+<img src="app%20screenshots/体重记录页面.jpg" alt="体重记录页面" width="200"/>
+
+<img src="app%20screenshots/睡眠记录页面.jpg" alt="睡眠记录页面" width="200"/>
+
+</div>
+
+</details>
 
 </div>
 
