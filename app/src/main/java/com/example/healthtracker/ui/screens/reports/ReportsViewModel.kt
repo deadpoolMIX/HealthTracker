@@ -150,7 +150,7 @@ class ReportsViewModel @Inject constructor(
             val sleepRecords = sleepRecordRepository.getRecordsBetweenSync(startDate, endDate)
 
             _uiState.value = _uiState.value.copy(
-                intakeData = dailyNutrition.sortedByDescending { it.date },
+                intakeData = dailyNutrition.sortedBy { it.date },
                 bodyData = bodyRecords.sortedByDescending { it.date },
                 sleepData = sleepRecords.sortedByDescending { it.date },
                 isLoading = false
@@ -203,17 +203,32 @@ class ReportsViewModel @Inject constructor(
     }
 
     private fun aggregateNutritionByDay(records: List<IntakeRecordEntity>): List<DailyNutrition> {
-        return records
-            .groupBy { DateTimeUtils.getStartOfDay(it.date) }
-            .map { (date, dayRecords) ->
-                DailyNutrition(
-                    date = date,
-                    calories = dayRecords.sumOf { it.calories },
-                    carbs = dayRecords.sumOf { it.carbohydrates },
-                    protein = dayRecords.sumOf { it.protein },
-                    fat = dayRecords.sumOf { it.fat }
-                )
-            }
+        val result = mutableListOf<DailyNutrition>()
+        val calendar = Calendar.getInstance()
+        val (startDate, _) = getDateRange()
+
+        // 根据选择的周期生成固定天数的数据
+        val days = if (_uiState.value.selectedPeriod == 0) 7 else 30
+
+        calendar.timeInMillis = startDate
+        for (i in 0 until days) {
+            val dayStart = calendar.timeInMillis
+            val dayEnd = DateTimeUtils.getEndOfDay(dayStart)
+
+            val dayRecords = records.filter { it.date in dayStart..dayEnd }
+
+            result.add(DailyNutrition(
+                date = dayStart,
+                calories = dayRecords.sumOf { it.calories },
+                carbs = dayRecords.sumOf { it.carbohydrates },
+                protein = dayRecords.sumOf { it.protein },
+                fat = dayRecords.sumOf { it.fat }
+            ))
+
+            calendar.add(Calendar.DAY_OF_MONTH, 1)
+        }
+
+        return result
     }
 
     // 获取平均睡眠时长

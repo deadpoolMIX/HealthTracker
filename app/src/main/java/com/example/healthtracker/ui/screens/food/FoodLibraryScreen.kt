@@ -282,9 +282,18 @@ private fun getFoodEmoji(food: FoodEntity): String {
  */
 private fun isEmoji(text: String): Boolean {
     if (text.isEmpty()) return false
-    val firstChar = text[0]
-    // Emoji 的 Unicode 范围检查
-    return firstChar.code in 0x1F300..0x1F9FF ||
-            firstChar.code in 0x2600..0x26FF ||
-            firstChar.code in 0x2700..0x27BF
+
+    // 检查第一个字符的 Unicode 范围
+    val firstCodePoint = text.codePointAt(0)
+
+    // Emoji 的主要 Unicode 范围
+    return firstCodePoint in 0x1F300..0x1F9FF ||  // 各种表情符号和食物
+            firstCodePoint in 0x2600..0x26FF ||    // 杂项符号
+            firstCodePoint in 0x2700..0x27BF ||    // Dingbats
+            firstCodePoint in 0x1F600..0x1F64F ||  // Emoticons
+            firstCodePoint in 0x1F680..0x1F6FF ||  // 交通和地图符号
+            firstCodePoint in 0x2300..0x23FF ||    // 杂项技术符号
+            firstCodePoint == 0x2B50 ||            // 星星
+            firstCodePoint == 0x1F004 ||           // 麻将牌
+            firstCodePoint in 0x1FA00..0x1FAFF     // 扩展符号
 }

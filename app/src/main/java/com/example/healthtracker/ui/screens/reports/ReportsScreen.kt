@@ -444,7 +444,8 @@ private fun WeeklyNutritionChartContent(
                             .fillMaxHeight(),
                         contentAlignment = Alignment.BottomCenter
                     ) {
-                        if (day != null) {
+                        // 即使数据为空也保留位置
+                        if (day != null && (day.carbs > 0 || day.protein > 0 || day.fat > 0)) {
                             val maxHeight = 200f
                             val carbsHeight = (day.carbs * 4 / maxCalories * maxHeight).toFloat()
                             val proteinHeight = (day.protein * 4 / maxCalories * maxHeight).toFloat()
@@ -487,25 +488,20 @@ private fun WeeklyNutritionChartContent(
                 }
             }
 
-            // X轴标签 - 与柱子相同的布局
+            // X轴标签 - 显示星期几（一、二、三...日）
             Spacer(modifier = Modifier.height(4.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
+                val weekDayLabels = listOf("一", "二", "三", "四", "五", "六", "日")
                 repeat(7) { slotIndex ->
-                    val day = data.getOrNull(slotIndex)
-
                     Box(
                         modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (day != null) {
-                            val cal = Calendar.getInstance()
-                            cal.timeInMillis = day.date
-                            Text(
-                                text = "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            text = weekDayLabels[slotIndex],
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
