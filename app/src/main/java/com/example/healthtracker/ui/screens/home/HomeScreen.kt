@@ -57,6 +57,12 @@ fun HomeScreen(
     var showTargetCaloriesDialog by remember { mutableStateOf(false) }
     var showEditIntakeDialog by remember { mutableStateOf<IntakeRecordEntity?>(null) }
 
+    // 确保每次页面显示时 FAB 选项是收起状态
+    DisposableEffect(Unit) {
+        fabExpanded = false
+        onDispose { }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(

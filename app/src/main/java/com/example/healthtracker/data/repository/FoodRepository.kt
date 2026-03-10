@@ -36,5 +36,5 @@ class FoodRepository @Inject constructor(
 
     suspend fun deleteCustomFood(id: Long) = foodDao.deleteCustomFood(id)
 
-    suspend fun deleteAllFoods() = foodDao.deleteAllFoods()
+    suspend fun deleteImportedFoods() = foodDao.deleteImportedFoods()
 }

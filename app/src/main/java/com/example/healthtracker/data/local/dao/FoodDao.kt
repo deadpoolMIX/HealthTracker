@@ -12,22 +12,22 @@ interface FoodDao {
     @Query("SELECT COUNT(*) FROM foods")
     suspend fun getFoodCount(): Int
 
-    @Query("SELECT * FROM foods WHERE name LIKE '%' || :keyword || '%' ORDER BY name")
+    @Query("SELECT * FROM foods WHERE name LIKE '%' || :keyword || '%' ORDER BY createdAt DESC")
     fun searchFoods(keyword: String): Flow<List<FoodEntity>>
 
-    @Query("SELECT * FROM foods WHERE name LIKE '%' || :keyword || '%' ORDER BY name LIMIT 20")
+    @Query("SELECT * FROM foods WHERE name LIKE '%' || :keyword || '%' ORDER BY createdAt DESC LIMIT 20")
     suspend fun searchFoodsSync(keyword: String): List<FoodEntity>
 
-    @Query("SELECT * FROM foods WHERE category = :category ORDER BY name")
+    @Query("SELECT * FROM foods WHERE category = :category ORDER BY createdAt DESC")
     fun getFoodsByCategory(category: String): Flow<List<FoodEntity>>
 
     @Query("SELECT DISTINCT category FROM foods")
     fun getAllCategories(): Flow<List<String>>
 
-    @Query("SELECT * FROM foods ORDER BY name")
+    @Query("SELECT * FROM foods ORDER BY createdAt DESC")
     fun getAllFoods(): Flow<List<FoodEntity>>
 
-    @Query("SELECT * FROM foods ORDER BY name")
+    @Query("SELECT * FROM foods ORDER BY createdAt DESC")
     suspend fun getAllFoodsOnce(): List<FoodEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -49,7 +49,7 @@ interface FoodDao {
     @Query("SELECT * FROM foods WHERE isCustom = 1 ORDER BY createdAt DESC")
     fun getCustomFoods(): Flow<List<FoodEntity>>
 
-    // 清空所有食物数据
-    @Query("DELETE FROM foods")
-    suspend fun deleteAllFoods()
+    // 清空导入的食物数据（保留自定义食物）
+    @Query("DELETE FROM foods WHERE isCustom = 0")
+    suspend fun deleteImportedFoods()
 }

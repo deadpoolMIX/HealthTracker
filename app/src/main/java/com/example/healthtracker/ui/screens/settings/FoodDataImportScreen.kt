@@ -278,19 +278,9 @@ class FoodDataImportViewModel @Inject constructor(
                 val totalParsed = mutableListOf<FoodEntity>()
                 val totalDuplicateNames = mutableListOf<String>()
 
-                // 导入 USDA 预设数据
-                val usdaFoods = parseJsonFromAssets(context, "preset_foods_usda.json")
-                usdaFoods.forEach { food ->
-                    if (existingNames.contains(food.name) || totalParsed.any { it.name == food.name }) {
-                        totalDuplicateNames.add(food.name)
-                    } else {
-                        totalParsed.add(food)
-                    }
-                }
-
-                // 导入中国食物预设数据
-                val chineseFoods = parseJsonFromAssets(context, "preset_foods_chinese.json")
-                chineseFoods.forEach { food ->
+                // 导入预设数据
+                val presetFoods = parseJsonFromAssets(context, "preset_foods.json")
+                presetFoods.forEach { food ->
                     if (existingNames.contains(food.name) || totalParsed.any { it.name == food.name }) {
                         if (!totalDuplicateNames.contains(food.name)) {
                             totalDuplicateNames.add(food.name)
@@ -306,7 +296,7 @@ class FoodDataImportViewModel @Inject constructor(
                 }
 
                 val result = ImportResult(
-                    totalCount = usdaFoods.size + chineseFoods.size,
+                    totalCount = presetFoods.size,
                     successCount = totalParsed.size,
                     duplicateCount = totalDuplicateNames.size,
                     failedCount = 0,
@@ -369,10 +359,10 @@ class FoodDataImportViewModel @Inject constructor(
             _state.value = _state.value.copy(isLoading = true, error = null, success = null, importResult = null)
 
             try {
-                foodRepository.deleteAllFoods()
+                foodRepository.deleteImportedFoods()
                 _state.value = _state.value.copy(
                     isLoading = false,
-                    success = "食物数据库已清空"
+                    success = "已清空导入的食物数据"
                 )
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
@@ -523,7 +513,7 @@ fun FoodDataImportScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "包含 97 种 USDA 食物和 101 种中国常见食物",
+                        text = "包含 584 种天然食物营养数据",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -553,14 +543,14 @@ fun FoodDataImportScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "清空食物数据库",
+                        text = "清空导入的食物",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.error
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "删除所有食物数据，已记录的饮食记录不受影响",
+                        text = "删除导入的食物数据，保留自定义食物",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -575,7 +565,7 @@ fun FoodDataImportScreen(
                     ) {
                         Icon(Icons.Default.Delete, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("清空食物数据库")
+                        Text("清空导入的食物")
                     }
                 }
             }
@@ -638,7 +628,7 @@ fun FoodDataImportScreen(
             onDismissRequest = { showClearConfirmDialog = false },
             icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("确认清空") },
-            text = { Text("确定要清空食物数据库吗？\n\n此操作不可撤销，但已记录的饮食记录不受影响。") },
+            text = { Text("确定要清空导入的食物数据吗？\n\n此操作不可撤销，自定义食物将被保留。") },
             confirmButton = {
                 TextButton(
                     onClick = {
