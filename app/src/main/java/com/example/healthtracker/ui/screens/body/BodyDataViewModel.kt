@@ -22,7 +22,10 @@ data class BodyDataUiState(
     val hip: String = "",
     val existingRecord: BodyRecordEntity? = null,
     val isSaving: Boolean = false,
-    val saveSuccess: Boolean = false
+    val saveSuccess: Boolean = false,
+    val isDeleting: Boolean = false,
+    val deleteSuccess: Boolean = false,
+    val showDeleteConfirm: Boolean = false
 )
 
 @HiltViewModel
@@ -105,6 +108,25 @@ class BodyDataViewModel @Inject constructor(
             }
 
             _uiState.value = _uiState.value.copy(isSaving = false, saveSuccess = true)
+        }
+    }
+
+    fun showDeleteConfirm() {
+        _uiState.value = _uiState.value.copy(showDeleteConfirm = true)
+    }
+
+    fun hideDeleteConfirm() {
+        _uiState.value = _uiState.value.copy(showDeleteConfirm = false)
+    }
+
+    fun deleteRecord() {
+        viewModelScope.launch {
+            val record = _uiState.value.existingRecord
+            if (record != null) {
+                _uiState.value = _uiState.value.copy(isDeleting = true)
+                bodyRecordRepository.deleteRecord(record)
+                _uiState.value = _uiState.value.copy(isDeleting = false, deleteSuccess = true, showDeleteConfirm = false)
+            }
         }
     }
 }

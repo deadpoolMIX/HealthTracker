@@ -15,7 +15,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class FoodLibraryUiState(
-    val selectedTabIndex: Int = 0
+    val selectedTabIndex: Int = 0,
+    val searchQuery: String = "",
+    val isSearching: Boolean = false
 )
 
 @HiltViewModel
@@ -53,6 +55,48 @@ class FoodLibraryViewModel @Inject constructor(
     fun setSelectedTab(index: Int) {
         _uiState.value = _uiState.value.copy(selectedTabIndex = index)
     }
+
+    fun setSearchQuery(query: String) {
+        _uiState.value = _uiState.value.copy(searchQuery = query)
+    }
+
+    fun toggleSearch() {
+        _uiState.value = _uiState.value.copy(
+            isSearching = !_uiState.value.isSearching,
+            searchQuery = if (_uiState.value.isSearching) "" else _uiState.value.searchQuery
+        )
+    }
+
+    fun closeSearch() {
+        _uiState.value = _uiState.value.copy(
+            isSearching = false,
+            searchQuery = ""
+        )
+    }
+
+    // 搜索过滤后的最近摄入食物
+    val filteredRecentFoods = combine(
+        recentFoods,
+        _uiState
+    ) { foods, state ->
+        if (state.searchQuery.isBlank()) {
+            foods
+        } else {
+            foods.filter { it.name.contains(state.searchQuery, ignoreCase = true) }
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    // 搜索过滤后的自定义食物
+    val filteredCustomFoods = combine(
+        customFoods,
+        _uiState
+    ) { foods, state ->
+        if (state.searchQuery.isBlank()) {
+            foods
+        } else {
+            foods.filter { it.name.contains(state.searchQuery, ignoreCase = true) }
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     fun addCustomFood(
         name: String,

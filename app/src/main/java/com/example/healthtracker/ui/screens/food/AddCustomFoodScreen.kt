@@ -62,6 +62,9 @@ fun AddCustomFoodScreen(
     var proteinPerN by remember { mutableStateOf("") }
     var fatPerN by remember { mutableStateOf("") }
 
+    // 热量单位选择
+    var useKilojoules by remember { mutableStateOf(false) }
+
     val commonUnits = listOf("个", "杯", "瓶", "份", "块", "片", "勺", "包", "碗", "袋")
     var expandedUnit by remember { mutableStateOf(false) }
 
@@ -72,8 +75,11 @@ fun AddCustomFoodScreen(
     val proteinPerNValue = proteinPerN.toDoubleOrNull() ?: 0.0
     val fatPerNValue = fatPerN.toDoubleOrNull() ?: 0.0
 
+    // 如果使用千焦，转换为千卡（1 kcal = 4.184 kJ）
+    val caloriesPerNInKcal = if (useKilojoules) caloriesPerNValue / 4.184 else caloriesPerNValue
+
     // 计算每百克营养值
-    val caloriesValue = if (perAmountValue > 0) caloriesPerNValue * 100.0 / perAmountValue else 0.0
+    val caloriesValue = if (perAmountValue > 0) caloriesPerNInKcal * 100.0 / perAmountValue else 0.0
     val carbsValue = if (perAmountValue > 0) carbsPerNValue * 100.0 / perAmountValue else 0.0
     val proteinValue = if (perAmountValue > 0) proteinPerNValue * 100.0 / perAmountValue else 0.0
     val fatValue = if (perAmountValue > 0) fatPerNValue * 100.0 / perAmountValue else 0.0
@@ -204,11 +210,30 @@ fun AddCustomFoodScreen(
             OutlinedTextField(
                 value = caloriesPerN,
                 onValueChange = { caloriesPerN = it },
-                label = { Text("热量 (kcal)") },
+                label = { Text("热量 (${if (useKilojoules) "kJ" else "kcal"})") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                supportingText = if (useKilojoules && caloriesPerNValue > 0) {
+                    { Text("≈ ${String.format("%.1f", caloriesPerNInKcal)} kcal") }
+                } else null
             )
+
+            // 热量单位切换
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "使用千焦 (kJ)",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Switch(
+                    checked = useKilojoules,
+                    onCheckedChange = { useKilojoules = it }
+                )
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),

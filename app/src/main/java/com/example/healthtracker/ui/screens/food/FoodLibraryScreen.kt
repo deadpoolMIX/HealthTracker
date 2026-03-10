@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -29,15 +30,42 @@ fun FoodLibraryScreen(
     onNavigateToEditFood: (Long) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val recentFoods by viewModel.recentFoods.collectAsState()
-    val customFoods by viewModel.customFoods.collectAsState()
+    val filteredRecentFoods by viewModel.filteredRecentFoods.collectAsState()
+    val filteredCustomFoods by viewModel.filteredCustomFoods.collectAsState()
 
     val tabs = listOf("最近摄入", "自定义食物")
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("食物库", fontWeight = FontWeight.Medium) }
+                title = {
+                    if (uiState.isSearching) {
+                        OutlinedTextField(
+                            value = uiState.searchQuery,
+                            onValueChange = { viewModel.setSearchQuery(it) },
+                            placeholder = { Text("搜索食物...") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent
+                            )
+                        )
+                    } else {
+                        Text("食物库", fontWeight = FontWeight.Medium)
+                    }
+                },
+                actions = {
+                    if (uiState.isSearching) {
+                        IconButton(onClick = { viewModel.closeSearch() }) {
+                            Icon(Icons.Default.Close, contentDescription = "关闭搜索")
+                        }
+                    } else {
+                        IconButton(onClick = { viewModel.toggleSearch() }) {
+                            Icon(Icons.Default.Search, contentDescription = "搜索")
+                        }
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -74,13 +102,15 @@ fun FoodLibraryScreen(
             // Content
             when (uiState.selectedTabIndex) {
                 0 -> RecentFoodsTab(
-                    foods = recentFoods,
-                    onFoodClick = { food -> onNavigateToEditFood(food.id) }
+                    foods = filteredRecentFoods,
+                    onFoodClick = { food -> onNavigateToEditFood(food.id) },
+                    searchQuery = uiState.searchQuery
                 )
                 1 -> CustomFoodsTab(
-                    foods = customFoods,
+                    foods = filteredCustomFoods,
                     onFoodClick = { food -> onNavigateToEditFood(food.id) },
-                    onDeleteClick = { viewModel.deleteCustomFood(it) }
+                    onDeleteClick = { viewModel.deleteCustomFood(it) },
+                    searchQuery = uiState.searchQuery
                 )
             }
         }
@@ -90,10 +120,13 @@ fun FoodLibraryScreen(
 @Composable
 private fun RecentFoodsTab(
     foods: List<FoodEntity>,
-    onFoodClick: (FoodEntity) -> Unit
+    onFoodClick: (FoodEntity) -> Unit,
+    searchQuery: String = ""
 ) {
     if (foods.isEmpty()) {
-        EmptyState(message = "暂无食物数据\n食物库中的食物将显示在这里")
+        EmptyState(
+            message = if (searchQuery.isNotBlank()) "未找到匹配的食物" else "暂无食物数据\n食物库中的食物将显示在这里"
+        )
     } else {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -114,10 +147,13 @@ private fun RecentFoodsTab(
 private fun CustomFoodsTab(
     foods: List<FoodEntity>,
     onFoodClick: (FoodEntity) -> Unit,
-    onDeleteClick: (FoodEntity) -> Unit
+    onDeleteClick: (FoodEntity) -> Unit,
+    searchQuery: String = ""
 ) {
     if (foods.isEmpty()) {
-        EmptyState(message = "暂无自定义食物\n点击右下角 + 添加")
+        EmptyState(
+            message = if (searchQuery.isNotBlank()) "未找到匹配的自定义食物" else "暂无自定义食物\n点击右下角 + 添加"
+        )
     } else {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),

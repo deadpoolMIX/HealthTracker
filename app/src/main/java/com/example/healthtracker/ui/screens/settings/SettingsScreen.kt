@@ -19,7 +19,8 @@ fun SettingsScreen(
     onNavigateToFoodManager: () -> Unit,
     onNavigateToDataExport: () -> Unit,
     onNavigateToThemeSettings: () -> Unit = {},
-    onNavigateToFoodDataImport: () -> Unit = {}
+    onNavigateToFoodDataImport: () -> Unit = {},
+    onNavigateToAbout: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -66,6 +67,12 @@ fun SettingsScreen(
                 title = "主题设置",
                 subtitle = "切换主题颜色和深色模式",
                 onClick = onNavigateToThemeSettings
+            )
+            HorizontalDivider()
+            SettingsItem(
+                title = "关于软件",
+                subtitle = "版本信息和项目地址",
+                onClick = onNavigateToAbout
             )
         }
     }

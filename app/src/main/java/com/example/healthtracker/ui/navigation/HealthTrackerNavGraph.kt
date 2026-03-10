@@ -18,6 +18,8 @@ import com.example.healthtracker.ui.screens.settings.DataExportScreen
 import com.example.healthtracker.ui.screens.settings.DataImportScreen
 import com.example.healthtracker.ui.screens.settings.ThemeSettingsScreen
 import com.example.healthtracker.ui.screens.settings.FoodDataImportScreen
+import com.example.healthtracker.ui.screens.settings.AboutScreen
+import com.example.healthtracker.ui.screens.settings.TestDataScreen
 import com.example.healthtracker.ui.screens.mealplan.AddMealPlanScreen
 import com.example.healthtracker.ui.screens.calendar.CalendarScreen
 import com.example.healthtracker.ui.screens.food.AddCustomFoodScreen
@@ -211,7 +213,8 @@ fun HealthTrackerNavGraph(
                 onNavigateToFoodManager = { navController.navigate(Screen.FoodManager.route) },
                 onNavigateToDataExport = { navController.navigate(Screen.DataExport.route) },
                 onNavigateToThemeSettings = { navController.navigate(Screen.ThemeSettings.route) },
-                onNavigateToFoodDataImport = { navController.navigate(Screen.FoodDataImport.route) }
+                onNavigateToFoodDataImport = { navController.navigate(Screen.FoodDataImport.route) },
+                onNavigateToAbout = { navController.navigate(Screen.About.route) }
             )
         }
 
@@ -264,6 +267,21 @@ fun HealthTrackerNavGraph(
         // 食物数据导入
         composable(Screen.FoodDataImport.route) {
             FoodDataImportScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // 关于软件
+        composable(Screen.About.route) {
+            AboutScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToTestData = { navController.navigate(Screen.TestData.route) }
+            )
+        }
+
+        // 测试数据生成
+        composable(Screen.TestData.route) {
+            TestDataScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

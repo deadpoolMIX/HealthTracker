@@ -15,9 +15,10 @@ import com.example.healthtracker.data.local.entity.*
         SleepRecordEntity::class,
         MealPlanEntity::class,
         MealPlanItemEntity::class,
-        UserSettingsEntity::class
+        UserSettingsEntity::class,
+        TestRecordEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class HealthTrackerDatabase : RoomDatabase() {
@@ -28,6 +29,7 @@ abstract class HealthTrackerDatabase : RoomDatabase() {
     abstract fun mealPlanDao(): MealPlanDao
     abstract fun mealPlanItemDao(): MealPlanItemDao
     abstract fun userSettingsDao(): UserSettingsDao
+    abstract fun testRecordDao(): TestRecordDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -158,6 +160,21 @@ abstract class HealthTrackerDatabase : RoomDatabase() {
                 """)
                 db.execSQL("DROP TABLE foods")
                 db.execSQL("ALTER TABLE foods_new RENAME TO foods")
+            }
+        }
+
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 创建测试数据表
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS test_records (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        recordType TEXT NOT NULL,
+                        date INTEGER NOT NULL,
+                        dataJson TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL
+                    )
+                """)
             }
         }
     }

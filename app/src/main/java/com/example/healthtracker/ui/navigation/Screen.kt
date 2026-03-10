@@ -33,6 +33,7 @@ sealed class Screen(val route: String) {
     object MealPlans : Screen("meal_plans")
     object FoodManager : Screen("food_manager")
     object ThemeSettings : Screen("theme_settings")
+    object About : Screen("about")
 
     // 数据管理
     object DataExport : Screen("data_export")
@@ -40,4 +41,7 @@ sealed class Screen(val route: String) {
 
     // 食物数据导入
     object FoodDataImport : Screen("food_data_import")
+
+    // 测试数据生成
+    object TestData : Screen("test_data")
 }

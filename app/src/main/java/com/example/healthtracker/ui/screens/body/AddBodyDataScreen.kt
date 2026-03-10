@@ -6,6 +6,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -30,6 +31,13 @@ fun AddBodyDataScreen(
         }
     }
 
+    // 删除成功后返回
+    LaunchedEffect(uiState.deleteSuccess) {
+        if (uiState.deleteSuccess) {
+            onNavigateBack()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -42,6 +50,18 @@ fun AddBodyDataScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    // 只有编辑已有记录时才显示删除按钮
+                    if (uiState.existingRecord != null) {
+                        IconButton(onClick = { viewModel.showDeleteConfirm() }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "删除",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
                     }
                 }
             )
@@ -164,5 +184,38 @@ fun AddBodyDataScreen(
                 }
             }
         }
+    }
+
+    // 删除确认对话框
+    if (uiState.showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { viewModel.hideDeleteConfirm() },
+            title = { Text("确认删除") },
+            text = { Text("确定要删除这条身体数据记录吗？此操作无法撤销。") },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.deleteRecord() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    ),
+                    enabled = !uiState.isDeleting
+                ) {
+                    if (uiState.isDeleting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = MaterialTheme.colorScheme.onError,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("删除")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.hideDeleteConfirm() }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }
