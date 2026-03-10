@@ -166,6 +166,7 @@ fun ReportsScreen(
                         BodyDataChartCard(
                             data = uiState.bodyData,
                             period = uiState.selectedPeriod,
+                            weekDates = uiState.weekDates,
                             onClick = onNavigateToBodyDataDetail
                         )
                     }
@@ -177,6 +178,7 @@ fun ReportsScreen(
                         SleepChartCard(
                             data = uiState.sleepData,
                             period = uiState.selectedPeriod,
+                            weekDates = uiState.weekDates,
                             avgSleepTime = viewModel.getAverageSleepTime(),
                             avgWakeTime = viewModel.getAverageWakeTime(),
                             avgDuration = viewModel.getAverageSleepDuration(),
@@ -488,20 +490,25 @@ private fun WeeklyNutritionChartContent(
                 }
             }
 
-            // X轴标签 - 显示星期几（一、二、三...日）
+            // X轴标签 - 显示日期（几月几号）
             Spacer(modifier = Modifier.height(4.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
-                val weekDayLabels = listOf("一", "二", "三", "四", "五", "六", "日")
                 repeat(7) { slotIndex ->
+                    val day = data.getOrNull(slotIndex)
+
                     Box(
                         modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = weekDayLabels[slotIndex],
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        if (day != null) {
+                            val cal = Calendar.getInstance()
+                            cal.timeInMillis = day.date
+                            Text(
+                                text = "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
@@ -744,6 +751,7 @@ private fun LegendItem(text: String, color: Color, isLine: Boolean = false) {
 private fun BodyDataChartCard(
     data: List<BodyRecordEntity>,
     period: Int,
+    weekDates: List<Long> = emptyList(),
     onClick: () -> Unit = {}
 ) {
     // 数据类型选择：0=体重, 1=体脂, 2=肌肉
@@ -803,225 +811,449 @@ private fun BodyDataChartCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 折线图
-            val sortedData = data.sortedBy { it.date }
+            // 周模式：固定7格布局
+            if (period == 0 && weekDates.size == 7) {
+                WeekBodyChart(
+                    weekDates = weekDates,
+                    bodyData = data,
+                    selectedDataType = selectedDataType,
+                    lineColor = lineColor,
+                    dataLabel = dataLabel,
+                    unit = unit
+                )
+            } else {
+                // 月模式或其他情况：原有逻辑
+                MonthBodyChart(
+                    data = data,
+                    selectedDataType = selectedDataType,
+                    lineColor = lineColor,
+                    dataLabel = dataLabel,
+                    unit = unit
+                )
+            }
+        }
+    }
+}
 
-            // 提取选中类型的数据值
-            val values = sortedData.mapNotNull { entity ->
-                when (selectedDataType) {
-                    0 -> entity.weight
-                    1 -> entity.bodyFatRate
-                    2 -> entity.muscleMass
-                    else -> entity.weight
+/**
+ * 周模式身体数据图表 - 固定7格布局
+ */
+@Composable
+private fun WeekBodyChart(
+    weekDates: List<Long>,
+    bodyData: List<BodyRecordEntity>,
+    selectedDataType: Int,
+    lineColor: Color,
+    dataLabel: String,
+    unit: String
+) {
+    // 为每一天查找对应的身体数据
+    val dataByDate = remember(bodyData) {
+        bodyData.associateBy {
+            val cal = Calendar.getInstance()
+            cal.timeInMillis = it.date
+            cal.set(Calendar.HOUR_OF_DAY, 0)
+            cal.set(Calendar.MINUTE, 0)
+            cal.set(Calendar.SECOND, 0)
+            cal.set(Calendar.MILLISECOND, 0)
+            cal.timeInMillis
+        }
+    }
+
+    // 提取固定7天的数据值
+    val values = weekDates.mapNotNull { date ->
+        val record = dataByDate[date]
+        when (selectedDataType) {
+            0 -> record?.weight
+            1 -> record?.bodyFatRate
+            2 -> record?.muscleMass
+            else -> record?.weight
+        }
+    }
+
+    if (values.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("暂无${dataLabel}数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        return
+    }
+
+    // 动态自适应缩放
+    val dataMin = values.minOrNull() ?: 0.0
+    val dataMax = values.maxOrNull() ?: 100.0
+    val dataRange = (dataMax - dataMin).coerceAtLeast(0.1)
+
+    val padding = dataRange * 0.1
+    val minVal = dataMin - padding
+    val maxVal = dataMax + padding
+    val range = (maxVal - minVal).coerceAtLeast(0.1)
+
+    // Y轴刻度（5个刻度）
+    val yLabels = (0..4).map { i ->
+        val value = maxVal - (range * i / 4)
+        String.format("%.1f", value)
+    }
+
+    Row(modifier = Modifier.fillMaxWidth()) {
+        // Y轴标签
+        Column(
+            modifier = Modifier
+                .width(32.dp)
+                .height(200.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            yLabels.forEach { label ->
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 10.sp,
+                    maxLines = 1
+                )
+            }
+        }
+
+        // 图表区域 - 固定7格布局
+        Column(modifier = Modifier.weight(1f)) {
+            // 折线图区域 - 使用固定7格布局
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+            ) {
+                val chartHeight = size.height
+                val chartWidth = size.width
+                val slotWidth = chartWidth / 7f
+
+                // 绘制Y轴虚线参考线
+                val dashPathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
+                repeat(5) { i ->
+                    val y = (i * chartHeight / 4)
+                    drawLine(
+                        color = Color.Gray.copy(alpha = 0.15f),
+                        start = Offset(0f, y),
+                        end = Offset(chartWidth, y),
+                        strokeWidth = 1f,
+                        pathEffect = dashPathEffect
+                    )
+                }
+
+                // 绘制数据点和折线
+                val points = mutableListOf<Offset>()
+                weekDates.forEachIndexed { index, date ->
+                    val record = dataByDate[date]
+                    val value = when (selectedDataType) {
+                        0 -> record?.weight
+                        1 -> record?.bodyFatRate
+                        2 -> record?.muscleMass
+                        else -> record?.weight
+                    }
+
+                    if (value != null) {
+                        val x = index * slotWidth + slotWidth / 2
+                        val y = chartHeight - ((value - minVal) / range * chartHeight).toFloat()
+                        points.add(Offset(x, y))
+                    }
+                }
+
+                // 绘制折线
+                if (points.size >= 2) {
+                    val path = Path()
+                    path.moveTo(points[0].x, points[0].y)
+
+                    for (i in 1 until points.size) {
+                        val prev = points[i - 1]
+                        val curr = points[i]
+                        val midX = (prev.x + curr.x) / 2
+
+                        path.cubicTo(
+                            midX, prev.y,
+                            midX, curr.y,
+                            curr.x, curr.y
+                        )
+                    }
+
+                    drawPath(
+                        path = path,
+                        color = lineColor,
+                        style = Stroke(width = 2.5f)
+                    )
+
+                    // 绘制数据点
+                    points.forEach { point ->
+                        drawCircle(
+                            color = lineColor.copy(alpha = 0.2f),
+                            radius = 8f,
+                            center = point
+                        )
+                        drawCircle(
+                            color = lineColor,
+                            radius = 4f,
+                            center = point
+                        )
+                    }
+                } else if (points.size == 1) {
+                    drawCircle(
+                        color = lineColor.copy(alpha = 0.2f),
+                        radius = 10f,
+                        center = points[0]
+                    )
+                    drawCircle(
+                        color = lineColor,
+                        radius = 6f,
+                        center = points[0]
+                    )
                 }
             }
 
-            if (values.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(220.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("暂无${dataLabel}数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            } else {
-                // 动态自适应缩放：以数据范围为中心，添加10%边距
-                val dataMin = values.minOrNull() ?: 0.0
-                val dataMax = values.maxOrNull() ?: 100.0
-                val dataRange = (dataMax - dataMin).coerceAtLeast(0.1)
-
-                val padding = dataRange * 0.1
-                val minVal = dataMin - padding
-                val maxVal = dataMax + padding
-                val range = (maxVal - minVal).coerceAtLeast(0.1)
-
-                // Y轴刻度（5个刻度）
-                val yLabels = (0..4).map { i ->
-                    val value = maxVal - (range * i / 4)
-                    String.format("%.1f", value)
-                }
-
-                // X轴标签（智能选择显示）
-                val xLabels = remember(sortedData) {
-                    if (sortedData.size <= 7) {
-                        sortedData.map { entity ->
-                            val calendar = Calendar.getInstance()
-                            calendar.timeInMillis = entity.date
-                            "${calendar.get(Calendar.DAY_OF_MONTH)}日"
-                        }
-                    } else {
-                        // 数据量较大，选择3个关键日期
-                        val first = sortedData.first()
-                        val middle = sortedData[sortedData.size / 2]
-                        val last = sortedData.last()
-
-                        listOf(first, middle, last).map { entity ->
-                            val calendar = Calendar.getInstance()
-                            calendar.timeInMillis = entity.date
-                            "${calendar.get(Calendar.MONTH) + 1}/${calendar.get(Calendar.DAY_OF_MONTH)}"
-                        }
+            // X轴标签 - 固定7格，显示日期
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                weekDates.forEach { date ->
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val cal = Calendar.getInstance()
+                        cal.timeInMillis = date
+                        Text(
+                            text = "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 10.sp
+                        )
                     }
                 }
+            }
+        }
+    }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(220.dp)
-                ) {
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        // Y轴标签 - 宽度32dp，与营养素摄入区块一致
-                        Column(
-                            modifier = Modifier
-                                .width(32.dp)
-                                .padding(top = 10.dp, bottom = 30.dp)
-                                .height(200.dp),
-                            verticalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            yLabels.forEach { label ->
-                                Text(
-                                    text = label,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 10.sp,
-                                    maxLines = 1
-                                )
-                            }
-                        }
+    // 最新数据统计
+    Spacer(modifier = Modifier.height(8.dp))
+    val latestValue = values.lastOrNull()
+    latestValue?.let {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            StatItem(dataLabel, "${String.format("%.1f", it)} $unit")
+        }
+    }
+}
 
-                        // 图表区域
-                        Column(modifier = Modifier.weight(1f)) {
-                            Canvas(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(200.dp)
-                                    .padding(top = 10.dp, end = 10.dp, bottom = 30.dp)
-                            ) {
-                                val chartWidth = size.width
-                                val chartHeight = size.height
+/**
+ * 月模式身体数据图表
+ */
+@Composable
+private fun MonthBodyChart(
+    data: List<BodyRecordEntity>,
+    selectedDataType: Int,
+    lineColor: Color,
+    dataLabel: String,
+    unit: String
+) {
+    // 折线图
+    val sortedData = data.sortedBy { it.date }
 
-                                // 绘制Y轴虚线参考线（更淡的透明度）
-                                val dashPathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
-                                repeat(5) { i ->
-                                    val y = (i * chartHeight / 4)
-                                    drawLine(
-                                        color = Color.Gray.copy(alpha = 0.15f),
-                                        start = Offset(0f, y),
-                                        end = Offset(chartWidth, y),
-                                        strokeWidth = 1f,
-                                        pathEffect = dashPathEffect
-                                    )
-                                }
+    // 提取选中类型的数据值
+    val values = sortedData.mapNotNull { entity ->
+        when (selectedDataType) {
+            0 -> entity.weight
+            1 -> entity.bodyFatRate
+            2 -> entity.muscleMass
+            else -> entity.weight
+        }
+    }
 
-                                // 绘制折线
-                                if (values.size >= 2) {
-                                    // 数据点和标签使用相同的坐标计算：SpaceBetween 布局
-                                    val points = values.mapIndexed { index, value ->
-                                        // SpaceBetween 布局：第一个点在最左边，最后一个点在最右边
-                                        val x = if (values.size > 1) {
-                                            (index.toFloat() / (values.size - 1)) * chartWidth
-                                        } else {
-                                            0f // 单个数据点放在最左边
-                                        }
-                                        val y = chartHeight - ((value - minVal) / range * chartHeight).toFloat()
-                                        Offset(x, y)
-                                    }
+    if (values.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("暂无${dataLabel}数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        return
+    }
 
-                                    // 绘制平滑曲线
-                                    val path = Path()
-                                    path.moveTo(points[0].x, points[0].y)
+    // 动态自适应缩放
+    val dataMin = values.minOrNull() ?: 0.0
+    val dataMax = values.maxOrNull() ?: 100.0
+    val dataRange = (dataMax - dataMin).coerceAtLeast(0.1)
 
-                                    for (i in 1 until points.size) {
-                                        val prev = points[i - 1]
-                                        val curr = points[i]
-                                        val midX = (prev.x + curr.x) / 2
+    val padding = dataRange * 0.1
+    val minVal = dataMin - padding
+    val maxVal = dataMax + padding
+    val range = (maxVal - minVal).coerceAtLeast(0.1)
 
-                                        path.cubicTo(
-                                            midX, prev.y,
-                                            midX, curr.y,
-                                            curr.x, curr.y
-                                        )
-                                    }
+    // Y轴刻度（5个刻度）
+    val yLabels = (0..4).map { i ->
+        val value = maxVal - (range * i / 4)
+        String.format("%.1f", value)
+    }
 
-                                    drawPath(
-                                        path = path,
-                                        color = lineColor,
-                                        style = Stroke(width = 2.5f)
-                                    )
+    // X轴标签（智能选择显示）
+    val xLabels = remember(sortedData) {
+        if (sortedData.size <= 7) {
+            sortedData.map { entity ->
+                val calendar = Calendar.getInstance()
+                calendar.timeInMillis = entity.date
+                "${calendar.get(Calendar.MONTH) + 1}/${calendar.get(Calendar.DAY_OF_MONTH)}"
+            }
+        } else {
+            // 数据量较大，选择3个关键日期
+            val first = sortedData.first()
+            val middle = sortedData[sortedData.size / 2]
+            val last = sortedData.last()
 
-                                    // 绘制数据点（带发光效果）
-                                    points.forEach { point ->
-                                        // 外圈光晕
-                                        drawCircle(
-                                            color = lineColor.copy(alpha = 0.2f),
-                                            radius = 8f,
-                                            center = point
-                                        )
-                                        // 内圈实心点
-                                        drawCircle(
-                                            color = lineColor,
-                                            radius = 4f,
-                                            center = point
-                                        )
-                                        // 白色中心高光
-                                        drawCircle(
-                                            color = Color.White.copy(alpha = 0.6f),
-                                            radius = 1.5f,
-                                            center = point
-                                        )
-                                    }
-                                } else if (values.size == 1) {
-                                    // 单个数据点放在最左边，与标签对齐
-                                    val x = 0f
-                                    val y = chartHeight - ((values[0] - minVal) / range * chartHeight).toFloat()
-                                    drawCircle(
-                                        color = lineColor.copy(alpha = 0.2f),
-                                        radius = 10f,
-                                        center = Offset(x, y)
-                                    )
-                                    drawCircle(
-                                        color = lineColor,
-                                        radius = 6f,
-                                        center = Offset(x, y)
-                                    )
-                                }
-                            }
+            listOf(first, middle, last).map { entity ->
+                val calendar = Calendar.getInstance()
+                calendar.timeInMillis = entity.date
+                "${calendar.get(Calendar.MONTH) + 1}/${calendar.get(Calendar.DAY_OF_MONTH)}"
+            }
+        }
+    }
 
-                            // X轴标签
-                            if (xLabels.isNotEmpty()) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(end = 10.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    xLabels.forEach { label ->
-                                        Text(
-                                            text = label,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            fontSize = 10.sp,
-                                            maxLines = 1
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+    Row(modifier = Modifier.fillMaxWidth()) {
+        // Y轴标签
+        Column(
+            modifier = Modifier
+                .width(32.dp)
+                .height(200.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            yLabels.forEach { label ->
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 10.sp,
+                    maxLines = 1
+                )
+            }
+        }
+
+        // 图表区域
+        Column(modifier = Modifier.weight(1f)) {
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+            ) {
+                val chartHeight = size.height
+                val chartWidth = size.width
+
+                // 绘制Y轴虚线参考线
+                val dashPathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
+                repeat(5) { i ->
+                    val y = (i * chartHeight / 4)
+                    drawLine(
+                        color = Color.Gray.copy(alpha = 0.15f),
+                        start = Offset(0f, y),
+                        end = Offset(chartWidth, y),
+                        strokeWidth = 1f,
+                        pathEffect = dashPathEffect
+                    )
                 }
 
-                // 最新数据统计
-                Spacer(modifier = Modifier.height(8.dp))
+                // 绘制折线
+                if (values.size >= 2) {
+                    val points = values.mapIndexed { index, value ->
+                        val x = if (values.size > 1) {
+                            (index.toFloat() / (values.size - 1)) * chartWidth
+                        } else {
+                            0f
+                        }
+                        val y = chartHeight - ((value - minVal) / range * chartHeight).toFloat()
+                        Offset(x, y)
+                    }
+
+                    val path = Path()
+                    path.moveTo(points[0].x, points[0].y)
+
+                    for (i in 1 until points.size) {
+                        val prev = points[i - 1]
+                        val curr = points[i]
+                        val midX = (prev.x + curr.x) / 2
+
+                        path.cubicTo(
+                            midX, prev.y,
+                            midX, curr.y,
+                            curr.x, curr.y
+                        )
+                    }
+
+                    drawPath(
+                        path = path,
+                        color = lineColor,
+                        style = Stroke(width = 2.5f)
+                    )
+
+                    // 绘制数据点
+                    points.forEach { point ->
+                        drawCircle(
+                            color = lineColor.copy(alpha = 0.2f),
+                            radius = 8f,
+                            center = point
+                        )
+                        drawCircle(
+                            color = lineColor,
+                            radius = 4f,
+                            center = point
+                        )
+                    }
+                } else if (values.size == 1) {
+                    val x = 0f
+                    val y = chartHeight - ((values[0] - minVal) / range * chartHeight).toFloat()
+                    drawCircle(
+                        color = lineColor.copy(alpha = 0.2f),
+                        radius = 10f,
+                        center = Offset(x, y)
+                    )
+                    drawCircle(
+                        color = lineColor,
+                        radius = 6f,
+                        center = Offset(x, y)
+                    )
+                }
+            }
+
+            // X轴标签
+            if (xLabels.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    val latestValue = values.lastOrNull()
-                    latestValue?.let {
-                        StatItem(dataLabel, "${String.format("%.1f", it)} $unit")
+                    xLabels.forEach { label ->
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 10.sp,
+                            maxLines = 1
+                        )
                     }
                 }
             }
+        }
+    }
+
+    // 最新数据统计
+    Spacer(modifier = Modifier.height(8.dp))
+    val latestValue = values.lastOrNull()
+    latestValue?.let {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            StatItem(dataLabel, "${String.format("%.1f", it)} $unit")
         }
     }
 }
@@ -1089,6 +1321,7 @@ private fun StatItem(label: String, value: String) {
 private fun SleepChartCard(
     data: List<SleepRecordEntity>,
     period: Int,
+    weekDates: List<Long> = emptyList(),
     avgSleepTime: String,
     avgWakeTime: String,
     avgDuration: Long,
@@ -1128,8 +1361,13 @@ private fun SleepChartCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             if (period == 0) {
-                // 周模式：显示最近七天的睡眠柱状图
-                WeekSleepChartWithTimeAxis(data = data, primaryColor = primaryColor, onSurfaceVariantColor = onSurfaceVariantColor)
+                // 周模式：固定7格布局
+                WeekSleepChartWithTimeAxis(
+                    data = data,
+                    weekDates = weekDates,
+                    primaryColor = primaryColor,
+                    onSurfaceVariantColor = onSurfaceVariantColor
+                )
             } else {
                 // 月模式：显示四周的睡眠柱状图
                 MonthSleepChartWithTimeAxis(data = data, primaryColor = primaryColor, onSurfaceVariantColor = onSurfaceVariantColor)
@@ -1140,17 +1378,16 @@ private fun SleepChartCard(
 
 /**
  * 周模式睡眠图表 - y轴显示时间，柱状图顶部是入睡时间，底部是起床时间
- * 柱子和标签都使用Compose布局，确保精确对齐
+ * 固定7格布局，按日期位置显示
  */
 @Composable
 private fun WeekSleepChartWithTimeAxis(
     data: List<SleepRecordEntity>,
+    weekDates: List<Long>,
     primaryColor: Color,
     onSurfaceVariantColor: Color
 ) {
-    val sortedData = data.sortedBy { it.date }.takeLast(7)
-
-    if (sortedData.isEmpty()) {
+    if (weekDates.size != 7) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1160,6 +1397,19 @@ private fun WeekSleepChartWithTimeAxis(
             Text("暂无睡眠数据", color = onSurfaceVariantColor)
         }
         return
+    }
+
+    // 按日期建立索引
+    val sleepByDate = remember(data) {
+        data.associateBy {
+            val cal = Calendar.getInstance()
+            cal.timeInMillis = it.date
+            cal.set(Calendar.HOUR_OF_DAY, 0)
+            cal.set(Calendar.MINUTE, 0)
+            cal.set(Calendar.SECOND, 0)
+            cal.set(Calendar.MILLISECOND, 0)
+            cal.timeInMillis
+        }
     }
 
     // 时间范围：22:00 到 12:00（次日中午）
@@ -1195,7 +1445,7 @@ private fun WeekSleepChartWithTimeAxis(
 
         // 图表区域 - 固定7格布局
         Column(modifier = Modifier.weight(1f)) {
-            // 柱状图 - 使用Canvas绘制（睡眠图表需要精确的时间坐标）
+            // 柱状图 - 使用Canvas绘制
             Canvas(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1220,62 +1470,61 @@ private fun WeekSleepChartWithTimeAxis(
                     )
                 }
 
-                // 绘制柱子 - 固定在7个位置
-                sortedData.forEachIndexed { index, sleep ->
-                    val calSleep = Calendar.getInstance()
-                    calSleep.timeInMillis = sleep.sleepTime
-                    val sleepHour = calSleep.get(Calendar.HOUR_OF_DAY)
-                    val sleepMinute = calSleep.get(Calendar.MINUTE)
-                    var sleepHourContinuous = sleepHour + sleepMinute / 60f
-                    if (sleepHourContinuous < startHour) {
-                        sleepHourContinuous += 24
-                    }
+                // 绘制柱子 - 固定在7个位置，根据日期查找数据
+                weekDates.forEachIndexed { index, date ->
+                    val sleep = sleepByDate[date]
+                    if (sleep != null) {
+                        val calSleep = Calendar.getInstance()
+                        calSleep.timeInMillis = sleep.sleepTime
+                        val sleepHour = calSleep.get(Calendar.HOUR_OF_DAY)
+                        val sleepMinute = calSleep.get(Calendar.MINUTE)
+                        var sleepHourContinuous = sleepHour + sleepMinute / 60f
+                        if (sleepHourContinuous < startHour) {
+                            sleepHourContinuous += 24
+                        }
 
-                    val calWake = Calendar.getInstance()
-                    calWake.timeInMillis = sleep.wakeTime
-                    val wakeHour = calWake.get(Calendar.HOUR_OF_DAY)
-                    val wakeMinute = calWake.get(Calendar.MINUTE)
-                    var wakeHourContinuous = wakeHour + wakeMinute / 60f
-                    if (wakeHourContinuous < startHour) {
-                        wakeHourContinuous += 24
-                    }
-                    if (wakeHourContinuous > endHour) {
-                        wakeHourContinuous = endHour.toFloat()
-                    }
+                        val calWake = Calendar.getInstance()
+                        calWake.timeInMillis = sleep.wakeTime
+                        val wakeHour = calWake.get(Calendar.HOUR_OF_DAY)
+                        val wakeMinute = calWake.get(Calendar.MINUTE)
+                        var wakeHourContinuous = wakeHour + wakeMinute / 60f
+                        if (wakeHourContinuous < startHour) {
+                            wakeHourContinuous += 24
+                        }
+                        if (wakeHourContinuous > endHour) {
+                            wakeHourContinuous = endHour.toFloat()
+                        }
 
-                    // 柱子位置：固定在对应的slot中
-                    val x = index * slotWidth + (slotWidth - fixedBarWidth) / 2
-                    val sleepY = (sleepHourContinuous - startHour) / totalHours * chartHeight
-                    val wakeY = (wakeHourContinuous - startHour) / totalHours * chartHeight
+                        // 柱子位置：固定在对应的slot中
+                        val x = index * slotWidth + (slotWidth - fixedBarWidth) / 2
+                        val sleepY = (sleepHourContinuous - startHour) / totalHours * chartHeight
+                        val wakeY = (wakeHourContinuous - startHour) / totalHours * chartHeight
 
-                    drawRoundRect(
-                        color = primaryColor.copy(alpha = 0.8f),
-                        topLeft = Offset(x, sleepY),
-                        size = Size(fixedBarWidth, wakeY - sleepY),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
-                    )
+                        drawRoundRect(
+                            color = primaryColor.copy(alpha = 0.8f),
+                            topLeft = Offset(x, sleepY),
+                            size = Size(fixedBarWidth, wakeY - sleepY),
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
+                        )
+                    }
                 }
             }
 
-            // X轴标签 - 与柱子相同的布局
+            // X轴标签 - 固定7格，显示日期
             Spacer(modifier = Modifier.height(4.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
-                repeat(7) { slotIndex ->
-                    val sleep = sortedData.getOrNull(slotIndex)
-
+                weekDates.forEach { date ->
                     Box(
                         modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (sleep != null) {
-                            val cal = Calendar.getInstance()
-                            cal.timeInMillis = sleep.date
-                            Text(
-                                text = "${cal.get(Calendar.DAY_OF_MONTH)}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = onSurfaceVariantColor
-                            )
-                        }
+                        val cal = Calendar.getInstance()
+                        cal.timeInMillis = date
+                        Text(
+                            text = "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = onSurfaceVariantColor
+                        )
                     }
                 }
             }

@@ -182,21 +182,6 @@
 
 ---
 
-## 🔧 编译项目
-
-```bash
-# 克隆仓库
-git clone https://github.com/你的用户名/HealthTracker.git
-
-# 进入项目目录
-cd HealthTracker
-
-# 使用 Android Studio 打开项目，或命令行编译
-./gradlew assembleDebug
-```
-
----
-
 ## 🤝 贡献指南
 
 欢迎各位大佬：

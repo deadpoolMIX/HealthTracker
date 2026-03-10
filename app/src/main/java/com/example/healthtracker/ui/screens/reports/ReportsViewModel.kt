@@ -23,6 +23,7 @@ data class ReportsUiState(
     val intakeData: List<DailyNutrition> = emptyList(),
     val bodyData: List<BodyRecordEntity> = emptyList(),
     val sleepData: List<SleepRecordEntity> = emptyList(),
+    val weekDates: List<Long> = emptyList(), // 添加：固定7天的日期列表
     val isLoading: Boolean = true,
     // 报表设置
     val showNutritionChart: Boolean = true,
@@ -85,19 +86,36 @@ class ReportsViewModel @Inject constructor(
 
     fun getPeriodLabel(): String {
         val offset = _uiState.value.periodOffset
-        return if (_uiState.value.selectedPeriod == 0) {
-            when (offset) {
-                0 -> "本周"
-                1 -> "上周"
-                else -> "${offset}周前"
+        val calendar = Calendar.getInstance()
+        val now = System.currentTimeMillis()
+
+        val startDate = when (_uiState.value.selectedPeriod) {
+            0 -> { // 周
+                calendar.timeInMillis = now
+                calendar.add(Calendar.WEEK_OF_YEAR, -offset)
+                calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                calendar.timeInMillis
             }
-        } else {
-            when (offset) {
-                0 -> "本月"
-                1 -> "上月"
-                else -> "${offset}个月前"
+            1 -> { // 月
+                calendar.timeInMillis = now
+                calendar.add(Calendar.MONTH, -offset)
+                calendar.set(Calendar.DAY_OF_MONTH, 1)
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                calendar.timeInMillis
             }
+            else -> now
         }
+
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = startDate
+        return "${cal.get(Calendar.MONTH) + 1}.${cal.get(Calendar.DAY_OF_MONTH)}"
     }
 
     fun showSettingsDialog() {
@@ -139,6 +157,9 @@ class ReportsViewModel @Inject constructor(
 
             val (startDate, endDate) = getDateRange()
 
+            // 生成固定日期列表（周模式7天）
+            val weekDates = generateWeekDates(startDate)
+
             // 获取摄入数据
             val intakeRecords = intakeRecordRepository.getRecordsBetweenSync(startDate, endDate)
             val dailyNutrition = aggregateNutritionByDay(intakeRecords)
@@ -153,9 +174,23 @@ class ReportsViewModel @Inject constructor(
                 intakeData = dailyNutrition.sortedBy { it.date },
                 bodyData = bodyRecords.sortedByDescending { it.date },
                 sleepData = sleepRecords.sortedByDescending { it.date },
+                weekDates = weekDates,
                 isLoading = false
             )
         }
+    }
+
+    private fun generateWeekDates(startDate: Long): List<Long> {
+        val result = mutableListOf<Long>()
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = startDate
+
+        val days = if (_uiState.value.selectedPeriod == 0) 7 else 30
+        for (i in 0 until days) {
+            result.add(calendar.timeInMillis)
+            calendar.add(Calendar.DAY_OF_MONTH, 1)
+        }
+        return result
     }
 
     private fun getDateRange(): Pair<Long, Long> {
