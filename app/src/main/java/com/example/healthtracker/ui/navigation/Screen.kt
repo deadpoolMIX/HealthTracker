@@ -22,6 +22,8 @@ sealed class Screen(val route: String) {
     object AddCustomFood : Screen("add_custom_food")
     object AddBodyData : Screen("add_body_data")
     object AddSleep : Screen("add_sleep")
+    object AddCycleFood : Screen("add_cycle_food")
+    object EditCycleFood : Screen("edit_cycle_food/{cycleFoodId}")
 
     // 饮食计划
     object AddMealPlan : Screen("add_meal_plan")

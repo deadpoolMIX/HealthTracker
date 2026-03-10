@@ -16,9 +16,10 @@ import com.example.healthtracker.data.local.entity.*
         MealPlanEntity::class,
         MealPlanItemEntity::class,
         UserSettingsEntity::class,
-        TestRecordEntity::class
+        TestRecordEntity::class,
+        CycleFoodEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 abstract class HealthTrackerDatabase : RoomDatabase() {
@@ -30,6 +31,7 @@ abstract class HealthTrackerDatabase : RoomDatabase() {
     abstract fun mealPlanItemDao(): MealPlanItemDao
     abstract fun userSettingsDao(): UserSettingsDao
     abstract fun testRecordDao(): TestRecordDao
+    abstract fun cycleFoodDao(): CycleFoodDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -172,6 +174,31 @@ abstract class HealthTrackerDatabase : RoomDatabase() {
                         recordType TEXT NOT NULL,
                         date INTEGER NOT NULL,
                         dataJson TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL
+                    )
+                """)
+            }
+        }
+
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 创建周期食物表
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS cycle_foods (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        icon TEXT NOT NULL DEFAULT '🍽️',
+                        totalCalories REAL NOT NULL,
+                        totalCarbs REAL NOT NULL,
+                        totalProtein REAL NOT NULL,
+                        totalFat REAL NOT NULL,
+                        remainingCalories REAL NOT NULL,
+                        remainingCarbs REAL NOT NULL,
+                        remainingProtein REAL NOT NULL,
+                        remainingFat REAL NOT NULL,
+                        expectedDays INTEGER NOT NULL,
+                        startDate INTEGER NOT NULL,
+                        isActive INTEGER NOT NULL DEFAULT 1,
                         createdAt INTEGER NOT NULL
                     )
                 """)

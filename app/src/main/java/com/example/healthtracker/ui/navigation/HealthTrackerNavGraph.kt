@@ -29,6 +29,8 @@ import com.example.healthtracker.ui.screens.intake.EditIntakeScreen
 import com.example.healthtracker.ui.screens.reports.NutritionDetailScreen
 import com.example.healthtracker.ui.screens.reports.BodyDataDetailScreen
 import com.example.healthtracker.ui.screens.reports.SleepDetailScreen
+import com.example.healthtracker.ui.screens.cyclefood.AddCycleFoodScreen
+import com.example.healthtracker.ui.screens.cyclefood.EditCycleFoodScreen
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -65,7 +67,11 @@ fun HealthTrackerNavGraph(
                 },
                 onNavigateToNutritionDetail = { navController.navigate(Screen.NutritionDetail.route) },
                 onNavigateToBodyDataDetail = { navController.navigate(Screen.BodyDataDetail.route) },
-                onNavigateToSleepDetail = { navController.navigate(Screen.SleepDetail.route) }
+                onNavigateToSleepDetail = { navController.navigate(Screen.SleepDetail.route) },
+                onNavigateToAddCycleFood = { navController.navigate(Screen.AddCycleFood.route) },
+                onNavigateToEditCycleFood = { cycleFoodId ->
+                    navController.navigate("edit_cycle_food/$cycleFoodId")
+                }
             )
         }
 
@@ -178,6 +184,24 @@ fun HealthTrackerNavGraph(
 
         composable(Screen.AddSleep.route) {
             AddSleepScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // 周期食物
+        composable(Screen.AddCycleFood.route) {
+            AddCycleFoodScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.EditCycleFood.route,
+            arguments = listOf(navArgument("cycleFoodId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val cycleFoodId = backStackEntry.arguments?.getLong("cycleFoodId") ?: 0L
+            EditCycleFoodScreen(
+                cycleFoodId = cycleFoodId,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

@@ -40,7 +40,9 @@ fun MainScreen(
     onNavigateToEditMealPlan: (Long) -> Unit = {},
     onNavigateToNutritionDetail: () -> Unit = {},
     onNavigateToBodyDataDetail: () -> Unit = {},
-    onNavigateToSleepDetail: () -> Unit = {}
+    onNavigateToSleepDetail: () -> Unit = {},
+    onNavigateToAddCycleFood: () -> Unit = {},
+    onNavigateToEditCycleFood: (Long) -> Unit = {}
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -125,7 +127,9 @@ fun MainScreen(
                     onNavigateToSettings = onNavigateToSettings,
                     onNavigateToUserProfile = onNavigateToUserProfile,
                     onNavigateToCalendar = onNavigateToCalendar,
-                    onNavigateToEditIntake = onNavigateToEditIntake
+                    onNavigateToEditIntake = onNavigateToEditIntake,
+                    onNavigateToAddCycleFood = onNavigateToAddCycleFood,
+                    onNavigateToEditCycleFood = onNavigateToEditCycleFood
                 )
             }
             composable(Screen.FoodLibrary.route) {

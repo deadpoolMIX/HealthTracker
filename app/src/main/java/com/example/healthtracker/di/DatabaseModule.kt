@@ -36,7 +36,8 @@ object DatabaseModule {
                 HealthTrackerDatabase.MIGRATION_8_9,
                 HealthTrackerDatabase.MIGRATION_9_10,
                 HealthTrackerDatabase.MIGRATION_10_11,
-                HealthTrackerDatabase.MIGRATION_11_12
+                HealthTrackerDatabase.MIGRATION_11_12,
+                HealthTrackerDatabase.MIGRATION_12_13
             )
             .fallbackToDestructiveMigration()
             .build()
@@ -80,5 +81,10 @@ object DatabaseModule {
     @Provides
     fun provideTestRecordDao(database: HealthTrackerDatabase): TestRecordDao {
         return database.testRecordDao()
+    }
+
+    @Provides
+    fun provideCycleFoodDao(database: HealthTrackerDatabase): CycleFoodDao {
+        return database.cycleFoodDao()
     }
 }

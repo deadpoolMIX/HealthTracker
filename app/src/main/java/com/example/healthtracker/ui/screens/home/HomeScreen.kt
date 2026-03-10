@@ -31,12 +31,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.healthtracker.data.local.entity.CycleFoodEntity
 import com.example.healthtracker.data.local.entity.IntakeRecordEntity
 import com.example.healthtracker.util.DateTimeUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
@@ -46,7 +47,9 @@ fun HomeScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToUserProfile: () -> Unit,
     onNavigateToCalendar: () -> Unit = {},
-    onNavigateToEditIntake: (Long) -> Unit = {}
+    onNavigateToEditIntake: (Long) -> Unit = {},
+    onNavigateToAddCycleFood: () -> Unit = {},
+    onNavigateToEditCycleFood: (Long) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var fabExpanded by remember { mutableStateOf(false) }
@@ -56,6 +59,8 @@ fun HomeScreen(
     var selectedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var showTargetCaloriesDialog by remember { mutableStateOf(false) }
     var showEditIntakeDialog by remember { mutableStateOf<IntakeRecordEntity?>(null) }
+    var showCycleFoodMenu by remember { mutableStateOf<CycleFoodEntity?>(null) }
+    var showDeleteCycleFoodDialog by remember { mutableStateOf<CycleFoodEntity?>(null) }
 
     // 确保每次页面显示时 FAB 选项是收起状态
     DisposableEffect(Unit) {
@@ -165,6 +170,10 @@ fun HomeScreen(
                     onSleepClick = {
                         fabExpanded = false
                         onNavigateToAddSleep()
+                    },
+                    onCycleFoodClick = {
+                        fabExpanded = false
+                        onNavigateToAddCycleFood()
                     }
                 )
             }
@@ -198,6 +207,92 @@ fun HomeScreen(
                     protein = uiState.totalProtein,
                     fat = uiState.totalFat
                 )
+            }
+
+            // 进行中的周期食物
+            if (uiState.activeCycleFoods.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "周期食物",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                items(uiState.activeCycleFoods.size) { index ->
+                    val cycleFood = uiState.activeCycleFoods[index]
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .combinedClickable(
+                                onClick = { },
+                                onLongClick = { showCycleFoodMenu = cycleFood }
+                            ),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = cycleFood.icon,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = cycleFood.name,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "剩余: ${String.format("%.0f", cycleFood.remainingCalories)} kcal",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "约 ${cycleFood.getRemainingPortions()} 份",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        viewModel.eatCycleFoodPortion(cycleFood)
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("吃一份")
+                                }
+                                Button(
+                                    onClick = {
+                                        viewModel.finishCycleFood(cycleFood)
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("吃完剩余")
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             // 今日摄入记录
@@ -438,6 +533,75 @@ fun HomeScreen(
             onConfirm = { updatedRecord ->
                 viewModel.updateRecord(updatedRecord)
                 showEditIntakeDialog = null
+            }
+        )
+    }
+
+    // 周期食物长按菜单
+    showCycleFoodMenu?.let { cycleFood ->
+        AlertDialog(
+            onDismissRequest = { showCycleFoodMenu = null },
+            title = { Text(cycleFood.name) },
+            text = {
+                Column {
+                    TextButton(
+                        onClick = {
+                            showCycleFoodMenu = null
+                            onNavigateToEditCycleFood(cycleFood.id)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("编辑")
+                    }
+                    TextButton(
+                        onClick = {
+                            showCycleFoodMenu = null
+                            showDeleteCycleFoodDialog = cycleFood
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("删除")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCycleFoodMenu = null }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    // 删除周期食物确认对话框
+    showDeleteCycleFoodDialog?.let { cycleFood ->
+        AlertDialog(
+            onDismissRequest = { showDeleteCycleFoodDialog = null },
+            title = { Text("删除周期食物") },
+            text = { Text("确定要删除 \"${cycleFood.name}\" 吗？\n此操作不会删除已记录的摄入数据。") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteCycleFood(cycleFood)
+                        showDeleteCycleFoodDialog = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("删除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteCycleFoodDialog = null }) {
+                    Text("取消")
+                }
             }
         )
     }
@@ -902,7 +1066,8 @@ private fun MultiActionFab(
     onExpandChange: (Boolean) -> Unit,
     onIntakeClick: () -> Unit,
     onBodyClick: () -> Unit,
-    onSleepClick: () -> Unit
+    onSleepClick: () -> Unit,
+    onCycleFoodClick: () -> Unit
 ) {
     Column(
         horizontalAlignment = Alignment.End,
@@ -932,6 +1097,11 @@ private fun MultiActionFab(
                     icon = Icons.Outlined.Bedtime,
                     label = "睡眠",
                     onClick = onSleepClick
+                )
+                FabOption(
+                    icon = Icons.Outlined.Schedule,
+                    label = "周期",
+                    onClick = onCycleFoodClick
                 )
             }
         }
