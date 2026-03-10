@@ -20,7 +20,7 @@ fun AboutScreen(
     onNavigateBack: () -> Unit,
     onNavigateToTestData: () -> Unit = {},
     versionName: String = "1.0",
-    githubUrl: String = "https://github.com/MIX888/HealthTracker"
+    githubUrl: String = "https://github.com/deadpoolMIX/HealthTracker"
 ) {
     val context = LocalContext.current
 
