@@ -205,7 +205,10 @@ fun HomeScreen(
                 NutrientSummaryCard(
                     carbs = uiState.totalCarbs,
                     protein = uiState.totalProtein,
-                    fat = uiState.totalFat
+                    fat = uiState.totalFat,
+                    targetCarbs = uiState.targetCarbs,
+                    targetProtein = uiState.targetProtein,
+                    targetFat = uiState.targetFat
                 )
             }
 
@@ -346,13 +349,25 @@ fun HomeScreen(
                                 Column(
                                     modifier = Modifier.padding(12.dp)
                                 ) {
-                                    // 餐次标题
-                                    Text(
-                                        text = getMealTypeName(mealType),
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
+                                    // 餐次标题和总热量
+                                    val mealCalories = recordsForMeal.sumOf { it.calories }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = getMealTypeName(mealType),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            text = "${mealCalories.toInt()} kcal",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                                        )
+                                    }
                                     Spacer(modifier = Modifier.height(8.dp))
 
                                     // 该餐次的食物列表
@@ -517,9 +532,20 @@ fun HomeScreen(
     if (showTargetCaloriesDialog) {
         TargetCaloriesDialog(
             currentTarget = uiState.targetCalories,
+            nutrientMode = uiState.nutrientMode,
+            carbsRatio = uiState.carbsRatio,
+            proteinRatio = uiState.proteinRatio,
+            fatRatio = uiState.fatRatio,
+            targetCarbs = uiState.targetCarbs,
+            targetProtein = uiState.targetProtein,
+            targetFat = uiState.targetFat,
             onDismiss = { showTargetCaloriesDialog = false },
-            onConfirm = { newTarget ->
+            onConfirm = { newTarget, nutrientMode, carbsRatio, proteinRatio, fatRatio, targetCarbs, targetProtein, targetFat ->
                 viewModel.updateTargetCalories(newTarget)
+                viewModel.updateNutrientSettings(
+                    nutrientMode, carbsRatio, proteinRatio, fatRatio,
+                    targetCarbs, targetProtein, targetFat
+                )
                 showTargetCaloriesDialog = false
             }
         )
@@ -714,59 +740,83 @@ private fun CalorieArcCard(
 private fun NutrientSummaryCard(
     carbs: Double,
     protein: Double,
-    fat: Double
+    fat: Double,
+    targetCarbs: Double,
+    targetProtein: Double,
+    targetFat: Double
 ) {
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            NutrientItem(
+            NutrientProgressItem(
                 name = "碳水",
                 value = carbs,
-                color = MaterialTheme.colorScheme.primary,
-                unit = "g"
+                target = targetCarbs,
+                color = MaterialTheme.colorScheme.primary
             )
-            NutrientItem(
+            NutrientProgressItem(
                 name = "蛋白质",
                 value = protein,
-                color = MaterialTheme.colorScheme.secondary,
-                unit = "g"
+                target = targetProtein,
+                color = MaterialTheme.colorScheme.secondary
             )
-            NutrientItem(
+            NutrientProgressItem(
                 name = "脂肪",
                 value = fat,
-                color = MaterialTheme.colorScheme.tertiary,
-                unit = "g"
+                target = targetFat,
+                color = MaterialTheme.colorScheme.tertiary
             )
         }
     }
 }
 
 @Composable
-private fun NutrientItem(
+private fun NutrientProgressItem(
     name: String,
     value: Double,
-    color: Color,
-    unit: String
+    target: Double,
+    color: Color
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = String.format("%.1f", value),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-        Text(
-            text = "$name ($unit)",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+    val progress = if (target > 0) (value / target).coerceIn(0.0, 1.0).toFloat() else 0f
+    val isOverTarget = target > 0 && value > target
+
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = if (target > 0) {
+                    "${value.toInt()}/${target.toInt()}g"
+                } else {
+                    "${value.toInt()}g"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (isOverTarget) MaterialTheme.colorScheme.error else color
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        LinearProgressIndicator(
+            progress = { progress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp)),
+            color = if (isOverTarget) MaterialTheme.colorScheme.error else color,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            strokeCap = StrokeCap.Round
         )
     }
 }
@@ -1244,33 +1294,205 @@ private fun getFoodEmoji(name: String): String {
 /**
  * 设置目标卡路里对话框
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TargetCaloriesDialog(
     currentTarget: Double,
+    nutrientMode: Int,
+    carbsRatio: Double,
+    proteinRatio: Double,
+    fatRatio: Double,
+    targetCarbs: Double,
+    targetProtein: Double,
+    targetFat: Double,
     onDismiss: () -> Unit,
-    onConfirm: (Double) -> Unit
+    onConfirm: (
+        targetCalories: Double,
+        nutrientMode: Int,
+        carbsRatio: Double,
+        proteinRatio: Double,
+        fatRatio: Double,
+        targetCarbs: Double?,
+        targetProtein: Double?,
+        targetFat: Double?
+    ) -> Unit
 ) {
     var targetValue by remember { mutableStateOf(currentTarget.toInt().toString()) }
+    var currentNutrientMode by remember { mutableIntStateOf(nutrientMode) }
+    var currentCarbsRatio by remember { mutableFloatStateOf(carbsRatio.toFloat()) }
+    var currentProteinRatio by remember { mutableFloatStateOf(proteinRatio.toFloat()) }
+    var currentFatRatio by remember { mutableFloatStateOf(fatRatio.toFloat()) }
+    var currentTargetCarbs by remember { mutableStateOf(if (targetCarbs > 0) targetCarbs.toInt().toString() else "") }
+    var currentTargetProtein by remember { mutableStateOf(if (targetProtein > 0) targetProtein.toInt().toString() else "") }
+    var currentTargetFat by remember { mutableStateOf(if (targetFat > 0) targetFat.toInt().toString() else "") }
+
+    val totalRatio = currentCarbsRatio + currentProteinRatio + currentFatRatio
+
+    // 自动计算营养素目标
+    val calories = targetValue.toDoubleOrNull() ?: 0.0
+    val autoCarbs = (calories * currentCarbsRatio / 100.0) / 4.0
+    val autoProtein = (calories * currentProteinRatio / 100.0) / 4.0
+    val autoFat = (calories * currentFatRatio / 100.0) / 9.0
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("设置每日目标热量") },
+        title = { Text("设置每日目标") },
         text = {
-            Column {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // 目标热量输入
                 Text(
-                    text = "请输入每日目标摄入热量（kcal）",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "目标热量",
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
                     value = targetValue,
                     onValueChange = { targetValue = it.filter { c -> c.isDigit() } },
-                    label = { Text("目标热量") },
                     suffix = { Text("kcal") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                HorizontalDivider()
+
+                // 模式切换
+                Text(
+                    text = "营养素目标",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    FilterChip(
+                        selected = currentNutrientMode == 0,
+                        onClick = { currentNutrientMode = 0 },
+                        label = { Text("自动计算") }
+                    )
+                    FilterChip(
+                        selected = currentNutrientMode == 1,
+                        onClick = { currentNutrientMode = 1 },
+                        label = { Text("手动设置") }
+                    )
+                }
+
+                if (currentNutrientMode == 0) {
+                    // 自动计算模式 - 滑块
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // 碳水
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("碳水", style = MaterialTheme.typography.bodyMedium)
+                                Text("${currentCarbsRatio.toInt()}%", style = MaterialTheme.typography.bodyMedium)
+                            }
+                            Slider(
+                                value = currentCarbsRatio,
+                                onValueChange = { currentCarbsRatio = it },
+                                valueRange = 0f..100f,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text(
+                                "目标: ${autoCarbs.toInt()}g",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // 蛋白质
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("蛋白质", style = MaterialTheme.typography.bodyMedium)
+                                Text("${currentProteinRatio.toInt()}%", style = MaterialTheme.typography.bodyMedium)
+                            }
+                            Slider(
+                                value = currentProteinRatio,
+                                onValueChange = { currentProteinRatio = it },
+                                valueRange = 0f..100f,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text(
+                                "目标: ${autoProtein.toInt()}g",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // 脂肪
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("脂肪", style = MaterialTheme.typography.bodyMedium)
+                                Text("${currentFatRatio.toInt()}%", style = MaterialTheme.typography.bodyMedium)
+                            }
+                            Slider(
+                                value = currentFatRatio,
+                                onValueChange = { currentFatRatio = it },
+                                valueRange = 0f..100f,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text(
+                                "目标: ${autoFat.toInt()}g",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // 比例总和提示
+                        if (totalRatio != 100f) {
+                            Text(
+                                "比例总和: ${totalRatio.toInt()}%（建议100%）",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                } else {
+                    // 手动模式 - 输入框
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = currentTargetCarbs,
+                            onValueChange = { currentTargetCarbs = it.filter { c -> c.isDigit() } },
+                            label = { Text("目标碳水") },
+                            suffix = { Text("g") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        OutlinedTextField(
+                            value = currentTargetProtein,
+                            onValueChange = { currentTargetProtein = it.filter { c -> c.isDigit() } },
+                            label = { Text("目标蛋白质") },
+                            suffix = { Text("g") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        OutlinedTextField(
+                            value = currentTargetFat,
+                            onValueChange = { currentTargetFat = it.filter { c -> c.isDigit() } },
+                            label = { Text("目标脂肪") },
+                            suffix = { Text("g") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
@@ -1278,7 +1500,29 @@ private fun TargetCaloriesDialog(
                 onClick = {
                     val target = targetValue.toDoubleOrNull()
                     if (target != null && target > 0) {
-                        onConfirm(target)
+                        if (currentNutrientMode == 0) {
+                            // 自动模式
+                            onConfirm(
+                                target,
+                                currentNutrientMode,
+                                currentCarbsRatio.toDouble(),
+                                currentProteinRatio.toDouble(),
+                                currentFatRatio.toDouble(),
+                                null, null, null
+                            )
+                        } else {
+                            // 手动模式
+                            onConfirm(
+                                target,
+                                currentNutrientMode,
+                                currentCarbsRatio.toDouble(),
+                                currentProteinRatio.toDouble(),
+                                currentFatRatio.toDouble(),
+                                currentTargetCarbs.toDoubleOrNull(),
+                                currentTargetProtein.toDoubleOrNull(),
+                                currentTargetFat.toDoubleOrNull()
+                            )
+                        }
                     }
                 }
             ) {

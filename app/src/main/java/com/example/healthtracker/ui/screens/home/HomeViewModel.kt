@@ -35,6 +35,13 @@ data class HomeUiState(
     val totalProtein: Double = 0.0,
     val totalFat: Double = 0.0,
     val targetCalories: Double = 2000.0,
+    val targetCarbs: Double = 0.0,
+    val targetProtein: Double = 0.0,
+    val targetFat: Double = 0.0,
+    val nutrientMode: Int = 0,
+    val carbsRatio: Double = 50.0,
+    val proteinRatio: Double = 20.0,
+    val fatRatio: Double = 30.0,
     val bmr: Double = 0.0,
     val tdee: Double = 0.0,
     val caloriePercentage: Int = 0,
@@ -89,6 +96,9 @@ class HomeViewModel @Inject constructor(
                     totalCalories, targetCalories
                 )
 
+                // 计算营养素目标
+                val (targetCarbs, targetProtein, targetFat) = calculateNutrientTargets(settings, targetCalories)
+
                 _uiState.value = _uiState.value.copy(
                     todayIntake = records,
                     totalCalories = totalCalories,
@@ -96,6 +106,13 @@ class HomeViewModel @Inject constructor(
                     totalProtein = totalProtein,
                     totalFat = totalFat,
                     targetCalories = targetCalories,
+                    targetCarbs = targetCarbs,
+                    targetProtein = targetProtein,
+                    targetFat = targetFat,
+                    nutrientMode = settings?.nutrientMode ?: 0,
+                    carbsRatio = settings?.carbsRatio ?: 50.0,
+                    proteinRatio = settings?.proteinRatio ?: 20.0,
+                    fatRatio = settings?.fatRatio ?: 30.0,
                     bmr = settings?.bmr ?: 0.0,
                     tdee = settings?.tdee ?: 0.0,
                     caloriePercentage = caloriePercentage,
@@ -116,6 +133,35 @@ class HomeViewModel @Inject constructor(
             sleepRecordRepository.getRecordByDateFlow(date).collect { record ->
                 _uiState.value = _uiState.value.copy(todaySleepRecord = record)
             }
+        }
+    }
+
+    /**
+     * 计算营养素目标
+     * 自动模式：根据热量和比例计算
+     * 手动模式：使用已存储的目标值
+     */
+    private fun calculateNutrientTargets(
+        settings: UserSettingsEntity?,
+        targetCalories: Double
+    ): Triple<Double, Double, Double> {
+        if (settings == null || targetCalories <= 0) {
+            return Triple(0.0, 0.0, 0.0)
+        }
+
+        return if (settings.nutrientMode == 0) {
+            // 自动计算模式
+            val carbs = (targetCalories * (settings.carbsRatio / 100.0)) / 4.0
+            val protein = (targetCalories * (settings.proteinRatio / 100.0)) / 4.0
+            val fat = (targetCalories * (settings.fatRatio / 100.0)) / 9.0
+            Triple(carbs, protein, fat)
+        } else {
+            // 手动模式
+            Triple(
+                settings.targetCarbs ?: 0.0,
+                settings.targetProtein ?: 0.0,
+                settings.targetFat ?: 0.0
+            )
         }
     }
 
@@ -144,13 +190,49 @@ class HomeViewModel @Inject constructor(
     fun updateTargetCalories(calories: Double) {
         viewModelScope.launch {
             userSettingsRepository.updateTargetCalories(calories)
+            // 重新计算营养素目标
+            val settings = userSettingsRepository.getSettings()
+            val (targetCarbs, targetProtein, targetFat) = calculateNutrientTargets(settings, calories)
             // 更新 UI 状态
             val caloriePercentage = HealthCalculator.calculateCaloriePercentage(
                 _uiState.value.totalCalories, calories
             )
             _uiState.value = _uiState.value.copy(
                 targetCalories = calories,
+                targetCarbs = targetCarbs,
+                targetProtein = targetProtein,
+                targetFat = targetFat,
                 caloriePercentage = caloriePercentage
+            )
+        }
+    }
+
+    /**
+     * 更新营养素目标设置
+     */
+    fun updateNutrientSettings(
+        nutrientMode: Int,
+        carbsRatio: Double,
+        proteinRatio: Double,
+        fatRatio: Double,
+        targetCarbs: Double?,
+        targetProtein: Double?,
+        targetFat: Double?
+    ) {
+        viewModelScope.launch {
+            userSettingsRepository.updateNutrientSettings(
+                nutrientMode, carbsRatio, proteinRatio, fatRatio,
+                targetCarbs, targetProtein, targetFat
+            )
+            // 更新 UI 状态
+            _uiState.value = _uiState.value.copy(
+                nutrientMode = nutrientMode,
+                carbsRatio = carbsRatio,
+                proteinRatio = proteinRatio,
+                fatRatio = fatRatio,
+                targetCarbs = targetCarbs ?: 0.0,
+                targetProtein = targetProtein ?: 0.0,
+                targetFat = targetFat ?: 0.0
             )
         }
     }

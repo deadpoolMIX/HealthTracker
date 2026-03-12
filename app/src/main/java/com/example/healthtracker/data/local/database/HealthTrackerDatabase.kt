@@ -19,7 +19,7 @@ import com.example.healthtracker.data.local.entity.*
         TestRecordEntity::class,
         CycleFoodEntity::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = false
 )
 abstract class HealthTrackerDatabase : RoomDatabase() {
@@ -202,6 +202,16 @@ abstract class HealthTrackerDatabase : RoomDatabase() {
                         createdAt INTEGER NOT NULL
                     )
                 """)
+            }
+        }
+
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 添加营养素目标设置字段
+                db.execSQL("ALTER TABLE user_settings ADD COLUMN nutrientMode INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE user_settings ADD COLUMN carbsRatio REAL NOT NULL DEFAULT 50.0")
+                db.execSQL("ALTER TABLE user_settings ADD COLUMN proteinRatio REAL NOT NULL DEFAULT 20.0")
+                db.execSQL("ALTER TABLE user_settings ADD COLUMN fatRatio REAL NOT NULL DEFAULT 30.0")
             }
         }
     }

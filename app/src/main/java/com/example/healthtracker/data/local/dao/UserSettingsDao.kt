@@ -148,4 +148,58 @@ interface UserSettingsDao {
             )
         }
     }
+
+    // 营养素目标设置
+    @Query("UPDATE user_settings SET nutrientMode = :mode WHERE id = 1")
+    suspend fun updateNutrientMode(mode: Int)
+
+    @Query("UPDATE user_settings SET carbsRatio = :ratio WHERE id = 1")
+    suspend fun updateCarbsRatio(ratio: Double)
+
+    @Query("UPDATE user_settings SET proteinRatio = :ratio WHERE id = 1")
+    suspend fun updateProteinRatio(ratio: Double)
+
+    @Query("UPDATE user_settings SET fatRatio = :ratio WHERE id = 1")
+    suspend fun updateFatRatio(ratio: Double)
+
+    @Query("UPDATE user_settings SET targetCarbs = :carbs, targetProtein = :protein, targetFat = :fat WHERE id = 1")
+    suspend fun updateNutrientTargets(carbs: Double?, protein: Double?, fat: Double?)
+
+    @Transaction
+    suspend fun updateNutrientSettings(
+        nutrientMode: Int,
+        carbsRatio: Double,
+        proteinRatio: Double,
+        fatRatio: Double,
+        targetCarbs: Double?,
+        targetProtein: Double?,
+        targetFat: Double?
+    ) {
+        val settings = getSettings()
+        if (settings == null) {
+            insertSettings(
+                com.example.healthtracker.data.local.entity.UserSettingsEntity(
+                    nutrientMode = nutrientMode,
+                    carbsRatio = carbsRatio,
+                    proteinRatio = proteinRatio,
+                    fatRatio = fatRatio,
+                    targetCarbs = targetCarbs,
+                    targetProtein = targetProtein,
+                    targetFat = targetFat
+                )
+            )
+        } else {
+            updateSettings(
+                settings.copy(
+                    nutrientMode = nutrientMode,
+                    carbsRatio = carbsRatio,
+                    proteinRatio = proteinRatio,
+                    fatRatio = fatRatio,
+                    targetCarbs = targetCarbs,
+                    targetProtein = targetProtein,
+                    targetFat = targetFat
+                )
+            )
+        }
+    }
 }

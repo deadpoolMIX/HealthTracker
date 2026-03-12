@@ -27,6 +27,11 @@ data class UserSettingsEntity(
     val targetCarbs: Double? = null,     // 目标碳水
     val targetProtein: Double? = null,   // 目标蛋白质
     val targetFat: Double? = null,       // 目标脂肪
+    // 营养素目标设置
+    val nutrientMode: Int = 0,           // 营养素模式：0-自动计算，1-手动设置
+    val carbsRatio: Double = 50.0,       // 碳水比例（%）
+    val proteinRatio: Double = 20.0,     // 蛋白质比例（%）
+    val fatRatio: Double = 30.0,         // 脂肪比例（%）
     // 报表设置
     val showNutritionChart: Boolean = true,      // 显示营养素图表
     val showBodyChart: Boolean = true,            // 显示身体数据图表

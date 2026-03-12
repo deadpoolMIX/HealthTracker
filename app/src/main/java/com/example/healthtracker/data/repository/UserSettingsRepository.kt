@@ -74,4 +74,33 @@ class UserSettingsRepository @Inject constructor(
         showSleepChart,
         defaultChartPeriod
     )
+
+    // 营养素目标设置
+    suspend fun updateNutrientMode(mode: Int) =
+        userSettingsDao.updateNutrientMode(mode)
+
+    suspend fun updateCarbsRatio(ratio: Double) =
+        userSettingsDao.updateCarbsRatio(ratio)
+
+    suspend fun updateProteinRatio(ratio: Double) =
+        userSettingsDao.updateProteinRatio(ratio)
+
+    suspend fun updateFatRatio(ratio: Double) =
+        userSettingsDao.updateFatRatio(ratio)
+
+    suspend fun updateNutrientTargets(carbs: Double?, protein: Double?, fat: Double?) =
+        userSettingsDao.updateNutrientTargets(carbs, protein, fat)
+
+    suspend fun updateNutrientSettings(
+        nutrientMode: Int,
+        carbsRatio: Double,
+        proteinRatio: Double,
+        fatRatio: Double,
+        targetCarbs: Double?,
+        targetProtein: Double?,
+        targetFat: Double?
+    ) = userSettingsDao.updateNutrientSettings(
+        nutrientMode, carbsRatio, proteinRatio, fatRatio,
+        targetCarbs, targetProtein, targetFat
+    )
 }

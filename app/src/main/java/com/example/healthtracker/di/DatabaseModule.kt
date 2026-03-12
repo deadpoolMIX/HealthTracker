@@ -37,7 +37,8 @@ object DatabaseModule {
                 HealthTrackerDatabase.MIGRATION_9_10,
                 HealthTrackerDatabase.MIGRATION_10_11,
                 HealthTrackerDatabase.MIGRATION_11_12,
-                HealthTrackerDatabase.MIGRATION_12_13
+                HealthTrackerDatabase.MIGRATION_12_13,
+                HealthTrackerDatabase.MIGRATION_13_14
             )
             .fallbackToDestructiveMigration()
             .build()
