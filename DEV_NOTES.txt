@@ -226,6 +226,27 @@ coding终于告一段落了，非常感谢你的帮助，感谢你与我一同�
   - ReportsScreen.kt - 重写 BodyDataChartCard 布局
 - 结果：BUILD SUCCESSFUL
 
+【2026-03-15】添加摄入页面优化：整体滚动与食物排序
+- 问题1：添加的食物过多时，食物库部分被挤到下面显示不全
+  - 解决：将餐次选择以下的所有内容包裹在 verticalScroll 中，实现整体滑动
+  - 移除搜索结果列表的固定高度限制，改为自适应内容
+- 问题2：食物库搜索结果中只有前4个是最近添加的，排序不正确
+  - 原因：按 createdAt DESC 排序，而非"最近使用时间"
+  - 解决：
+    1. FoodEntity 添加 lastUsedTime 字段
+    2. FoodDao 修改排序为 lastUsedTime DESC, createdAt DESC
+    3. 保存摄入记录时更新食物的 lastUsedTime
+    4. 添加数据库迁移 MIGRATION_14_15
+- 修改文件：
+  - AddIntakeScreen.kt - 添加整体滚动，移除固定高度
+  - FoodEntity.kt - 添加 lastUsedTime 字段
+  - FoodDao.kt - 修改排序逻辑，添加更新方法
+  - FoodRepository.kt - 添加 updateLastUsedTime 方法
+  - AddIntakeViewModel.kt - 保存时更新食物使用时间
+  - HealthTrackerDatabase.kt - 添加 MIGRATION_14_15
+  - DatabaseModule.kt - 注册新迁移
+- 结果：BUILD SUCCESSFUL
+
 ================================================================================
                                  项目进度记录
 ================================================================================

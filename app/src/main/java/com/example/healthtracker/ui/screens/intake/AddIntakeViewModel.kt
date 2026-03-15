@@ -139,6 +139,7 @@ class AddIntakeViewModel @Inject constructor(
             _isSaving.value = true
 
             val date = DateTimeUtils.getStartOfDay(dateMillis)
+            val currentTime = System.currentTimeMillis()
 
             val records = _pendingItems.value.map { item ->
                 // 获取正确的食物图标
@@ -167,6 +168,12 @@ class AddIntakeViewModel @Inject constructor(
             }
 
             intakeRecordRepository.insertRecords(records)
+
+            // 更新所有使用的食物的最近使用时间
+            val foodIds = _pendingItems.value.mapNotNull { it.food.id.takeIf { id -> id > 0 } }
+            if (foodIds.isNotEmpty()) {
+                foodRepository.updateLastUsedTimeBatch(foodIds, currentTime)
+            }
 
             _pendingItems.value = emptyList()
             _isSaving.value = false

@@ -19,7 +19,7 @@ import com.example.healthtracker.data.local.entity.*
         TestRecordEntity::class,
         CycleFoodEntity::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = false
 )
 abstract class HealthTrackerDatabase : RoomDatabase() {
@@ -212,6 +212,13 @@ abstract class HealthTrackerDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE user_settings ADD COLUMN carbsRatio REAL NOT NULL DEFAULT 50.0")
                 db.execSQL("ALTER TABLE user_settings ADD COLUMN proteinRatio REAL NOT NULL DEFAULT 20.0")
                 db.execSQL("ALTER TABLE user_settings ADD COLUMN fatRatio REAL NOT NULL DEFAULT 30.0")
+            }
+        }
+
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 添加食物最近使用时间字段
+                db.execSQL("ALTER TABLE foods ADD COLUMN lastUsedTime INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

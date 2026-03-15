@@ -37,4 +37,10 @@ class FoodRepository @Inject constructor(
     suspend fun deleteCustomFood(id: Long) = foodDao.deleteCustomFood(id)
 
     suspend fun deleteImportedFoods() = foodDao.deleteImportedFoods()
+
+    suspend fun updateLastUsedTime(foodId: Long, time: Long = System.currentTimeMillis()) =
+        foodDao.updateLastUsedTime(foodId, time)
+
+    suspend fun updateLastUsedTimeBatch(foodIds: List<Long>, time: Long = System.currentTimeMillis()) =
+        foodDao.updateLastUsedTimeBatch(foodIds, time)
 }

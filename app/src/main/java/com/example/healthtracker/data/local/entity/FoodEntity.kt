@@ -21,5 +21,6 @@ data class FoodEntity(
     val isCustom: Boolean = false,       // 是否为用户自定义
     val unit: String? = null,            // 单位名称（如：个、杯、瓶等）
     val gramsPerUnit: Double? = null,    // 每单位克数
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val lastUsedTime: Long = 0           // 最近使用时间，用于排序
 )

@@ -12,22 +12,22 @@ interface FoodDao {
     @Query("SELECT COUNT(*) FROM foods")
     suspend fun getFoodCount(): Int
 
-    @Query("SELECT * FROM foods WHERE name LIKE '%' || :keyword || '%' ORDER BY createdAt DESC")
+    @Query("SELECT * FROM foods WHERE name LIKE '%' || :keyword || '%' ORDER BY lastUsedTime DESC, createdAt DESC")
     fun searchFoods(keyword: String): Flow<List<FoodEntity>>
 
-    @Query("SELECT * FROM foods WHERE name LIKE '%' || :keyword || '%' ORDER BY createdAt DESC LIMIT 20")
+    @Query("SELECT * FROM foods WHERE name LIKE '%' || :keyword || '%' ORDER BY lastUsedTime DESC, createdAt DESC LIMIT 20")
     suspend fun searchFoodsSync(keyword: String): List<FoodEntity>
 
-    @Query("SELECT * FROM foods WHERE category = :category ORDER BY createdAt DESC")
+    @Query("SELECT * FROM foods WHERE category = :category ORDER BY lastUsedTime DESC, createdAt DESC")
     fun getFoodsByCategory(category: String): Flow<List<FoodEntity>>
 
     @Query("SELECT DISTINCT category FROM foods")
     fun getAllCategories(): Flow<List<String>>
 
-    @Query("SELECT * FROM foods ORDER BY createdAt DESC")
+    @Query("SELECT * FROM foods ORDER BY lastUsedTime DESC, createdAt DESC")
     fun getAllFoods(): Flow<List<FoodEntity>>
 
-    @Query("SELECT * FROM foods ORDER BY createdAt DESC")
+    @Query("SELECT * FROM foods ORDER BY lastUsedTime DESC, createdAt DESC")
     suspend fun getAllFoodsOnce(): List<FoodEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -52,4 +52,16 @@ interface FoodDao {
     // 清空导入的食物数据（保留自定义食物）
     @Query("DELETE FROM foods WHERE isCustom = 0")
     suspend fun deleteImportedFoods()
+
+    // 更新食物的最近使用时间
+    @Query("UPDATE foods SET lastUsedTime = :time WHERE id = :foodId")
+    suspend fun updateLastUsedTime(foodId: Long, time: Long)
+
+    // 批量更新食物的最近使用时间
+    @Transaction
+    suspend fun updateLastUsedTimeBatch(foodIds: List<Long>, time: Long) {
+        foodIds.forEach { foodId ->
+            updateLastUsedTime(foodId, time)
+        }
+    }
 }
