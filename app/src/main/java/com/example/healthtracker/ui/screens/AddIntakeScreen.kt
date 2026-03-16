@@ -16,6 +16,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -52,6 +54,7 @@ fun AddIntakeScreen(
     var selectedDate by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf<FoodEntity?>(null) }
+    val searchFocusRequester = remember { FocusRequester() }
 
     val mealTypes = listOf("早餐", "午餐", "晚餐", "加餐")
     val dateFormat = remember { SimpleDateFormat("MM月dd日 E", Locale.CHINA) }
@@ -232,7 +235,9 @@ fun AddIntakeScreen(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 label = { Text("搜索食物名称") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(searchFocusRequester),
                 singleLine = true,
                 leadingIcon = {
                     Icon(Icons.Default.Search, contentDescription = "搜索")
@@ -260,7 +265,11 @@ fun AddIntakeScreen(
                     searchResults.take(30).forEach { food ->
                         FoodSearchResultItem(
                             food = food,
-                            onClick = { showAddDialog = food }
+                            onClick = {
+                                searchQuery = ""
+                                searchFocusRequester.freeFocus()
+                                showAddDialog = food
+                            }
                         )
                     }
                 }
