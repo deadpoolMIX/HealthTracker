@@ -252,22 +252,26 @@ class NutritionDetailViewModel @Inject constructor(
     }
 
     private fun calculateStats(data: List<DailyNutrition>): Tuple4<Double, Double, Double, Double> {
-        if (data.isEmpty()) return Tuple4(0.0, 0.0, 0.0, 0.0)
+        // 只计算有记录的天数（任意营养素 > 0）
+        val daysWithRecords = data.filter { it.calories > 0 || it.carbs > 0 || it.protein > 0 || it.fat > 0 }
+        if (daysWithRecords.isEmpty()) return Tuple4(0.0, 0.0, 0.0, 0.0)
         return Tuple4(
-            data.sumOf { it.calories } / data.size,
-            data.sumOf { it.carbs } / data.size,
-            data.sumOf { it.protein } / data.size,
-            data.sumOf { it.fat } / data.size
+            daysWithRecords.sumOf { it.calories } / daysWithRecords.size,
+            daysWithRecords.sumOf { it.carbs } / daysWithRecords.size,
+            daysWithRecords.sumOf { it.protein } / daysWithRecords.size,
+            daysWithRecords.sumOf { it.fat } / daysWithRecords.size
         )
     }
 
     private fun calculateWeeklyStats(data: List<WeeklyNutrition>): Tuple4<Double, Double, Double, Double> {
-        if (data.isEmpty()) return Tuple4(0.0, 0.0, 0.0, 0.0)
+        // 只计算有记录的周数（任意营养素 > 0）
+        val weeksWithRecords = data.filter { it.calories > 0 || it.carbs > 0 || it.protein > 0 || it.fat > 0 }
+        if (weeksWithRecords.isEmpty()) return Tuple4(0.0, 0.0, 0.0, 0.0)
         return Tuple4(
-            data.sumOf { it.calories } / data.size,
-            data.sumOf { it.carbs } / data.size,
-            data.sumOf { it.protein } / data.size,
-            data.sumOf { it.fat } / data.size
+            weeksWithRecords.sumOf { it.calories } / weeksWithRecords.size,
+            weeksWithRecords.sumOf { it.carbs } / weeksWithRecords.size,
+            weeksWithRecords.sumOf { it.protein } / weeksWithRecords.size,
+            weeksWithRecords.sumOf { it.fat } / weeksWithRecords.size
         )
     }
 }
