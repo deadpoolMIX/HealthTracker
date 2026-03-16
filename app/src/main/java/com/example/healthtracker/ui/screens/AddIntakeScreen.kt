@@ -321,9 +321,13 @@ fun AddIntakeScreen(
     showAddDialog?.let { food ->
         AddFoodDialog(
             food = food,
-            onDismiss = { showAddDialog = null },
+            onDismiss = {
+                searchFocusRequester.freeFocus()
+                showAddDialog = null
+            },
             onConfirm = { amount, unit ->
                 viewModel.addPendingItem(food, amount, unit)
+                searchFocusRequester.freeFocus()
                 showAddDialog = null
             }
         )
