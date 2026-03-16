@@ -263,6 +263,18 @@ private fun BodyTrendChart(
         else -> "体重" to "kg"
     }
 
+    // 先过滤出有当前数据类型值的记录
+    val filteredData = remember(data, dataType) {
+        data.filter { entity ->
+            when (dataType) {
+                0 -> entity.weight != null
+                1 -> entity.bodyFatRate != null
+                2 -> entity.muscleMass != null
+                else -> entity.weight != null
+            }
+        }
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -277,209 +289,184 @@ private fun BodyTrendChart(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (data.isEmpty()) {
+            if (filteredData.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(220.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("暂无${dataLabel}数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
-                // 提取数据值
-                val values = data.mapNotNull { entity ->
+                // 提取数据值（已确保不为 null）
+                val values = filteredData.map { entity ->
                     when (dataType) {
-                        0 -> entity.weight
-                        1 -> entity.bodyFatRate
-                        2 -> entity.muscleMass
-                        else -> entity.weight
+                        0 -> entity.weight!!
+                        1 -> entity.bodyFatRate!!
+                        2 -> entity.muscleMass!!
+                        else -> entity.weight!!
                     }
                 }
-
-                if (values.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(220.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("暂无${dataLabel}数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                } else {
                     // 动态自适应缩放：以数据范围为中心，添加5%边距
-                    val dataMin = values.minOrNull() ?: 0.0
-                    val dataMax = values.maxOrNull() ?: 100.0
-                    val dataRange = (dataMax - dataMin).coerceAtLeast(0.1) // 最小范围防止除零
+                val dataMin = values.minOrNull() ?: 0.0
+                val dataMax = values.maxOrNull() ?: 100.0
+                val dataRange = (dataMax - dataMin).coerceAtLeast(0.1) // 最小范围防止除零
 
-                    // 使用数据范围的10%作为上下边距，确保波动清晰可见
-                    val padding = dataRange * 0.1
-                    val minVal = dataMin - padding
-                    val maxVal = dataMax + padding
-                    val range = (maxVal - minVal).coerceAtLeast(0.1)
+                // 使用数据范围的10%作为上下边距，确保波动清晰可见
+                val padding = dataRange * 0.1
+                val minVal = dataMin - padding
+                val maxVal = dataMax + padding
+                val range = (maxVal - minVal).coerceAtLeast(0.1)
 
-                    // 生成图表数据点
-                    val chartPoints = values.mapIndexedNotNull { index, value ->
-                        val entity = data.getOrNull(index) ?: return@mapIndexedNotNull null
-                        val actualValue = when (dataType) {
-                            0 -> entity.weight
-                            1 -> entity.bodyFatRate
-                            2 -> entity.muscleMass
-                            else -> entity.weight
-                        }
-                        actualValue?.let { index to it }
-                    }
+                // Y轴刻度（5个刻度）
+                val yLabels = (0..4).map { i ->
+                    val value = maxVal - (range * i / 4)
+                    String.format("%.1f", value)
+                }
 
-                    // Y轴刻度（5个刻度）
-                    val yLabels = (0..4).map { i ->
-                        val value = maxVal - (range * i / 4)
-                        String.format("%.1f", value)
-                    }
-
-                    // X轴标签（智能选择显示）
-                    val xLabels = remember(data) {
-                        generateXLabels(data)
-                    }
+                // X轴标签（智能选择显示）- 使用过滤后的数据
+                val xLabels = remember(filteredData) {
+                    generateXLabels(filteredData)
+                }
 
                     Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                ) {
+                    Canvas(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(220.dp)
+                            .fillMaxSize()
+                            .padding(start = 40.dp, top = 10.dp, end = 10.dp, bottom = 30.dp)
                     ) {
-                        Canvas(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(start = 40.dp, top = 10.dp, end = 10.dp, bottom = 30.dp)
-                        ) {
-                            val chartWidth = size.width
-                            val chartHeight = size.height
+                        val chartWidth = size.width
+                        val chartHeight = size.height
 
-                            // 绘制Y轴虚线参考线（更淡的透明度）
-                            val dashPathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
-                            repeat(5) { i ->
-                                val y = (i * chartHeight / 4)
-                                drawLine(
-                                    color = Color.Gray.copy(alpha = 0.15f),
-                                    start = Offset(0f, y),
-                                    end = Offset(chartWidth, y),
-                                    strokeWidth = 1f,
-                                    pathEffect = dashPathEffect
+                        // 绘制Y轴虚线参考线（更淡的透明度）
+                        val dashPathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
+                        repeat(5) { i ->
+                            val y = (i * chartHeight / 4)
+                            drawLine(
+                                color = Color.Gray.copy(alpha = 0.15f),
+                                start = Offset(0f, y),
+                                end = Offset(chartWidth, y),
+                                strokeWidth = 1f,
+                                pathEffect = dashPathEffect
+                            )
+                        }
+
+                        // 绘制折线
+                        if (values.size >= 2) {
+                            val points = values.mapIndexed { index, value ->
+                                val x = if (values.size > 1) {
+                                    (index.toFloat() / (values.size - 1)) * chartWidth
+                                } else {
+                                    chartWidth / 2
+                                }
+                                val y = chartHeight - ((value - minVal) / range * chartHeight).toFloat()
+                                Offset(x, y)
+                            }
+
+                            // 绘制平滑曲线
+                            val path = Path()
+                            path.moveTo(points[0].x, points[0].y)
+
+                            for (i in 1 until points.size) {
+                                val prev = points[i - 1]
+                                val curr = points[i]
+                                val midX = (prev.x + curr.x) / 2
+
+                                path.cubicTo(
+                                    midX, prev.y,
+                                    midX, curr.y,
+                                    curr.x, curr.y
                                 )
                             }
 
-                            // 绘制折线
-                            if (chartPoints.size >= 2) {
-                                val points = chartPoints.map { (index, value) ->
-                                    val x = if (values.size > 1) {
-                                        (index.toFloat() / (values.size - 1)) * chartWidth
-                                    } else {
-                                        chartWidth / 2
-                                    }
-                                    val y = chartHeight - ((value - minVal) / range * chartHeight).toFloat()
-                                    Offset(x, y)
-                                }
+                            drawPath(
+                                path = path,
+                                color = lineColor,
+                                style = Stroke(width = 2.5f)
+                            )
 
-                                // 绘制平滑曲线
-                                val path = Path()
-                                path.moveTo(points[0].x, points[0].y)
-
-                                for (i in 1 until points.size) {
-                                    val prev = points[i - 1]
-                                    val curr = points[i]
-                                    val midX = (prev.x + curr.x) / 2
-
-                                    path.cubicTo(
-                                        midX, prev.y,
-                                        midX, curr.y,
-                                        curr.x, curr.y
-                                    )
-                                }
-
-                                drawPath(
-                                    path = path,
-                                    color = lineColor,
-                                    style = Stroke(width = 2.5f)
-                                )
-
-                                // 绘制数据点（带发光效果）
-                                points.forEach { point ->
-                                    // 外圈光晕
-                                    drawCircle(
-                                        color = lineColor.copy(alpha = 0.2f),
-                                        radius = 8f,
-                                        center = point
-                                    )
-                                    // 内圈实心点
-                                    drawCircle(
-                                        color = lineColor,
-                                        radius = 4f,
-                                        center = point
-                                    )
-                                    // 白色中心高光
-                                    drawCircle(
-                                        color = Color.White.copy(alpha = 0.6f),
-                                        radius = 1.5f,
-                                        center = point
-                                    )
-                                }
-                            } else if (chartPoints.size == 1) {
-                                // 只有一个数据点 - 放在最左边与标签对齐
-                                val point = chartPoints.first()
-                                val x = 0f // 与标签对齐，放在最左边
-                                val y = chartHeight - ((point.second - minVal) / range * chartHeight).toFloat()
+                            // 绘制数据点（带发光效果）
+                            points.forEach { point ->
                                 // 外圈光晕
                                 drawCircle(
                                     color = lineColor.copy(alpha = 0.2f),
-                                    radius = 10f,
-                                    center = Offset(x, y)
+                                    radius = 8f,
+                                    center = point
                                 )
+                                // 内圈实心点
                                 drawCircle(
                                     color = lineColor,
-                                    radius = 6f,
-                                    center = Offset(x, y)
+                                    radius = 4f,
+                                    center = point
+                                )
+                                // 白色中心高光
+                                drawCircle(
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    radius = 1.5f,
+                                    center = point
                                 )
                             }
+                        } else if (values.size == 1) {
+                            // 只有一个数据点 - 放在最左边与标签对齐
+                            val x = 0f // 与标签对齐，放在最左边
+                            val y = chartHeight - ((values[0] - minVal) / range * chartHeight).toFloat()
+                            // 外圈光晕
+                            drawCircle(
+                                color = lineColor.copy(alpha = 0.2f),
+                                radius = 10f,
+                                center = Offset(x, y)
+                            )
+                            drawCircle(
+                                color = lineColor,
+                                radius = 6f,
+                                center = Offset(x, y)
+                            )
                         }
+                    }
 
-                        // Y轴标签（更紧凑）
-                        Column(
+                    // Y轴标签（更紧凑）
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(top = 10.dp, bottom = 30.dp)
+                            .width(40.dp)
+                            .height(180.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        yLabels.forEach { label ->
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 9.sp,
+                                maxLines = 1,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+
+                    // X轴标签
+                    if (xLabels.isNotEmpty()) {
+                        Row(
                             modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .padding(top = 10.dp, bottom = 30.dp)
-                                .width(40.dp)
-                                .height(180.dp),
-                            verticalArrangement = Arrangement.SpaceBetween
+                                .align(Alignment.BottomCenter)
+                                .padding(start = 40.dp, end = 10.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            yLabels.forEach { label ->
+                            xLabels.forEach { label ->
                                 Text(
                                     text = label,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 9.sp,
-                                    maxLines = 1,
-                                    modifier = Modifier.fillMaxWidth()
+                                    fontSize = 10.sp,
+                                    maxLines = 1
                                 )
-                            }
-                        }
-
-                        // X轴标签
-                        if (xLabels.isNotEmpty()) {
-                            Row(
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(start = 40.dp, end = 10.dp)
-                                    .fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                xLabels.forEach { label ->
-                                    Text(
-                                        text = label,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontSize = 10.sp,
-                                        maxLines = 1
-                                    )
-                                }
                             }
                         }
                     }
@@ -603,6 +590,18 @@ private fun WeeklyBodyTrendChart(
         )
     }
 
+    // 先过滤出有当前数据类型值的周数据
+    val filteredWeeklyData = remember(weeklyData, dataType) {
+        weeklyData.filter { week ->
+            when (dataType) {
+                0 -> week.medianWeight != null
+                1 -> week.medianBodyFat != null
+                2 -> week.medianMuscle != null
+                else -> week.medianWeight != null
+            }
+        }
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -617,53 +616,43 @@ private fun WeeklyBodyTrendChart(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (weeklyData.isEmpty()) {
+            if (filteredWeeklyData.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(220.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("暂无${dataLabel}数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
-                // 提取数据值
-                val values = weeklyData.mapNotNull { week ->
+                // 提取数据值（已确保不为 null）
+                val values = filteredWeeklyData.map { week ->
                     when (dataType) {
-                        0 -> week.medianWeight
-                        1 -> week.medianBodyFat
-                        2 -> week.medianMuscle
-                        else -> week.medianWeight
+                        0 -> week.medianWeight!!
+                        1 -> week.medianBodyFat!!
+                        2 -> week.medianMuscle!!
+                        else -> week.medianWeight!!
                     }
                 }
 
-                if (values.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(220.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("暂无${dataLabel}数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                } else {
-                    // 动态自适应缩放：以数据范围为中心，添加10%边距
-                    val dataMin = values.minOrNull() ?: 0.0
-                    val dataMax = values.maxOrNull() ?: 100.0
-                    val dataRange = (dataMax - dataMin).coerceAtLeast(0.1)
+                // 动态自适应缩放：以数据范围为中心，添加10%边距
+                val dataMin = values.minOrNull() ?: 0.0
+                val dataMax = values.maxOrNull() ?: 100.0
+                val dataRange = (dataMax - dataMin).coerceAtLeast(0.1)
 
-                    val padding = dataRange * 0.1
-                    val minVal = dataMin - padding
-                    val maxVal = dataMax + padding
-                    val range = (maxVal - minVal).coerceAtLeast(0.1)
+                val padding = dataRange * 0.1
+                val minVal = dataMin - padding
+                val maxVal = dataMax + padding
+                val range = (maxVal - minVal).coerceAtLeast(0.1)
 
-                    // Y轴刻度
-                    val yLabels = (0..4).map { i ->
-                        val value = maxVal - (range * i / 4)
-                        String.format("%.1f", value)
-                    }
+                // Y轴刻度
+                val yLabels = (0..4).map { i ->
+                    val value = maxVal - (range * i / 4)
+                    String.format("%.1f", value)
+                }
 
-                    Box(
+                Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(220.dp)
@@ -764,50 +753,49 @@ private fun WeeklyBodyTrendChart(
                         }
 
                         // Y轴标签（更紧凑）
-                        Column(
-                            modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .padding(top = 10.dp, bottom = 30.dp)
-                                .width(40.dp)
-                                .height(180.dp),
-                            verticalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            yLabels.forEach { label ->
-                                Text(
-                                    text = label,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 9.sp,
-                                    maxLines = 1,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(top = 10.dp, bottom = 30.dp)
+                            .width(40.dp)
+                            .height(180.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        yLabels.forEach { label ->
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 9.sp,
+                                maxLines = 1,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
+                    }
 
-                        // X轴标签（周数）- 可点击
-                        if (weeklyData.isNotEmpty()) {
-                            Row(
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(start = 40.dp, end = 10.dp)
-                                    .fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                weeklyData.forEachIndexed { index, week ->
-                                    Text(
-                                        text = "W${week.weekOfYear}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = if (selectedPointIndex == index)
-                                            MaterialTheme.colorScheme.primary
-                                        else
-                                            MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontSize = 10.sp,
-                                        maxLines = 1,
-                                        modifier = Modifier.clickable {
-                                            selectedPointIndex = index
-                                        }
-                                    )
-                                }
+                    // X轴标签（周数）- 可点击，使用过滤后的数据
+                    if (filteredWeeklyData.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(start = 40.dp, end = 10.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            filteredWeeklyData.forEachIndexed { index, week ->
+                                Text(
+                                    text = "W${week.weekOfYear}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (selectedPointIndex == index)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 10.sp,
+                                    maxLines = 1,
+                                    modifier = Modifier.clickable {
+                                        selectedPointIndex = index
+                                    }
+                                )
                             }
                         }
                     }
