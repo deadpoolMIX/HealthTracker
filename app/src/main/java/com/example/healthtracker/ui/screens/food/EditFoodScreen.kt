@@ -70,7 +70,8 @@ fun EditFoodScreen(
     LaunchedEffect(uiState.food) {
         uiState.food?.let { food ->
             foodName = food.name
-            selectedEmoji = if (food.icon.isNotEmpty() && isEmoji(food.icon)) {
+            // 直接使用食物库中的图标，如果为空则根据名称推断
+            selectedEmoji = if (food.icon.isNotEmpty() && food.icon != "custom") {
                 food.icon
             } else {
                 FoodEmojiUtils.getDefaultEmojiForFood(food.name)
@@ -151,8 +152,8 @@ fun EditFoodScreen(
                     value = foodName,
                     onValueChange = {
                         foodName = it
-                        // 自动更新 emoji
-                        if (selectedEmoji == "🍽️" || selectedEmoji.isEmpty() || !isEmoji(selectedEmoji)) {
+                        // 如果当前图标是默认图标或为空，则自动更新为新名称对应的默认图标
+                        if (selectedEmoji == "🍽️" || selectedEmoji.isEmpty()) {
                             selectedEmoji = FoodEmojiUtils.getDefaultEmojiForFood(it)
                         }
                     },
@@ -445,18 +446,6 @@ fun EditFoodScreen(
             onDismiss = { showEmojiPicker = false }
         )
     }
-}
-
-/**
- * 检查字符串是否为emoji
- */
-private fun isEmoji(text: String): Boolean {
-    if (text.isEmpty()) return false
-    val firstChar = text[0]
-    // Emoji 的 Unicode 范围检查
-    return firstChar.code in 0x1F300..0x1F9FF ||
-            firstChar.code in 0x2600..0x26FF ||
-            firstChar.code in 0x2700..0x27BF
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

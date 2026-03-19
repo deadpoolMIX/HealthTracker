@@ -1544,40 +1544,35 @@ private fun EditIntakeDialog(
     val mealTypes = listOf("早餐", "午餐", "晚餐", "加餐")
     val units = listOf("克", "毫升", "个", "杯", "勺", "份", "块", "片", "包", "碗")
 
-    // 计算营养值 - 支持旧数据的兼容处理
+    // 计算营养值 - 使用数据库中存储的值或根据 per100g 字段计算
     val amount = amountText.toDoubleOrNull() ?: 0.0
+    val originalAmount = record.amount
 
-    // 优先使用 per100g 字段计算，如果为0则基于原记录比例计算
-    val calories = if (record.caloriesPer100g > 0) {
-        (amount / 100.0) * record.caloriesPer100g
-    } else if (record.amount > 0) {
-        record.calories * (amount / record.amount)
-    } else {
-        record.calories
-    }
+    // 营养值计算：如果数量没变，直接用存储的值；如果变了，按比例计算
+    val calories: Double
+    val carbs: Double
+    val protein: Double
+    val fat: Double
 
-    val carbs = if (record.carbsPer100g > 0) {
-        (amount / 100.0) * record.carbsPer100g
-    } else if (record.amount > 0) {
-        record.carbohydrates * (amount / record.amount)
+    if (amount == originalAmount) {
+        // 数量没变，直接使用数据库中存储的营养值（这是最准确的）
+        calories = record.calories
+        carbs = record.carbohydrates
+        protein = record.protein
+        fat = record.fat
+    } else if (originalAmount > 0) {
+        // 数量变了，按比例计算
+        val ratio = amount / originalAmount
+        calories = record.calories * ratio
+        carbs = record.carbohydrates * ratio
+        protein = record.protein * ratio
+        fat = record.fat * ratio
     } else {
-        record.carbohydrates
-    }
-
-    val protein = if (record.proteinPer100g > 0) {
-        (amount / 100.0) * record.proteinPer100g
-    } else if (record.amount > 0) {
-        record.protein * (amount / record.amount)
-    } else {
-        record.protein
-    }
-
-    val fat = if (record.fatPer100g > 0) {
-        (amount / 100.0) * record.fatPer100g
-    } else if (record.amount > 0) {
-        record.fat * (amount / record.amount)
-    } else {
-        record.fat
+        // 原始数量为0的异常情况，使用 per100g 字段计算
+        calories = if (record.caloriesPer100g > 0) (amount / 100.0) * record.caloriesPer100g else record.calories
+        carbs = if (record.carbsPer100g > 0) (amount / 100.0) * record.carbsPer100g else record.carbohydrates
+        protein = if (record.proteinPer100g > 0) (amount / 100.0) * record.proteinPer100g else record.protein
+        fat = if (record.fatPer100g > 0) (amount / 100.0) * record.fatPer100g else record.fat
     }
 
     AlertDialog(
@@ -1722,7 +1717,7 @@ private fun EditIntakeDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    // 计算并更新 per100g 字段，确保下次编辑时能正确计算
+                    // 保持 per100g 字段不变（如果已有值），否则根据新值计算
                     val newCaloriesPer100g = if (record.caloriesPer100g > 0) {
                         record.caloriesPer100g
                     } else if (amount > 0) {
