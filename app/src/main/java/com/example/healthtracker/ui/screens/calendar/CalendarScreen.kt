@@ -310,7 +310,7 @@ private fun CalendarHeatmap(
                                 // 显示当日热量
                                 if (calories > 0) {
                                     Text(
-                                        text = "${calories.toInt()}",
+                                        text = "${kotlin.math.round(calories).toInt()}",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = if (isSelected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                                         else MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
@@ -470,7 +470,7 @@ private fun IntakeRecordItem(record: IntakeRecordEntity) {
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = "${record.amount.toInt()}g",
+                text = "${kotlin.math.round(record.amount).toInt()}g",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -478,7 +478,7 @@ private fun IntakeRecordItem(record: IntakeRecordEntity) {
 
         // 热量
         Text(
-            text = "${record.calories.toInt()} kcal",
+            text = "${kotlin.math.round(record.calories).toInt()} kcal",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
@@ -609,24 +609,12 @@ private fun getMealTypeName(mealType: Int): String {
  * 获取摄入记录的食物图标（与首页一致）
  */
 private fun getFoodEmoji(record: IntakeRecordEntity): String {
-    // 如果记录中有存储的图标且是emoji格式，直接使用
-    if (!record.foodIcon.isNullOrEmpty() && isEmoji(record.foodIcon)) {
+    // 如果记录中有存储的图标且不是空字符串，直接使用
+    if (!record.foodIcon.isNullOrEmpty()) {
         return record.foodIcon
     }
     // 否则根据名称推断
     return getFoodEmojiByName(record.foodName)
-}
-
-/**
- * 检查字符串是否为emoji
- */
-private fun isEmoji(text: String): Boolean {
-    if (text.isEmpty()) return false
-    val firstChar = text[0]
-    // Emoji 的 Unicode 范围检查
-    return firstChar.code in 0x1F300..0x1F9FF ||
-            firstChar.code in 0x2600..0x26FF ||
-            firstChar.code in 0x2700..0x27BF
 }
 
 /**

@@ -169,6 +169,18 @@ class HomeViewModel @Inject constructor(
         loadDataForDate(SelectedDateManager.getSelectedDate())
     }
 
+    fun goToPreviousDay() {
+        SelectedDateManager.goToPreviousDay()
+    }
+
+    fun goToToday() {
+        SelectedDateManager.goToToday()
+    }
+
+    fun goToNextDay() {
+        SelectedDateManager.goToNextDay()
+    }
+
     fun deleteRecord(record: IntakeRecordEntity) {
         viewModelScope.launch {
             intakeRecordRepository.deleteRecord(record)

@@ -79,18 +79,55 @@ fun HomeScreen(
                         )
                     } else {
                         Row(
-                            modifier = Modifier.clickable(onClick = onNavigateToCalendar),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = DateTimeUtils.formatDate(uiState.selectedDate),
-                                fontWeight = FontWeight.Medium
-                            )
-                            Icon(
-                                imageVector = Icons.Default.ExpandMore,
-                                contentDescription = "查看日历",
-                                modifier = Modifier.size(20.dp)
-                            )
+                            // 日期按钮
+                            Row(
+                                modifier = Modifier.clickable(onClick = onNavigateToCalendar),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = DateTimeUtils.formatDate(uiState.selectedDate),
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.ExpandMore,
+                                    contentDescription = "查看日历",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            // 日期导航按钮
+                            Spacer(modifier = Modifier.width(8.dp))
+                            IconButton(
+                                onClick = { viewModel.goToPreviousDay() },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ChevronLeft,
+                                    contentDescription = "前一天",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.goToToday() },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Circle,
+                                    contentDescription = "今天",
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.goToNextDay() },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = "后一天",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     }
                 },
@@ -363,7 +400,7 @@ fun HomeScreen(
                                             color = MaterialTheme.colorScheme.primary
                                         )
                                         Text(
-                                            text = "${mealCalories.toInt()} kcal",
+                                            text = "${kotlin.math.round(mealCalories).toInt()} kcal",
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
                                         )
@@ -799,9 +836,9 @@ private fun NutrientProgressItem(
             )
             Text(
                 text = if (target > 0) {
-                    "${value.toInt()}/${target.toInt()}g"
+                    "${kotlin.math.round(value).toInt()}/${kotlin.math.round(target).toInt()}g"
                 } else {
-                    "${value.toInt()}g"
+                    "${kotlin.math.round(value).toInt()}g"
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (isOverTarget) MaterialTheme.colorScheme.error else color
@@ -886,7 +923,7 @@ private fun MealIntakeItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${record.amount.toInt()}g",
+                    text = "${kotlin.math.round(record.amount).toInt()}g",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -894,7 +931,7 @@ private fun MealIntakeItem(
 
             // 热量
             Text(
-                text = "${record.calories.toInt()} kcal",
+                text = "${kotlin.math.round(record.calories).toInt()} kcal",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -972,7 +1009,7 @@ private fun IntakeRecordItem(
                 )
                 // 只在需要时显示餐次
                 Text(
-                    text = if (showMealType) "${record.amount.toInt()}g · ${getMealTypeName(record.mealType)}" else "${record.amount.toInt()}g",
+                    text = if (showMealType) "${kotlin.math.round(record.amount).toInt()}g · ${getMealTypeName(record.mealType)}" else "${kotlin.math.round(record.amount).toInt()}g",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -980,7 +1017,7 @@ private fun IntakeRecordItem(
 
             // 热量
             Text(
-                text = "${record.calories.toInt()} kcal",
+                text = "${kotlin.math.round(record.calories).toInt()} kcal",
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -1693,19 +1730,19 @@ private fun EditIntakeDialog(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("${calories.toInt()}", fontWeight = FontWeight.Bold)
+                                    Text("${kotlin.math.round(calories).toInt()}", fontWeight = FontWeight.Bold)
                                     Text("热量", style = MaterialTheme.typography.labelSmall)
                                 }
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("${carbs.toInt()}g", fontWeight = FontWeight.Bold)
+                                    Text("${kotlin.math.round(carbs).toInt()}g", fontWeight = FontWeight.Bold)
                                     Text("碳水", style = MaterialTheme.typography.labelSmall)
                                 }
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("${protein.toInt()}g", fontWeight = FontWeight.Bold)
+                                    Text("${kotlin.math.round(protein).toInt()}g", fontWeight = FontWeight.Bold)
                                     Text("蛋白质", style = MaterialTheme.typography.labelSmall)
                                 }
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("${fat.toInt()}g", fontWeight = FontWeight.Bold)
+                                    Text("${kotlin.math.round(fat).toInt()}g", fontWeight = FontWeight.Bold)
                                     Text("脂肪", style = MaterialTheme.typography.labelSmall)
                                 }
                             }
