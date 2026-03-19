@@ -1375,3 +1375,43 @@ name,category,calories,carbohydrates,protein,fat,emoji
 2. USDA FoodData Central（美国农业部）
 3. foodwake.cn（食物派）
 4. fatsecret.cn（FatSecret 中国版）
+
+================================================================================
+                              2026-03-19 更新
+================================================================================
+
+【修复问题】
+1. 🔧 修复首页食物图标与食物库不一致的问题
+   - 移除所有 isEmoji() 检查，直接使用存储的图标值
+   - 修复日历页面、食物库等页面的图标显示
+
+2. 🔧 修复页面切换动画效果
+   - 删除页面渐变切换效果，改为硬切换（无动画）
+   - 在 NavHost 设置 EnterTransition.None 和 ExitTransition.None
+
+3. 🔧 修复营养素计算四舍五入问题
+   - 使用 kotlin.math.round().toInt() 替代 toInt()
+   - 确保弹窗显示的数值与总量计算一致
+   - 修复首页、日历页面所有数值显示位置
+
+4. 🔧 添加首页日期导航功能
+   - 在顶部日期按钮右侧添加前一天/今天/后一天按钮
+   - 使用 SelectedDateManager 全局状态管理
+
+【新增功能】
+1. ✨ 食物信息同步更新历史记录
+   - 编辑食物后自动同步更新所有相关历史记录
+   - 同步更新图标和营养数据
+   - 根据每条记录的 amount 重新计算营养值
+
+【修改文件】
+- HomeScreen.kt - 图标显示、数值四舍五入、日期导航
+- CalendarScreen.kt - 图标显示、数值四舍五入
+- HomeViewModel.kt - 日期导航方法
+- SelectedDateManager.kt - 日期导航方法
+- IntakeRecordDao.kt - 根据 foodId/foodName 查询记录
+- IntakeRecordRepository.kt - syncRecordsWithFood 方法
+- EditFoodViewModel.kt - 自动同步更新逻辑
+- EditFoodScreen.kt - 保存后显示同步结果
+- HealthTrackerNavGraph.kt - 页面切换动画
+- MainScreen.kt - 页面切换动画
