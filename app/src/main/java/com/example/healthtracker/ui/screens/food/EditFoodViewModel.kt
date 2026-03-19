@@ -14,7 +14,8 @@ import javax.inject.Inject
 data class EditFoodUiState(
     val food: FoodEntity? = null,
     val isLoading: Boolean = true,
-    val relatedRecordCount: Int = 0  // 关联的记录数量
+    val relatedRecordCount: Int = 0,  // 关联的记录数量
+    val syncedRecordCount: Int = 0    // 已同步的记录数量（用于显示提示）
 )
 
 @HiltViewModel
@@ -65,16 +66,15 @@ class EditFoodViewModel @Inject constructor(
             gramsPerUnit = gramsPerUnit
         )
         foodRepository.updateFood(updatedFood)
-        return true
-    }
 
-    /**
-     * 同步更新历史记录
-     * @return 更新的记录数量
-     */
-    suspend fun syncHistoryRecords(): Int {
-        val food = _uiState.value.food ?: return 0
-        return intakeRecordRepository.syncRecordsWithFood(food, byName = true)
+        // 自动同步更新历史记录
+        val syncedCount = intakeRecordRepository.syncRecordsWithFood(updatedFood, byName = true)
+        _uiState.value = _uiState.value.copy(
+            food = updatedFood,
+            syncedRecordCount = syncedCount
+        )
+
+        return true
     }
 
     suspend fun deleteFood() {

@@ -41,8 +41,7 @@ fun EditFoodScreen(
     var foodName by remember { mutableStateOf("") }
     var selectedEmoji by remember { mutableStateOf("🍽️") }
     var showEmojiPicker by remember { mutableStateOf(false) }
-    var showSyncConfirmDialog by remember { mutableStateOf(false) }
-    var syncResult by remember { mutableStateOf<Int?>(null) }
+    var showSaveResult by remember { mutableStateOf(false) }
 
     // 单位相关
     var hasUnit by remember { mutableStateOf(false) }
@@ -404,7 +403,7 @@ fun EditFoodScreen(
                                     unit = if (hasUnit) unit else null,
                                     gramsPerUnit = if (hasUnit) gramsPerUnitValue else null
                                 )) {
-                                onNavigateBack()
+                                showSaveResult = true
                             }
                         }
                     },
@@ -414,27 +413,39 @@ fun EditFoodScreen(
                     Text("保存修改")
                 }
 
-                // 同步更新历史记录按钮
-                if (uiState.relatedRecordCount > 0) {
-                    OutlinedButton(
-                        onClick = { showSyncConfirmDialog = true },
+                // 显示同步结果提示
+                if (showSaveResult && uiState.syncedRecordCount > 0) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "已保存，同步更新了 ${uiState.syncedRecordCount} 条历史记录",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = onNavigateBack,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Default.Sync, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("同步更新历史记录 (${uiState.relatedRecordCount}条)")
-                    }
-
-                    // 显示同步结果
-                    syncResult?.let { count ->
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "已更新 $count 条记录",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
+                        Text("返回")
                     }
                 }
 
@@ -470,48 +481,6 @@ fun EditFoodScreen(
                 showEmojiPicker = false
             },
             onDismiss = { showEmojiPicker = false }
-        )
-    }
-
-    // 同步更新确认对话框
-    if (showSyncConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showSyncConfirmDialog = false },
-            title = { Text("同步更新历史记录") },
-            text = {
-                Column {
-                    Text("将更新所有使用「${uiState.food?.name}」的历史记录")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "• 图标将更新为当前图标\n• 营养数据将根据当前设置重新计算",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "共 ${uiState.relatedRecordCount} 条记录将被更新",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    scope.launch {
-                        val count = viewModel.syncHistoryRecords()
-                        syncResult = count
-                        showSyncConfirmDialog = false
-                    }
-                }) {
-                    Text("确认更新")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showSyncConfirmDialog = false }) {
-                    Text("取消")
-                }
-            }
         )
     }
 }
