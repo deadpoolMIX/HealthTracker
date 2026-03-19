@@ -1228,24 +1228,12 @@ private fun getMealTypeEmoji(mealType: Int): String {
  * 优先使用记录中存储的图标，否则根据名称推断
  */
 private fun getFoodEmoji(record: IntakeRecordEntity): String {
-    // 如果记录中有存储的图标且是emoji格式，直接使用
-    if (!record.foodIcon.isNullOrEmpty() && isEmoji(record.foodIcon)) {
+    // 如果记录中有存储的图标且不是空字符串，直接使用
+    if (!record.foodIcon.isNullOrEmpty()) {
         return record.foodIcon
     }
     // 否则根据名称推断
     return getFoodEmoji(record.foodName)
-}
-
-/**
- * 检查字符串是否为emoji
- */
-private fun isEmoji(text: String): Boolean {
-    if (text.isEmpty()) return false
-    val firstChar = text[0]
-    // Emoji 的 Unicode 范围检查
-    return firstChar.code in 0x1F300..0x1F9FF ||
-            firstChar.code in 0x2600..0x26FF ||
-            firstChar.code in 0x2700..0x27BF
 }
 
 /**
@@ -1556,12 +1544,41 @@ private fun EditIntakeDialog(
     val mealTypes = listOf("早餐", "午餐", "晚餐", "加餐")
     val units = listOf("克", "毫升", "个", "杯", "勺", "份", "块", "片", "包", "碗")
 
-    // 计算营养值
+    // 计算营养值 - 支持旧数据的兼容处理
     val amount = amountText.toDoubleOrNull() ?: 0.0
-    val calories = (amount / 100.0) * record.caloriesPer100g
-    val carbs = (amount / 100.0) * record.carbsPer100g
-    val protein = (amount / 100.0) * record.proteinPer100g
-    val fat = (amount / 100.0) * record.fatPer100g
+
+    // 优先使用 per100g 字段计算，如果为0则基于原记录比例计算
+    val calories = if (record.caloriesPer100g > 0) {
+        (amount / 100.0) * record.caloriesPer100g
+    } else if (record.amount > 0) {
+        record.calories * (amount / record.amount)
+    } else {
+        record.calories
+    }
+
+    val carbs = if (record.carbsPer100g > 0) {
+        (amount / 100.0) * record.carbsPer100g
+    } else if (record.amount > 0) {
+        record.carbohydrates * (amount / record.amount)
+    } else {
+        record.carbohydrates
+    }
+
+    val protein = if (record.proteinPer100g > 0) {
+        (amount / 100.0) * record.proteinPer100g
+    } else if (record.amount > 0) {
+        record.protein * (amount / record.amount)
+    } else {
+        record.protein
+    }
+
+    val fat = if (record.fatPer100g > 0) {
+        (amount / 100.0) * record.fatPer100g
+    } else if (record.amount > 0) {
+        record.fat * (amount / record.amount)
+    } else {
+        record.fat
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1705,6 +1722,39 @@ private fun EditIntakeDialog(
         confirmButton = {
             Button(
                 onClick = {
+                    // 计算并更新 per100g 字段，确保下次编辑时能正确计算
+                    val newCaloriesPer100g = if (record.caloriesPer100g > 0) {
+                        record.caloriesPer100g
+                    } else if (amount > 0) {
+                        calories / (amount / 100.0)
+                    } else {
+                        record.caloriesPer100g
+                    }
+
+                    val newCarbsPer100g = if (record.carbsPer100g > 0) {
+                        record.carbsPer100g
+                    } else if (amount > 0) {
+                        carbs / (amount / 100.0)
+                    } else {
+                        record.carbsPer100g
+                    }
+
+                    val newProteinPer100g = if (record.proteinPer100g > 0) {
+                        record.proteinPer100g
+                    } else if (amount > 0) {
+                        protein / (amount / 100.0)
+                    } else {
+                        record.proteinPer100g
+                    }
+
+                    val newFatPer100g = if (record.fatPer100g > 0) {
+                        record.fatPer100g
+                    } else if (amount > 0) {
+                        fat / (amount / 100.0)
+                    } else {
+                        record.fatPer100g
+                    }
+
                     val updatedRecord = record.copy(
                         mealType = selectedMealType,
                         amount = amount,
@@ -1712,7 +1762,11 @@ private fun EditIntakeDialog(
                         carbohydrates = carbs,
                         protein = protein,
                         fat = fat,
-                        unit = selectedUnit
+                        unit = selectedUnit,
+                        caloriesPer100g = newCaloriesPer100g,
+                        carbsPer100g = newCarbsPer100g,
+                        proteinPer100g = newProteinPer100g,
+                        fatPer100g = newFatPer100g
                     )
                     onConfirm(updatedRecord)
                 },

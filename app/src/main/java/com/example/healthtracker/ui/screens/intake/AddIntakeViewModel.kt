@@ -108,27 +108,16 @@ class AddIntakeViewModel @Inject constructor(
     }
 
     /**
-     * 获取食物的正确图标（确保是emoji格式）
+     * 获取食物的正确图标
+     * 直接使用食物库中的图标，如果为空则根据名称推断
      */
     private fun getFoodIcon(food: FoodEntity): String {
-        // 如果食物有图标且是emoji格式，直接使用
-        if (food.icon.isNotEmpty() && isEmoji(food.icon)) {
+        // 如果食物有图标且不是空字符串或"custom"，直接使用
+        if (food.icon.isNotEmpty() && food.icon != "custom") {
             return food.icon
         }
         // 否则根据名称推断
         return FoodEmojiUtils.getDefaultEmojiForFood(food.name)
-    }
-
-    /**
-     * 检查字符串是否为emoji
-     */
-    private fun isEmoji(text: String): Boolean {
-        if (text.isEmpty()) return false
-        val firstChar = text[0]
-        // Emoji 的 Unicode 范围检查
-        return firstChar.code in 0x1F300..0x1F9FF ||
-                firstChar.code in 0x2600..0x26FF ||
-                firstChar.code in 0x2700..0x27BF
     }
 
     /**
@@ -205,8 +194,8 @@ class AddIntakeViewModel @Inject constructor(
             val actualProtein = (amount / 100.0) * proteinPer100g
             val actualFat = (amount / 100.0) * fatPer100g
 
-            // 确保图标是emoji格式
-            val foodIcon = if (icon.isNotEmpty() && isEmoji(icon)) {
+            // 确保图标有效，空或"custom"时根据名称推断
+            val foodIcon = if (icon.isNotEmpty() && icon != "custom") {
                 icon
             } else {
                 FoodEmojiUtils.getDefaultEmojiForFood(foodName)
