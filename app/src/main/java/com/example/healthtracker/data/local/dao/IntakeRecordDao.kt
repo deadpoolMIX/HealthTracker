@@ -82,6 +82,22 @@ interface IntakeRecordDao {
         GROUP BY foodName
     """)
     suspend fun getFoodLastRecordTimes(): List<FoodLastRecord>
+
+    // 根据 foodId 获取所有相关记录
+    @Query("SELECT * FROM intake_records WHERE foodId = :foodId")
+    suspend fun getRecordsByFoodId(foodId: Long): List<IntakeRecordEntity>
+
+    // 根据 foodId 获取相关记录数量
+    @Query("SELECT COUNT(*) FROM intake_records WHERE foodId = :foodId")
+    suspend fun getRecordCountByFoodId(foodId: Long): Int
+
+    // 根据食物名称获取所有相关记录（用于没有 foodId 的旧记录）
+    @Query("SELECT * FROM intake_records WHERE foodName = :foodName")
+    suspend fun getRecordsByFoodName(foodName: String): List<IntakeRecordEntity>
+
+    // 批量更新记录
+    @Update
+    suspend fun updateRecords(records: List<IntakeRecordEntity>)
 }
 
 /**

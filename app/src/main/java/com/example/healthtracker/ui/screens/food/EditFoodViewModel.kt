@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.healthtracker.data.local.entity.FoodEntity
 import com.example.healthtracker.data.repository.FoodRepository
+import com.example.healthtracker.data.repository.IntakeRecordRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,12 +13,14 @@ import javax.inject.Inject
 
 data class EditFoodUiState(
     val food: FoodEntity? = null,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val relatedRecordCount: Int = 0  // 关联的记录数量
 )
 
 @HiltViewModel
 class EditFoodViewModel @Inject constructor(
-    private val foodRepository: FoodRepository
+    private val foodRepository: FoodRepository,
+    private val intakeRecordRepository: IntakeRecordRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EditFoodUiState())
@@ -26,9 +29,12 @@ class EditFoodViewModel @Inject constructor(
     fun loadFood(foodId: Long) {
         viewModelScope.launch {
             val food = foodRepository.getFoodById(foodId)
+            // 查询关联的记录数量
+            val recordCount = intakeRecordRepository.getRecordCountByFoodId(foodId)
             _uiState.value = EditFoodUiState(
                 food = food,
-                isLoading = false
+                isLoading = false,
+                relatedRecordCount = recordCount
             )
         }
     }
@@ -60,6 +66,15 @@ class EditFoodViewModel @Inject constructor(
         )
         foodRepository.updateFood(updatedFood)
         return true
+    }
+
+    /**
+     * 同步更新历史记录
+     * @return 更新的记录数量
+     */
+    suspend fun syncHistoryRecords(): Int {
+        val food = _uiState.value.food ?: return 0
+        return intakeRecordRepository.syncRecordsWithFood(food, byName = true)
     }
 
     suspend fun deleteFood() {

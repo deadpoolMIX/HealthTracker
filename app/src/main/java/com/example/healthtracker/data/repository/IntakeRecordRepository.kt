@@ -2,6 +2,7 @@ package com.example.healthtracker.data.repository
 
 import com.example.healthtracker.data.local.dao.FoodLastRecord
 import com.example.healthtracker.data.local.dao.IntakeRecordDao
+import com.example.healthtracker.data.local.entity.FoodEntity
 import com.example.healthtracker.data.local.entity.IntakeRecordEntity
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -54,4 +55,60 @@ class IntakeRecordRepository @Inject constructor(
 
     suspend fun getFoodLastRecordTimes(): List<FoodLastRecord> =
         intakeRecordDao.getFoodLastRecordTimes()
+
+    // 根据 foodId 获取相关记录
+    suspend fun getRecordsByFoodId(foodId: Long): List<IntakeRecordEntity> =
+        intakeRecordDao.getRecordsByFoodId(foodId)
+
+    // 根据 foodId 获取相关记录数量
+    suspend fun getRecordCountByFoodId(foodId: Long): Int =
+        intakeRecordDao.getRecordCountByFoodId(foodId)
+
+    // 根据食物名称获取相关记录
+    suspend fun getRecordsByFoodName(foodName: String): List<IntakeRecordEntity> =
+        intakeRecordDao.getRecordsByFoodName(foodName)
+
+    /**
+     * 同步更新所有使用该食物的历史记录
+     * @param food 更新后的食物数据
+     * @param byName 是否按名称匹配（用于没有 foodId 的旧记录）
+     * @return 更新的记录数量
+     */
+    suspend fun syncRecordsWithFood(food: FoodEntity, byName: Boolean = true): Int {
+        val records = if (byName) {
+            // 按名称匹配（兼容旧记录）
+            intakeRecordDao.getRecordsByFoodName(food.name)
+        } else {
+            // 按 foodId 匹配
+            intakeRecordDao.getRecordsByFoodId(food.id)
+        }
+
+        if (records.isEmpty()) return 0
+
+        // 更新每条记录
+        val updatedRecords = records.map { record ->
+            // 重新计算营养值（根据新的 per100g 数据和原有的 amount）
+            val amount = record.amount
+            val newCalories = (amount / 100.0) * food.calories
+            val newCarbs = (amount / 100.0) * food.carbohydrates
+            val newProtein = (amount / 100.0) * food.protein
+            val newFat = (amount / 100.0) * food.fat
+
+            record.copy(
+                foodId = food.id,
+                foodIcon = food.icon,
+                calories = newCalories,
+                carbohydrates = newCarbs,
+                protein = newProtein,
+                fat = newFat,
+                caloriesPer100g = food.calories,
+                carbsPer100g = food.carbohydrates,
+                proteinPer100g = food.protein,
+                fatPer100g = food.fat
+            )
+        }
+
+        intakeRecordDao.updateRecords(updatedRecords)
+        return updatedRecords.size
+    }
 }
