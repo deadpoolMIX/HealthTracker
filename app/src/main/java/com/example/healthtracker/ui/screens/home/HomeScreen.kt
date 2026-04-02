@@ -386,8 +386,11 @@ fun HomeScreen(
                                 Column(
                                     modifier = Modifier.padding(12.dp)
                                 ) {
-                                    // 餐次标题和总热量
+                                    // 餐次标题、碳蛋脂和总热量
                                     val mealCalories = recordsForMeal.sumOf { it.calories }
+                                    val mealProtein = recordsForMeal.sumOf { it.protein }
+                                    val mealCarbs = recordsForMeal.sumOf { it.carbohydrates }
+                                    val mealFat = recordsForMeal.sumOf { it.fat }
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -399,10 +402,17 @@ fun HomeScreen(
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.primary
                                         )
+                                        // 碳蛋脂显示（中间）
+                                        Text(
+                                            text = "P:${kotlin.math.round(mealProtein).toInt()} C:${kotlin.math.round(mealCarbs).toInt()} F:${kotlin.math.round(mealFat).toInt()}",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        // 热量显示（右侧）
                                         Text(
                                             text = "${kotlin.math.round(mealCalories).toInt()} kcal",
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                                            color = MaterialTheme.colorScheme.primary
                                         )
                                     }
                                     Spacer(modifier = Modifier.height(8.dp))

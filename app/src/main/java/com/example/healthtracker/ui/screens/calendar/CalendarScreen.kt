@@ -273,12 +273,12 @@ private fun CalendarHeatmap(
                         val calories = dailyCalories[DateTimeUtils.getStartOfDay(date)] ?: 0.0
                         val isSelected = DateTimeUtils.getStartOfDay(date) == DateTimeUtils.getStartOfDay(selectedDate)
 
-                        // 计算热力图颜色（使用主题色深浅）
+                        // 计算热力图颜色（使用主题色深浅，增强对比度）
                         val heatColor = when {
-                            calories <= 0 -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            calories <= 0 -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
                             else -> {
                                 val ratio = (calories / maxCalories).coerceIn(0.0, 1.0)
-                                MaterialTheme.colorScheme.primary.copy(alpha = (0.3f + ratio * 0.7f).toFloat())
+                                MaterialTheme.colorScheme.primary.copy(alpha = (0.15f + ratio * 0.85f).toFloat())
                             }
                         }
 
