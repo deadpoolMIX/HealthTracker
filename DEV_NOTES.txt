@@ -1412,6 +1412,32 @@ name,category,calories,carbohydrates,protein,fat,emoji
 - IntakeRecordDao.kt - 根据 foodId/foodName 查询记录
 - IntakeRecordRepository.kt - syncRecordsWithFood 方法
 - EditFoodViewModel.kt - 自动同步更新逻辑
-- EditFoodScreen.kt - 保存后显示同步结果
-- HealthTrackerNavGraph.kt - 页面切换动画
-- MainScreen.kt - 页面切换动画
+================================================================================
+                              2026-04-02 更新
+================================================================================
+
+【首页餐次卡片优化】
+1. ✨ 餐次卡片顶部添加碳蛋脂总量显示
+   - 格式：C:xx P:xx F:xx（碳水、蛋白质、脂肪）
+   - 使用 Spacer(weight(1f)) 实现居中布局
+   - 热量和碳蛋脂文字颜色改为主题色
+
+2. 🔧 修复碳蛋脂计算四舍五入一致性问题
+   - 问题：单个食物四舍五入后相加（6+2+1=9）与总量四舍五入（8）不一致
+   - 原因：先求和再四舍五入 vs 先四舍五入再求和
+   - 解决：餐次卡片和全天总量都改为"先四舍五入再求和"
+   - 修改位置：
+     - HomeScreen.kt：餐次卡片碳蛋脂计算
+     - HomeViewModel.kt：全天总量计算
+
+【日历热力图优化】
+1. ✨ 增强热力图颜色对比度
+   - 问题：1800kcal 和 2300kcal 颜色深浅差距不明显
+   - 解决：使用非线性映射（平方曲线）增强对比
+   - 公式：alpha = 0.1 + (ratio²) × 0.9
+   - 低热量日期更浅，高热量日期更深
+
+【修改文件】
+- HomeScreen.kt - 餐次卡片碳蛋脂显示和计算逻辑
+- HomeViewModel.kt - 全天总量计算逻辑
+- CalendarScreen.kt - 热力图颜色对比度
