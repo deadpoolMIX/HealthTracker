@@ -87,10 +87,11 @@ class HomeViewModel @Inject constructor(
 
             // 加载指定日期的摄入记录
             intakeRecordRepository.getRecordsByDate(date).collect { records ->
-                val totalCalories = records.sumOf { it.calories }
-                val totalCarbs = records.sumOf { it.carbohydrates }
-                val totalProtein = records.sumOf { it.protein }
-                val totalFat = records.sumOf { it.fat }
+                // 先四舍五入再求和，与餐次卡片和用户手动计算一致
+                val totalCalories = records.sumOf { kotlin.math.round(it.calories).toInt() }.toDouble()
+                val totalCarbs = records.sumOf { kotlin.math.round(it.carbohydrates).toInt() }.toDouble()
+                val totalProtein = records.sumOf { kotlin.math.round(it.protein).toInt() }.toDouble()
+                val totalFat = records.sumOf { kotlin.math.round(it.fat).toInt() }.toDouble()
                 val targetCalories = settings?.targetCalories ?: 2000.0
                 val caloriePercentage = HealthCalculator.calculateCaloriePercentage(
                     totalCalories, targetCalories
