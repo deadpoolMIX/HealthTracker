@@ -388,9 +388,10 @@ fun HomeScreen(
                                 ) {
                                     // 餐次标题、碳蛋脂和总热量
                                     val mealCalories = recordsForMeal.sumOf { it.calories }
-                                    val mealProtein = recordsForMeal.sumOf { it.protein }
-                                    val mealCarbs = recordsForMeal.sumOf { it.carbohydrates }
-                                    val mealFat = recordsForMeal.sumOf { it.fat }
+                                    // 先四舍五入再求和，与用户手动计算一致
+                                    val mealCarbs = recordsForMeal.sumOf { kotlin.math.round(it.carbohydrates).toInt() }
+                                    val mealProtein = recordsForMeal.sumOf { kotlin.math.round(it.protein).toInt() }
+                                    val mealFat = recordsForMeal.sumOf { kotlin.math.round(it.fat).toInt() }
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -405,7 +406,7 @@ fun HomeScreen(
                                         Spacer(modifier = Modifier.weight(1f))
                                         // 碳蛋脂显示（中间）- 碳水、蛋白质、脂肪顺序
                                         Text(
-                                            text = "C:${kotlin.math.round(mealCarbs).toInt()} P:${kotlin.math.round(mealProtein).toInt()} F:${kotlin.math.round(mealFat).toInt()}",
+                                            text = "C:$mealCarbs P:$mealProtein F:$mealFat",
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.primary
                                         )
