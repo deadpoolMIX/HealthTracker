@@ -393,7 +393,7 @@ fun HomeScreen(
                                     val mealFat = recordsForMeal.sumOf { it.fat }
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
@@ -402,12 +402,14 @@ fun HomeScreen(
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.primary
                                         )
-                                        // 碳蛋脂显示（中间）
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        // 碳蛋脂显示（中间）- 碳水、蛋白质、脂肪顺序
                                         Text(
-                                            text = "P:${kotlin.math.round(mealProtein).toInt()} C:${kotlin.math.round(mealCarbs).toInt()} F:${kotlin.math.round(mealFat).toInt()}",
+                                            text = "C:${kotlin.math.round(mealCarbs).toInt()} P:${kotlin.math.round(mealProtein).toInt()} F:${kotlin.math.round(mealFat).toInt()}",
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.primary
                                         )
+                                        Spacer(modifier = Modifier.weight(1f))
                                         // 热量显示（右侧）
                                         Text(
                                             text = "${kotlin.math.round(mealCalories).toInt()} kcal",

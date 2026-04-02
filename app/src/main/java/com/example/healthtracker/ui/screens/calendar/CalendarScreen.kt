@@ -274,11 +274,14 @@ private fun CalendarHeatmap(
                         val isSelected = DateTimeUtils.getStartOfDay(date) == DateTimeUtils.getStartOfDay(selectedDate)
 
                         // 计算热力图颜色（使用主题色深浅，增强对比度）
+                        // 使用非线性映射让热量差异更明显
                         val heatColor = when {
-                            calories <= 0 -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                            calories <= 0 -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)
                             else -> {
                                 val ratio = (calories / maxCalories).coerceIn(0.0, 1.0)
-                                MaterialTheme.colorScheme.primary.copy(alpha = (0.15f + ratio * 0.85f).toFloat())
+                                // 使用平方曲线让低热量更浅、高热量更深
+                                val adjustedRatio = ratio * ratio
+                                MaterialTheme.colorScheme.primary.copy(alpha = (0.1f + adjustedRatio * 0.9f).toFloat())
                             }
                         }
 
