@@ -40,7 +40,7 @@
 3、测试所有功能
 
 ================================================================================
-                              需要逐步完善的功能
+                                   需要逐步完善的功能
 ================================================================================
 
 1、✅ 首页应与报表同层级（已完成）
@@ -174,81 +174,7 @@ coding终于告一段落了，非常感谢你的帮助，感谢你与我一同�
 
 
 ================================================================================
-                              2026-03-10 更新
-================================================================================
-
-【新功能】周期食物 (Cycle Food)
-- 适用场景：分多天吃完的食物，如一整个蛋糕、一大袋零食等
-- 功能入口：首页右下角 FAB → 第4个选项 "周期"
-- 使用流程：
-  1. 输入食物名称、每百克营养数据、总重量、预计天数
-  2. 系统自动计算总营养和每份数据
-  3. 保存后首页显示周期食物卡片
-  4. 点击"吃一份"记录一份摄入
-  5. 点击"吃完剩余"记录剩余全部摄入
-  6. 长按卡片可编辑或删除
-
-- 新增文件：
-  - CycleFoodEntity.kt - 周期食物实体
-  - CycleFoodDao.kt - 数据访问对象
-  - CycleFoodRepository.kt - 仓库层
-  - AddCycleFoodScreen.kt - 添加页面
-  - AddCycleFoodViewModel.kt - 添加 ViewModel
-  - EditCycleFoodScreen.kt - 编辑页面
-  - EditCycleFoodViewModel.kt - 编辑 ViewModel
-
-- 修改文件：
-  - HealthTrackerDatabase.kt - 数据库版本升级到 13
-  - DatabaseModule.kt - 添加 CycleFoodDao 注入
-  - HomeViewModel.kt - 添加 eatCycleFoodPortion, finishCycleFood, deleteCycleFood
-  - HomeScreen.kt - 添加周期食物卡片显示和长按菜单
-  - Screen.kt - 添加 AddCycleFood, EditCycleFood 路由
-  - HealthTrackerNavGraph.kt - 添加导航
-  - MainScreen.kt - 传递导航回调
-
-================================================================================
-                                 修复记录
-================================================================================
-
-【2026-03-09】修复图表对齐和点击问题
-- 问题1：营养素摄入详情页周模式点击柱状图无响应
-  - 原因：周模式使用纯 Compose 布局但未添加 clickable 修饰符
-  - 解决：为 Box 添加 clickable 修饰符，点击后弹出详情对话框
-- 问题2：身体数据趋势图表数据点与X轴标签不对齐
-  - 原因：单个数据点时 x = chartWidth/2 居中，但标签使用 SpaceBetween 靠左
-  - 解决：将单个数据点的 x 坐标改为 0f，与标签对齐
-- 问题3：数据报表页面身体数据趋势区块 Y 轴与数据点重叠
-  - 原因：使用 Box 布局，Y 轴和 Canvas 独立定位
-  - 解决：改为 Row 布局，Y 轴宽度 32dp，Canvas 使用 weight(1f) 填充剩余空间
-- 修改文件：
-  - NutritionDetailScreen.kt - 添加 clickable 修饰符
-  - BodyDataDetailScreen.kt - 修复数据点坐标计算
-  - ReportsScreen.kt - 重写 BodyDataChartCard 布局
-- 结果：BUILD SUCCESSFUL
-
-【2026-03-15】添加摄入页面优化：整体滚动与食物排序
-- 问题1：添加的食物过多时，食物库部分被挤到下面显示不全
-  - 解决：将餐次选择以下的所有内容包裹在 verticalScroll 中，实现整体滑动
-  - 移除搜索结果列表的固定高度限制，改为自适应内容
-- 问题2：食物库搜索结果中只有前4个是最近添加的，排序不正确
-  - 原因：按 createdAt DESC 排序，而非"最近使用时间"
-  - 解决：
-    1. FoodEntity 添加 lastUsedTime 字段
-    2. FoodDao 修改排序为 lastUsedTime DESC, createdAt DESC
-    3. 保存摄入记录时更新食物的 lastUsedTime
-    4. 添加数据库迁移 MIGRATION_14_15
-- 修改文件：
-  - AddIntakeScreen.kt - 添加整体滚动，移除固定高度
-  - FoodEntity.kt - 添加 lastUsedTime 字段
-  - FoodDao.kt - 修改排序逻辑，添加更新方法
-  - FoodRepository.kt - 添加 updateLastUsedTime 方法
-  - AddIntakeViewModel.kt - 保存时更新食物使用时间
-  - HealthTrackerDatabase.kt - 添加 MIGRATION_14_15
-  - DatabaseModule.kt - 注册新迁移
-- 结果：BUILD SUCCESSFUL
-
-================================================================================
-                                 项目进度记录
+                                     项目进度记录
 ================================================================================
 
 【已完成功能概览】
@@ -307,19 +233,277 @@ coding终于告一段落了，非常感谢你的帮助，感谢你与我一同�
   └── Material Design 3 主题配置
 
 ================================================================================
+                                   食物数据导入格式说明
+================================================================================
+
+软件支持从 JSON 或 CSV 文件导入食物营养数据，导入入口：设置 → 导入食物数据
+
+【JSON 格式】
+───────────────────────────────────────────────────────────────────────────────
+{
+  "dataSource": "数据来源说明（可选）",
+  "note": "其他备注信息（可选）",
+  "foods": [
+    {
+      "name": "食物名称",
+      "category": "分类",
+      "calories": 热量数值,
+      "carbohydrates": 碳水化合物数值,
+      "protein": 蛋白质数值,
+      "fat": 脂肪数值,
+      "emoji": "图标"
+    }
+  ]
+}
+───────────────────────────────────────────────────────────────────────────────
+
+【JSON 示例】
+───────────────────────────────────────────────────────────────────────────────
+{
+  "dataSource": "USDA FoodData Central",
+  "foods": [
+    {
+      "name": "大米",
+      "category": "主食",
+      "calories": 346,
+      "carbohydrates": 77.2,
+      "protein": 7.4,
+      "fat": 0.8,
+      "emoji": "🍚"
+    },
+    {
+      "name": "鸡肉",
+      "category": "肉类",
+      "calories": 156,
+      "carbohydrates": 0.0,
+      "protein": 23.9,
+      "fat": 6.0,
+      "emoji": "🥩"
+    }
+  ]
+}
+───────────────────────────────────────────────────────────────────────────────
+
+【CSV 格式】
+───────────────────────────────────────────────────────────────────────────────
+name,category,calories,carbohydrates,protein,fat,emoji
+大米,主食,346,77.2,7.4,0.8,🍚
+鸡肉,肉类,156,0.0,23.9,6.0,🥩
+───────────────────────────────────────────────────────────────────────────────
+
+【字段说明】
+┌───────────────┬────────┬────────┬──────────────────────────────────────────┐
+│ 字段          │ 类型   │ 必填   │ 说明                                      │
+├───────────────┼────────┼────────┼──────────────────────────────────────────┤
+│ name          │ String │ ✅     │ 食物名称                                  │
+│ category      │ String │ ⭕     │ 分类                                      │
+│ calories      │ Double │ ✅     │ 热量（kcal/100g）                         │
+│ carbohydrates │ Double │ ✅     │ 碳水化合物（g/100g）                       │
+│ protein       │ Double │ ✅     │ 蛋白质（g/100g）                           │
+│ fat           │ Double │ ✅     │ 脂肪（g/100g）                             │
+│ emoji         │ String │ ⭕     │ 食物图标（emoji）                          │
+└───────────────┴────────┴────────┴──────────────────────────────────────────┘
+
+【分类建议】
+┌────────┬────────────────────┬──────────────────────────────────────────────┐
+│ 分类   │ 说明               │ 示例                                         │
+├────────┼────────────────────┼──────────────────────────────────────────────┤
+│ 主食   │ 米面粮薯类         │ 大米、面粉、米饭、面条、馒头、红薯、土豆      │
+│ 肉类   │ 畜禽肉类           │ 猪肉、牛肉、羊肉、鸡肉、鸭肉                  │
+│ 海鲜   │ 鱼虾贝类           │ 草鱼、鲤鱼、虾、螃蟹、扇贝、鱿鱼              │
+│ 蔬菜   │ 各类蔬菜           │ 白菜、菠菜、西红柿、黄瓜、茄子、西兰花        │
+│ 水果   │ 各类水果           │ 苹果、香蕉、橙子、葡萄、西瓜、草莓            │
+│ 蛋奶   │ 蛋类和乳制品       │ 鸡蛋、鸭蛋、牛奶、酸奶、奶酪                  │
+│ 豆类   │ 豆类及豆制品       │ 黄豆、绿豆、豆腐、豆浆、腐竹                  │
+│ 坚果   │ 坚果和种子         │ 花生、核桃、杏仁、腰果、瓜子                  │
+│ 油脂   │ 食用油类           │ 植物油、橄榄油、猪油                          │
+└────────┴────────────────────┴──────────────────────────────────────────────┘
+
+【Emoji 建议】
+同种类食物可使用相同 emoji：
+- 主食 → 🍚 🍜 🍞 🥟 🌾 🍠 🥔 🌽
+- 肉类 → 🥩 🍖 🍗
+- 海鲜 → 🐟 🦐 🦀 🦪 🦑
+- 蔬菜 → 🥬 🥦 🍅 🥒 🍆 🥕 🍄
+- 水果 → 🍎 🍌 🍊 🍇 🍉 🍓
+- 蛋奶 → 🥚 🥛 🧀
+- 豆类 → 🫘
+- 坚果 → 🥜 🌰
+- 油脂 → 🫒 🧈
+
+【文件编码】
+- JSON 文件：UTF-8 编码
+- CSV 文件：UTF-8 编码
+
+【数据来源建议】
+1. 中国食物成分表（国家标准）
+2. USDA FoodData Central（美国农业部）
+3. foodwake.cn（食物派）
+4. fatsecret.cn（FatSecret 中国版）
+
+================================================================================
                                  修复记录
 ================================================================================
 
-【2026-03-05】初始设置
-- Git 仓库初始化完成
-- 创建 .gitignore 排除缓存文件
-- 初始提交：78 个文件，4502 行代码
-- 提交 hash：5b0f612
+【2026-04-17】食物库页面搜索功能体验优化
+- 需求：在食物库页面点击搜索按钮时，自动弹出输入法；返回时自动取消搜索模式保留在当前页
+- 解决：
+  1. 引入 `FocusRequester` 并在 `LaunchedEffect` 中触发搜索框的自动聚焦，以弹出输入法。
+  2. 添加 `BackHandler` 拦截搜索状态下的系统返回事件，触发 `viewModel.closeSearch()`，防止直接退出页面。
+- 修改文件：
+  - `FoodLibraryScreen.kt`
+- 结果：BUILD SUCCESSFUL（功能逻辑已添加，环境受限未能直接构建 APK）
 
-【2026-03-05】构建问题修复
-- 问题1：AGP 9.1.0 与 Hilt 2.52 不兼容 → 降级 AGP 到 8.7.3
-- 问题2：缺少 AndroidX 配置 → 添加 android.useAndroidX=true
+【2026-04-02】系统更新
+【首页餐次卡片优化】
+1. ✨ 餐次卡片顶部添加碳蛋脂总量显示
+   - 格式：C:xx P:xx F:xx（碳水、蛋白质、脂肪）
+   - 使用 Spacer(weight(1f)) 实现居中布局
+   - 热量和碳蛋脂文字颜色改为主题色
+
+2. 🔧 修复碳蛋脂计算四舍五入一致性问题
+   - 问题：单个食物四舍五入后相加（6+2+1=9）与总量四舍五入（8）不一致
+   - 原因：先求和再四舍五入 vs 先四舍五入再求和
+   - 解决：餐次卡片和全天总量都改为"先四舍五入再求和"
+   - 修改位置：
+     - HomeScreen.kt：餐次卡片碳蛋脂计算
+     - HomeViewModel.kt：全天总量计算
+
+【日历热力图优化】
+1. ✨ 增强热力图颜色对比度
+   - 问题：1800kcal 和 2300kcal 颜色深浅差距不明显
+   - 解决：使用非线性映射（平方曲线）增强对比
+   - 公式：alpha = 0.1 + (ratio²) × 0.9
+   - 低热量日期更浅，高热量日期更深
+
+【修改文件】
+- HomeScreen.kt - 餐次卡片碳蛋脂显示和计算逻辑
+- HomeViewModel.kt - 全天总量计算逻辑
+- CalendarScreen.kt - 热力图颜色对比度
+
+【2026-03-19】系统更新
+【修复问题】
+1. 🔧 修复首页食物图标与食物库不一致的问题
+   - 移除所有 isEmoji() 检查，直接使用存储的图标值
+   - 修复日历页面、食物库等页面的图标显示
+
+2. 🔧 修复页面切换动画效果
+   - 删除页面渐变切换效果，改为硬切换（无动画）
+   - 在 NavHost 设置 EnterTransition.None 和 ExitTransition.None
+
+3. 🔧 修复营养素计算四舍五入问题
+   - 使用 kotlin.math.round().toInt() 替代 toInt()
+   - 确保弹窗显示的数值与总量计算一致
+   - 修复首页、日历页面所有数值显示位置
+
+4. 🔧 添加首页日期导航功能
+   - 在顶部日期按钮右侧添加前一天/今天/后一天按钮
+   - 使用 SelectedDateManager 全局状态管理
+
+【新增功能】
+1. ✨ 食物信息同步更新历史记录
+   - 编辑食物后自动同步更新所有相关历史记录
+   - 同步更新图标和营养数据
+   - 根据每条记录的 amount 重新计算营养值
+
+【修改文件】
+- HomeScreen.kt - 图标显示、数值四舍五入、日期导航
+- CalendarScreen.kt - 图标显示、数值四舍五入
+- HomeViewModel.kt - 日期导航方法
+- SelectedDateManager.kt - 日期导航方法
+- IntakeRecordDao.kt - 根据 foodId/foodName 查询记录
+- IntakeRecordRepository.kt - syncRecordsWithFood 方法
+- EditFoodViewModel.kt - 自动同步更新逻辑
+
+【2026-03-15】添加摄入页面优化：整体滚动与食物排序
+- 问题1：添加的食物过多时，食物库部分被挤到下面显示不全
+  - 解决：将餐次选择以下的所有内容包裹在 verticalScroll 中，实现整体滑动
+  - 移除搜索结果列表的固定高度限制，改为自适应内容
+- 问题2：食物库搜索结果中只有前4个是最近添加的，排序不正确
+  - 原因：按 createdAt DESC 排序，而非"最近使用时间"
+  - 解决：
+    1. FoodEntity 添加 lastUsedTime 字段
+    2. FoodDao 修改排序为 lastUsedTime DESC, createdAt DESC
+    3. 保存摄入记录时更新食物的 lastUsedTime
+    4. 添加数据库迁移 MIGRATION_14_15
+- 修改文件：
+  - AddIntakeScreen.kt - 添加整体滚动，移除固定高度
+  - FoodEntity.kt - 添加 lastUsedTime 字段
+  - FoodDao.kt - 修改排序逻辑，添加更新方法
+  - FoodRepository.kt - 添加 updateLastUsedTime 方法
+  - AddIntakeViewModel.kt - 保存时更新食物使用时间
+  - HealthTrackerDatabase.kt - 添加 MIGRATION_14_15
+  - DatabaseModule.kt - 注册新迁移
 - 结果：BUILD SUCCESSFUL
+
+【2026-03-10】系统更新
+【新功能】周期食物 (Cycle Food)
+- 适用场景：分多天吃完的食物，如一整个蛋糕、一大袋零食等
+- 功能入口：首页右下角 FAB → 第4个选项 "周期"
+- 使用流程：
+  1. 输入食物名称、每百克营养数据、总重量、预计天数
+  2. 系统自动计算总营养和每份数据
+  3. 保存后首页显示周期食物卡片
+  4. 点击"吃一份"记录一份摄入
+  5. 点击"吃完剩余"记录剩余全部摄入
+  6. 长按卡片可编辑或删除
+
+- 新增文件：
+  - CycleFoodEntity.kt - 周期食物实体
+  - CycleFoodDao.kt - 数据访问对象
+  - CycleFoodRepository.kt - 仓库层
+  - AddCycleFoodScreen.kt - 添加页面
+  - AddCycleFoodViewModel.kt - 添加 ViewModel
+  - EditCycleFoodScreen.kt - 编辑页面
+  - EditCycleFoodViewModel.kt - 编辑 ViewModel
+
+- 修改文件：
+  - HealthTrackerDatabase.kt - 数据库版本升级到 13
+  - DatabaseModule.kt - 添加 CycleFoodDao 注入
+  - HomeViewModel.kt - 添加 eatCycleFoodPortion, finishCycleFood, deleteCycleFood
+  - HomeScreen.kt - 添加周期食物卡片显示和长按菜单
+  - Screen.kt - 添加 AddCycleFood, EditCycleFood 路由
+  - HealthTrackerNavGraph.kt - 添加导航
+  - MainScreen.kt - 传递导航回调
+
+【2026-03-09】修复图表对齐和点击问题
+- 问题1：营养素摄入详情页周模式点击柱状图无响应
+  - 原因：周模式使用纯 Compose 布局但未添加 clickable 修饰符
+  - 解决：为 Box 添加 clickable 修饰符，点击后弹出详情对话框
+- 问题2：身体数据趋势图表数据点与X轴标签不对齐
+  - 原因：单个数据点时 x = chartWidth/2 居中，但标签使用 SpaceBetween 靠左
+  - 解决：将单个数据点的 x 坐标改为 0f，与标签对齐
+- 问题3：数据报表页面身体数据趋势区块 Y 轴与数据点重叠
+  - 原因：使用 Box 布局，Y 轴和 Canvas 独立定位
+  - 解决：改为 Row 布局，Y 轴宽度 32dp，Canvas 使用 weight(1f) 填充剩余空间
+- 修改文件：
+  - NutritionDetailScreen.kt - 添加 clickable 修饰符
+  - BodyDataDetailScreen.kt - 修复数据点坐标计算
+  - ReportsScreen.kt - 重写 BodyDataChartCard 布局
+- 结果：BUILD SUCCESSFUL
+
+【2026-03-09】功能：重写身体数据趋势图表
+- 需求：重写数据报表页面的身体数据趋势区块及详情页
+- 修改内容：
+  1. BodyDataDetailViewModel - 重写
+     - selectedDataType 状态（0=体重, 1=体脂, 2=肌肉）单选
+     - weekOffset 状态用于周模式切换
+     - loadWeeklyData() 方法加载所有数据并按周聚合
+     - getChangeValue() 获取当前选中类型的变化值
+  2. BodyDataDetailScreen - 完全重写
+     - 数据类型单选切换（体重/体脂/肌肉）
+     - 筛选模式：自定义时间段 / 周
+     - 图表带 Y 轴刻度和虚线参考线
+     - X 轴智能显示标签（数据量大时选择性显示）
+     - 周模式：7个数据点，箭头切换周组
+     - 数据变化卡片显示选中类型的变化
+  3. ReportsScreen - BodyDataChartCard 重写
+     - 单选数据类型切换
+     - 与详情页保持一致的图表样式
+     - Y 轴刻度 + 虚线参考线
+     - 智能X轴标签
+  4. BodyRecordDao/Repository - 添加 getAllRecordsSync() 方法
+- 结果：代码修改完成，待编译验证
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
 - 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
@@ -342,16 +526,6 @@ coding终于告一段落了，非常感谢你的帮助，感谢你与我一同�
 - 结果：BUILD SUCCESSFUL，97 个任务执行完成
 - APK 输出位置：app/build/outputs/apk/debug/app-debug.apk
 
-【2026-03-05】闪退问题修复
-- 问题：DatabaseModule 中初始化默认食品数据的逻辑错误
-  - 原代码：foodDao.getAllFoods().toString().isEmpty()
-  - 问题：getAllFoods() 返回 Flow，toString() 永远不为空
-- 解决方案：
-  1. 添加 getFoodCount() 方法到 FoodDao
-  2. 使用 runBlocking 同步检查并初始化数据
-  3. 添加异常处理防止初始化失败导致崩溃
-- 结果：BUILD SUCCESSFUL
-
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
 - 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
 - 修改内容：
@@ -370,22 +544,6 @@ coding终于告一段落了，非常感谢你的帮助，感谢你与我一同�
      - 食物库自定义食物页 FAB
      - 添加摄入页"添加自定义食物"按钮
      - 设置食物管理页 FAB
-- 结果：BUILD SUCCESSFUL
-
-【2026-03-05】ClassNotFoundException 修复（重大重构）
-- 问题：Hilt 生成的代码未正确打包，导致 HealthTrackerApplication 类找不到
-- 根本原因：
-  1. 缺少 kotlin-android 插件
-  2. KSP 与 Hilt 的兼容性问题
-  3. JVM target 版本不一致
-- 解决方案：
-  1. 切换从 KSP 到 KAPT 处理 Hilt 注解
-  2. 添加 kotlin-android 和 kotlin-kapt 插件
-  3. 统一 JVM target 为 17
-  4. 添加 material-icons-extended 依赖
-  5. 修复缺失的颜色定义（Color.kt）
-  6. 修复图标引用（FileDownload → Download, FileUpload → Upload）
-  7. 修复导入和包名问题
 - 结果：BUILD SUCCESSFUL
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -408,17 +566,6 @@ coding终于告一段落了，非常感谢你的帮助，感谢你与我一同�
      - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL，APK 大小 17.8 MB
 
-【2026-03-05】导航结构重构 - 首页与报表同级
-- 问题：报表页是首页的子页面，有返回键，不符合设计要求
-- 解决方案：
-  1. 创建 MainScreen.kt 作为主容器，包含底部导航栏
-  2. 首页和报表页作为同级页面，通过底部导航栏切换
-  3. 移除 HomeScreen 的底部导航栏和 onNavigateToReports 参数
-  4. 移除 ReportsScreen 的返回按钮和 onNavigateBack 参数
-  5. 更新 Screen.kt 添加 Main 路由
-  6. 更新 HealthTrackerNavGraph 使用 MainScreen
-- 结果：BUILD SUCCESSFUL
-
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
 - 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
 - 修改内容：
@@ -439,24 +586,24 @@ coding终于告一段落了，非常感谢你的帮助，感谢你与我一同�
      - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL，首页和报表页现在同级切换
 
-【2026-03-05】功能 #2：完善摄入记录页面
-- 需求：记录食物重量、每百克营养数据、名称、备注、单位等
+【2026-03-07】功能 #25：重写"添加自定义食物"页面
+- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
 - 修改内容：
-  1. IntakeRecordEntity - 添加 note, unit, amountInUnit, gramsPerUnit 字段
-  2. IntakeRecordEntity - 添加每百克营养数据字段（caloriesPer100g等）
-  3. IntakeRecordEntity - foodId 改为可空，支持自定义输入
-  4. HealthTrackerDatabase - 版本升级 1→2，添加 Migration
-  5. DatabaseModule - 添加 Migration 支持
-  6. AddIntakeScreen - 完整重写，支持所有输入字段和实时计算
-  7. AddIntakeViewModel - 新建，处理保存逻辑
-- 界面功能：
-  - 餐次选择（早餐/午餐/晚餐/加餐）
-  - 食物名称输入
-  - 重量输入（克/毫升）
-  - 单位选择（个/杯/瓶等）+ 单位换算
-  - 每百克营养数据输入（热量/碳水/蛋白质/脂肪）
-  - 实时计算结果预览
-  - 备注输入
+  1. AddCustomFoodScreen - 新建页面，包含：
+     - 食物名称输入
+     - 图标选择器（emoji）
+     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
+     - 可选单位设置（单位名称 + 每单位克数）
+     - 每单位营养值预览
+  2. AddCustomFoodViewModel - 新建 ViewModel
+     - 保存自定义食物到食物库
+     - 自动根据食物名称推断分类
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -479,25 +626,24 @@ coding终于告一段落了，非常感谢你的帮助，感谢你与我一同�
      - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
-【2026-03-05】功能 #3：添加食物库页面
-- 需求：添加与首页、报表同层级的食物库页面，显示最近摄入、自定义、收藏食物
+【2026-03-07】功能 #25：重写"添加自定义食物"页面
+- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
 - 修改内容：
-  1. FoodEntity - 添加 isFavorite 字段
-  2. FoodDao - 添加 getCustomFoods(), getFavoriteFoods(), toggleFavorite(), setFavorite() 方法
-  3. IntakeRecordDao - 添加 getRecentRecords() 方法
-  4. FoodRepository - 添加对应方法
-  5. IntakeRecordRepository - 添加 getRecentRecords() 方法
-  6. HealthTrackerDatabase - 版本升级 2→3，添加 MIGRATION_2_3
-  7. DatabaseModule - 添加新 Migration
-  8. FoodLibraryScreen - 新建，包含三个 Tab 页面
-  9. FoodLibraryViewModel - 新建，处理数据和操作
-  10. Screen.kt - 添加 FoodLibrary 路由
-  11. MainScreen.kt - 添加第三个底部导航项
-- 界面功能：
-  - 三个 Tab：最近摄入、自定义食物、收藏食物
-  - 最近摄入：显示最近吃过的食物（去重）
-  - 自定义食物：显示用户添加的食物，可删除、收藏
-  - 收藏食物：显示收藏的食物，可取消收藏
+  1. AddCustomFoodScreen - 新建页面，包含：
+     - 食物名称输入
+     - 图标选择器（emoji）
+     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
+     - 可选单位设置（单位名称 + 每单位克数）
+     - 每单位营养值预览
+  2. AddCustomFoodViewModel - 新建 ViewModel
+     - 保存自定义食物到食物库
+     - 自动根据食物名称推断分类
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -520,27 +666,6 @@ coding终于告一段落了，非常感谢你的帮助，感谢你与我一同�
      - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
-【2026-03-05】功能 #4：添加饮食计划页面
-- 需求：添加第四个同级页面，显示所有饮食计划，支持添加单餐/单日/周计划
-- 修改内容：
-  1. MealPlanItemEntity - 移除 foodId 外键约束，改为可空，添加营养数据字段
-  2. HealthTrackerDatabase - 版本升级 3→4，添加 MIGRATION_3_4
-  3. DatabaseModule - 添加新 Migration
-  4. MealPlanScreen - 新建，显示所有饮食计划列表
-  5. MealPlanViewModel - 新建，处理计划和状态
-  6. AddMealPlanScreen - 新建，添加/编辑饮食计划
-  7. AddMealPlanViewModel - 新建，处理添加计划逻辑
-  8. Screen.kt - 添加 MealPlan, AddMealPlan 路由
-  9. MainScreen.kt - 添加第四个底部导航项"计划"
-  10. HealthTrackerNavGraph.kt - 添加 AddMealPlan 导航
-- 界面功能：
-  - 饮食计划列表，可展开查看详情
-  - 计划类型：单餐、单日（三餐）、周计划（每天三餐）
-  - 每个计划可激活/停用、删除
-  - 添加计划时可设置名称、类型，选择餐次和星期
-  - 添加食物对话框支持输入名称、份量、营养数据
-- 结果：BUILD SUCCESSFUL
-
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
 - 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
 - 修改内容：
@@ -561,20 +686,6 @@ coding终于告一段落了，非常感谢你的帮助，感谢你与我一同�
      - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
-【2026-03-05】功能 #5：生成测试数据
-- 需求：模拟用户填写方式生成10天测试数据，用于测试报表
-- 修改内容：
-  1. TestDataGenerator - 新建，生成模拟的摄入、身体、睡眠数据
-  2. TestDataViewModel - 新建，处理数据生成逻辑
-  3. SettingsScreen - 添加"生成测试数据"选项和确认对话框
-- 功能特点：
-  - 摄入记录：每天3-5顿，包含常见食物（米饭、鸡蛋、牛奶等15种）
-  - 身体数据：体重轻微波动、体脂率、肌肉量、三围
-  - 睡眠记录：入睡时间21:00-01:00，睡眠时长5-9小时
-  - 所有数据随机化，模拟真实用户行为
-- 操作方式：设置 → 开发者选项 → 生成测试数据
-- 结果：BUILD SUCCESSFUL
-
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
 - 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
 - 修改内容：
@@ -593,97 +704,6 @@ coding终于告一段落了，非常感谢你的帮助，感谢你与我一同�
      - 食物库自定义食物页 FAB
      - 添加摄入页"添加自定义食物"按钮
      - 设置食物管理页 FAB
-- 结果：BUILD SUCCESSFUL
-
-【2026-03-06】功能 #9：主题切换与夜间模式
-- 需求：设置中添加主题颜色切换和夜间模式，支持跟随系统
-- 修改内容：
-  1. UserSettingsEntity - 添加 themeMode, themeColor 字段
-  2. HealthTrackerDatabase - 版本升级 4→5，添加 MIGRATION_4_5
-  3. UserSettingsDao - 添加 updateThemeMode(), updateThemeColor(), upsertThemeMode(), upsertThemeColor() 方法
-  4. UserSettingsRepository - 添加主题相关方法
-  5. Color.kt - 添加5种主题颜色（绿/蓝/紫/橙/红）
-  6. Theme.kt - 完全重写，支持多主题和多模式
-  7. MainActivity - 观察主题设置并实时应用
-  8. ThemeSettingsScreen - 新建主题设置界面
-  9. ThemeSettingsViewModel - 新建主题设置 ViewModel
-  10. SettingsScreen - 添加主题设置入口
-- 功能特点：
-  - 主题模式：跟随系统、浅色、深色三种
-  - 主题颜色：绿色、蓝色、紫色、橙色、红色五种
-  - 设置页面有实时预览效果
-  - 完全遵循 Material Design 3
-- 结果：BUILD SUCCESSFUL
-
-【2026-03-07】功能 #25：重写"添加自定义食物"页面
-- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
-- 修改内容：
-  1. AddCustomFoodScreen - 新建页面，包含：
-     - 食物名称输入
-     - 图标选择器（emoji）
-     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
-     - 可选单位设置（单位名称 + 每单位克数）
-     - 每单位营养值预览
-  2. AddCustomFoodViewModel - 新建 ViewModel
-     - 保存自定义食物到食物库
-     - 自动根据食物名称推断分类
-  3. Screen.kt - 添加 AddCustomFood 路由
-  4. HealthTrackerNavGraph - 添加页面导航
-  5. 更新三个入口的导航：
-     - 食物库自定义食物页 FAB
-     - 添加摄入页"添加自定义食物"按钮
-     - 设置食物管理页 FAB
-- 结果：BUILD SUCCESSFUL
-
-【2026-03-06】功能 #8 优化：拆分摄入记录页面
-- 需求：首页加号进入的页面只显示搜索，点击食物或"添加自定义食物"后再进入详细录入页面
-- 修改内容：
-  1. AddIntakeScreen - 重写为搜索页面（餐次选择 + 搜索框 + 搜索结果 + 按钮）
-  2. CustomFoodInputScreen - 新建详细录入页面
-  3. HealthTrackerNavGraph - 添加带参数导航
-  4. MainScreen - 添加 onNavigateToCustomFood 参数
-- 页面流程：
-  - 首页加号 → 搜索食物页 → 点击食物 → 详细录入页
-  - 首页加号 → 搜索食物页 → 点击"+自定义食物" → 详细录入页
-  - 食物库自定义食物tab FAB → 详细录入页
-- 结果：BUILD SUCCESSFUL
-
-【2026-03-07】功能 #25：重写"添加自定义食物"页面
-- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
-- 修改内容：
-  1. AddCustomFoodScreen - 新建页面，包含：
-     - 食物名称输入
-     - 图标选择器（emoji）
-     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
-     - 可选单位设置（单位名称 + 每单位克数）
-     - 每单位营养值预览
-  2. AddCustomFoodViewModel - 新建 ViewModel
-     - 保存自定义食物到食物库
-     - 自动根据食物名称推断分类
-  3. Screen.kt - 添加 AddCustomFood 路由
-  4. HealthTrackerNavGraph - 添加页面导航
-  5. 更新三个入口的导航：
-     - 食物库自定义食物页 FAB
-     - 添加摄入页"添加自定义食物"按钮
-     - 设置食物管理页 FAB
-- 结果：BUILD SUCCESSFUL
-
-【2026-03-06】功能 #10：食物记录编辑与批量操作
-- 需求：点击修改食物内容，长按删除/编辑/批量选择
-- 修改内容：
-  1. IntakeRecordDao - 添加 deleteRecordsByIds() 批量删除
-  2. IntakeRecordRepository - 添加 deleteRecordsByIds()
-  3. HomeViewModel - 添加 deleteRecord(), deleteRecordsByIds(), updateRecord()
-  4. HomeScreen - 添加点击编辑、长按菜单、批量选择模式
-  5. EditIntakeViewModel - 新建编辑 ViewModel
-  6. EditIntakeScreen - 新建编辑页面
-  7. Screen.kt - 添加 EditIntake 路由
-  8. HealthTrackerNavGraph - 添加编辑页面导航
-- 功能特点：
-  - 点击食物 → 进入编辑页面修改
-  - 长按食物 → 显示菜单（编辑、删除、批量选择）
-  - 批量选择模式 → 全选、批量删除
-  - 删除操作有确认对话框
 - 结果：BUILD SUCCESSFUL
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -710,24 +730,6 @@ coding终于告一段落了，非常感谢你的帮助，感谢你与我一同�
 Token 使用量：15.7m（模型：glm-5）
 会话数：8 | 最长会话：10h 12m 20s
 
-【2026-03-06】功能 #11：修复主题颜色启动闪烁问题
-- 问题：每次进入软件时，主题颜色会先显示默认绿色，然后才切换到用户选择的主题色
-- 根本原因：
-  1. 用户设置是异步从数据库加载的（Flow）
-  2. 在设置加载完成前，themeColorIndex 默认为 0（绿色）
-  3. 加载完成后才切换到用户选择的主题色，造成视觉闪烁
-- 解决方案：
-  1. 添加 AndroidX SplashScreen 库依赖
-  2. 创建 Splash Screen 主题（Theme.HealthTracker.Splash）
-  3. 使用 installSplashScreen() API 保持启动画面直到设置加载完成
-  4. 设置 setKeepOnScreenCondition 等待 settings 不为 null
-- 修改文件：
-  - app/build.gradle.kts - 添加 splashscreen 依赖
-  - res/values/themes.xml - 添加 Splash Screen 主题
-  - AndroidManifest.xml - Activity 使用 Splash 主题
-  - MainActivity.kt - 使用 installSplashScreen() 等待设置加载
-- 结果：BUILD SUCCESSFUL
-
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
 - 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
 - 修改内容：
@@ -748,25 +750,6 @@ Token 使用量：15.7m（模型：glm-5）
      - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL，启动时不再有主题闪烁
 
-【2026-03-06】功能 #12：用户资料页面 BMR/TDEE 计算
-- 问题：用户资料页面输入数据后保存，但没有显示计算出的 BMR 和 TDEE 数值
-- 根本原因：
-  1. UserProfileScreen 是静态 UI，没有 ViewModel
-  2. 没有实际保存数据到数据库
-  3. 没有调用 HealthCalculator 计算 BMR/TDEE
-- 解决方案：
-  1. UserSettingsEntity - 添加 age 和 weight 字段
-  2. HealthTrackerDatabase - 版本升级 5→6，添加 MIGRATION_5_6
-  3. UserSettingsDao - 添加 updateUserInfo() 方法
-  4. UserSettingsRepository - 添加 updateUserInfo() 方法
-  5. UserProfileViewModel - 新建 ViewModel 处理数据和计算
-  6. UserProfileScreen - 重写，使用 ViewModel，实时计算并显示结果
-- 功能特点：
-  - 加载时自动填充已保存的数据
-  - 输入身高、体重、年龄时实时计算并预览 BMR/TDEE
-  - 保存时计算并存储 BMR/TDEE 到数据库
-- 结果：BUILD SUCCESSFUL
-
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
 - 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
 - 修改内容：
@@ -787,25 +770,6 @@ Token 使用量：15.7m（模型：glm-5）
      - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
-【2026-03-06】功能 #12：用户资料页面 BMR/TDEE 计算
-- 问题：用户资料页面输入数据后保存，但没有显示计算出的 BMR 和 TDEE 数值
-- 根本原因：
-  1. UserProfileScreen 是静态 UI，没有 ViewModel
-  2. 没有实际保存数据到数据库
-  3. 没有调用 HealthCalculator 计算 BMR/TDEE
-- 解决方案：
-  1. UserSettingsEntity - 添加 age 和 weight 字段
-  2. HealthTrackerDatabase - 版本升级 5→6，添加 MIGRATION_5_6
-  3. UserSettingsDao - 添加 updateUserInfo() 方法
-  4. UserSettingsRepository - 添加 updateUserInfo() 方法
-  5. UserProfileViewModel - 新建 ViewModel 处理数据和计算
-  6. UserProfileScreen - 重写，使用 ViewModel，实时计算并显示结果
-- 功能特点：
-  - 加载时自动填充已保存的数据
-  - 输入身高、体重、年龄时实时计算并预览 BMR/TDEE
-  - 保存时计算并存储 BMR/TDEE 到数据库
-- 结果：BUILD SUCCESSFUL
-
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
 - 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
 - 修改内容：
@@ -824,17 +788,6 @@ Token 使用量：15.7m（模型：glm-5）
      - 食物库自定义食物页 FAB
      - 添加摄入页"添加自定义食物"按钮
      - 设置食物管理页 FAB
-- 结果：BUILD SUCCESSFUL
-【2026-03-06】功能 #13：食物库"最近摄入"显示逻辑
-- 问题：食物库的"最近摄入"页面应显示食物库中所有食物（内置+自定义），按最近被记录的顺序排序
-- 根本原因：
-  1. 原实现显示的是 IntakeRecordEntity（摄入记录），而不是 FoodEntity（食物）
-  2. 没有按照"最近被记录的顺序"排序
-- 解决方案：
-  1. IntakeRecordDao - 添加 getFoodLastRecordTimes() 获取每个食物的最近记录时间
-  2. IntakeRecordRepository - 添加对应方法
-  3. FoodLibraryViewModel - 使用 combine 组合所有食物和最近记录时间，按时间排序
-  4. FoodLibraryScreen - 修改 RecentFoodsTab 显示 FoodEntity 列表，支持收藏功能
 - 结果：BUILD SUCCESSFUL
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -857,13 +810,24 @@ Token 使用量：15.7m（模型：glm-5）
      - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL，最近摄入页面现在显示所有食物并按最近记录时间排序
 
-【2026-03-06】功能 #15：食物管理页面完善
-- 问题：设置页面的"食物管理"应显示所有食物，按名称排序，右侧有字母导航栏
-- 解决方案：
-  1. FoodManagerViewModel - 新建 ViewModel 管理食物数据，支持搜索和首字母分组
-  2. FoodManagerScreen - 重写，添加字母导航栏，按首字母分组显示食物
-  3. 支持搜索、收藏、删除（仅自定义食物可删除）
-  4. FAB 点击跳转到添加自定义食物页面
+【2026-03-07】功能 #25：重写"添加自定义食物"页面
+- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
+- 修改内容：
+  1. AddCustomFoodScreen - 新建页面，包含：
+     - 食物名称输入
+     - 图标选择器（emoji）
+     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
+     - 可选单位设置（单位名称 + 每单位克数）
+     - 每单位营养值预览
+  2. AddCustomFoodViewModel - 新建 ViewModel
+     - 保存自定义食物到食物库
+     - 自动根据食物名称推断分类
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -886,12 +850,24 @@ Token 使用量：15.7m（模型：glm-5）
      - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
-【2026-03-06】功能 #14：高刷新率支持
-- 问题：页面滑动时帧率低，显得卡顿
-- 解决方案：
-  1. MainActivity 添加 setHighRefreshRate() 方法
-  2. 获取设备支持的最高刷新率并设置
-  3. 使滑动更流畅
+【2026-03-07】功能 #25：重写"添加自定义食物"页面
+- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
+- 修改内容：
+  1. AddCustomFoodScreen - 新建页面，包含：
+     - 食物名称输入
+     - 图标选择器（emoji）
+     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
+     - 可选单位设置（单位名称 + 每单位克数）
+     - 每单位营养值预览
+  2. AddCustomFoodViewModel - 新建 ViewModel
+     - 保存自定义食物到食物库
+     - 自动根据食物名称推断分类
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -914,17 +890,6 @@ Token 使用量：15.7m（模型：glm-5）
      - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
-【2026-03-06】功能 #17：日历页面完善
-- 需求：日历随页面一起滑动、左右滑动切换月份、点击年月弹出选择窗口
-- 修改内容：
-  1. CalendarScreen - 整个页面使用 verticalScroll 一起滑动
-  2. 添加 HorizontalDragGestures 检测左右滑动
-  3. 使用 AnimatedContent 添加月份切换动画
-  4. 简化 MonthYearPickerDialog 使用 ExposedDropdownMenuBox
-  5. 修复滑动方向：从左向右 = 上个月，从右向左 = 下个月
-  6. 移除 enableEdgeToEdge() 修复顶部空白问题
-- 结果：BUILD SUCCESSFUL
-
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
 - 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
 - 修改内容：
@@ -945,14 +910,6 @@ Token 使用量：15.7m（模型：glm-5）
      - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
-【2026-03-06】功能 #18：首页身体数据和睡眠区块底色
-- 需求：身体数据和睡眠两个区块添加主题色浅色底色
-- 修改内容：
-  1. BodyDataCard - 使用 primaryContainer.copy(alpha = 0.5f) 作为背景色
-  2. SleepDataCard - 使用相同的主题色背景
-  3. 添加圆角 RoundedCornerShape(12.dp)
-- 结果：BUILD SUCCESSFUL
-
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
 - 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
 - 修改内容：
@@ -971,78 +928,6 @@ Token 使用量：15.7m（模型：glm-5）
      - 食物库自定义食物页 FAB
      - 添加摄入页"添加自定义食物"按钮
      - 设置食物管理页 FAB
-- 结果：BUILD SUCCESSFUL
-
-【2026-03-06】功能 #21：添加饮食计划搜索食物库
-- 需求：添加饮食计划时可以搜索食物库中的食物，并支持添加自定义食物
-- 修改内容：
-  1. AddMealPlanScreen - 添加 onNavigateToCustomFood 参数
-  2. HealthTrackerNavGraph - 配置导航到自定义食物页面
-  3. "添加自定义食物"按钮现在可以正确跳转到自定义食物输入页面
-- 结果：BUILD SUCCESSFUL
-
-【2026-03-07】功能 #25：重写"添加自定义食物"页面
-- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
-- 修改内容：
-  1. AddCustomFoodScreen - 新建页面，包含：
-     - 食物名称输入
-     - 图标选择器（emoji）
-     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
-     - 可选单位设置（单位名称 + 每单位克数）
-     - 每单位营养值预览
-  2. AddCustomFoodViewModel - 新建 ViewModel
-     - 保存自定义食物到食物库
-     - 自动根据食物名称推断分类
-  3. Screen.kt - 添加 AddCustomFood 路由
-  4. HealthTrackerNavGraph - 添加页面导航
-  5. 更新三个入口的导航：
-     - 食物库自定义食物页 FAB
-     - 添加摄入页"添加自定义食物"按钮
-     - 设置食物管理页 FAB
-- 结果：BUILD SUCCESSFUL
-
-【2026-03-06】功能 #22：食物自定义 emoji 图标
-- 需求：修改/添加食物时可以自定义食物的 emoji 图标
-- 修改内容：
-  1. FoodEmojiUtils - 新建工具类，包含食物 emoji 列表和默认映射
-  2. EditFoodScreen - 添加 emoji 选择器对话框
-  3. EditFoodViewModel - 支持 icon 参数
-  4. CustomFoodInputScreen - 添加 emoji 选择器（仅在保存到食物库时显示）
-  5. AddIntakeViewModel - saveRecord 支持 icon 参数
-  6. 更新多个文件的 getFoodEmoji 函数优先使用食物自带的 icon
-- 功能特点：
-  - 食物 emoji 按分类组织（主食、肉类、海鲜、蔬菜、水果等）
-  - 自动根据食物名称推断默认 emoji
-  - 保存自定义食物时可选择 emoji 图标
-  - 编辑食物时可更换 emoji 图标
-- 结果：BUILD SUCCESSFUL
-
-【2026-03-07】功能 #25：重写"添加自定义食物"页面
-- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
-- 修改内容：
-  1. AddCustomFoodScreen - 新建页面，包含：
-     - 食物名称输入
-     - 图标选择器（emoji）
-     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
-     - 可选单位设置（单位名称 + 每单位克数）
-     - 每单位营养值预览
-  2. AddCustomFoodViewModel - 新建 ViewModel
-     - 保存自定义食物到食物库
-     - 自动根据食物名称推断分类
-  3. Screen.kt - 添加 AddCustomFood 路由
-  4. HealthTrackerNavGraph - 添加页面导航
-  5. 更新三个入口的导航：
-     - 食物库自定义食物页 FAB
-     - 添加摄入页"添加自定义食物"按钮
-     - 设置食物管理页 FAB
-- 结果：BUILD SUCCESSFUL
-
-【2026-03-06】功能 #23：自定义食物点击编辑
-- 需求：自定义食物页面点击食物可以编辑数据
-- 状态：功能已存在
-  - EditFoodScreen 已存在，支持编辑食物名称、分类、营养数据
-  - 导航已配置，FoodLibraryScreen 的 CustomFoodsTab 点击可跳转编辑
-  - 现在新增了 emoji 图标编辑功能
 - 结果：BUILD SUCCESSFUL
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -1110,6 +995,7 @@ Token 使用量：15.7m（模型：glm-5）
      - 添加摄入页"添加自定义食物"按钮
      - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
+
 【2026-03-07】功能 #29 #30 #31 #32：食物编辑相关优化
 - #29：修复选择图标弹窗滚动问题
   - 问题：每个类别下有固定的 LazyVerticalGrid 高度，导致只能在类别内滚动
@@ -1244,200 +1130,314 @@ Token 使用量：15.7m（模型：glm-5）
   - 解决：完全重写 EditFoodScreen，与 AddCustomFoodScreen 布局一致
 - 结果：BUILD SUCCESSFUL
 
-【2026-03-09】功能：重写身体数据趋势图表
-- 需求：重写数据报表页面的身体数据趋势区块及详情页
+【2026-03-06】功能 #9：主题切换与夜间模式
+- 需求：设置中添加主题颜色切换和夜间模式，支持跟随系统
 - 修改内容：
-  1. BodyDataDetailViewModel - 重写
-     - selectedDataType 状态（0=体重, 1=体脂, 2=肌肉）单选
-     - weekOffset 状态用于周模式切换
-     - loadWeeklyData() 方法加载所有数据并按周聚合
-     - getChangeValue() 获取当前选中类型的变化值
-  2. BodyDataDetailScreen - 完全重写
-     - 数据类型单选切换（体重/体脂/肌肉）
-     - 筛选模式：自定义时间段 / 周
-     - 图表带 Y 轴刻度和虚线参考线
-     - X 轴智能显示标签（数据量大时选择性显示）
-     - 周模式：7个数据点，箭头切换周组
-     - 数据变化卡片显示选中类型的变化
-  3. ReportsScreen - BodyDataChartCard 重写
-     - 单选数据类型切换
-     - 与详情页保持一致的图表样式
-     - Y 轴刻度 + 虚线参考线
-     - 智能X轴标签
-  4. BodyRecordDao/Repository - 添加 getAllRecordsSync() 方法
-- 结果：代码修改完成，待编译验证
+  1. UserSettingsEntity - 添加 themeMode, themeColor 字段
+  2. HealthTrackerDatabase - 版本升级 4→5，添加 MIGRATION_4_5
+  3. UserSettingsDao - 添加 updateThemeMode(), updateThemeColor(), upsertThemeMode(), upsertThemeColor() 方法
+  4. UserSettingsRepository - 添加主题相关方法
+  5. Color.kt - 添加5种主题颜色（绿/蓝/紫/橙/红）
+  6. Theme.kt - 完全重写，支持多主题和多模式
+  7. MainActivity - 观察主题设置并实时应用
+  8. ThemeSettingsScreen - 新建主题设置界面
+  9. ThemeSettingsViewModel - 新建主题设置 ViewModel
+  10. SettingsScreen - 添加主题设置入口
+- 功能特点：
+  - 主题模式：跟随系统、浅色、深色三种
+  - 主题颜色：绿色、蓝色、紫色、橙色、红色五种
+  - 设置页面有实时预览效果
+  - 完全遵循 Material Design 3
+- 结果：BUILD SUCCESSFUL
 
-================================================================================
-                            食物数据导入格式说明
-================================================================================
+【2026-03-06】功能 #8 优化：拆分摄入记录页面
+- 需求：首页加号进入的页面只显示搜索，点击食物或"添加自定义食物"后再进入详细录入页面
+- 修改内容：
+  1. AddIntakeScreen - 重写为搜索页面（餐次选择 + 搜索框 + 搜索结果 + 按钮）
+  2. CustomFoodInputScreen - 新建详细录入页面
+  3. HealthTrackerNavGraph - 添加带参数导航
+  4. MainScreen - 添加 onNavigateToCustomFood 参数
+- 页面流程：
+  - 首页加号 → 搜索食物页 → 点击食物 → 详细录入页
+  - 首页加号 → 搜索食物页 → 点击"+自定义食物" → 详细录入页
+  - 食物库自定义食物tab FAB → 详细录入页
+- 结果：BUILD SUCCESSFUL
 
-软件支持从 JSON 或 CSV 文件导入食物营养数据，导入入口：设置 → 导入食物数据
+【2026-03-06】功能 #10：食物记录编辑与批量操作
+- 需求：点击修改食物内容，长按删除/编辑/批量选择
+- 修改内容：
+  1. IntakeRecordDao - 添加 deleteRecordsByIds() 批量删除
+  2. IntakeRecordRepository - 添加 deleteRecordsByIds()
+  3. HomeViewModel - 添加 deleteRecord(), deleteRecordsByIds(), updateRecord()
+  4. HomeScreen - 添加点击编辑、长按菜单、批量选择模式
+  5. EditIntakeViewModel - 新建编辑 ViewModel
+  6. EditIntakeScreen - 新建编辑页面
+  7. Screen.kt - 添加 EditIntake 路由
+  8. HealthTrackerNavGraph - 添加编辑页面导航
+- 功能特点：
+  - 点击食物 → 进入编辑页面修改
+  - 长按食物 → 显示菜单（编辑、删除、批量选择）
+  - 批量选择模式 → 全选、批量删除
+  - 删除操作有确认对话框
+- 结果：BUILD SUCCESSFUL
 
-【JSON 格式】
-───────────────────────────────────────────────────────────────────────────────
-{
-  "dataSource": "数据来源说明（可选）",
-  "note": "其他备注信息（可选）",
-  "foods": [
-    {
-      "name": "食物名称",
-      "category": "分类",
-      "calories": 热量数值,
-      "carbohydrates": 碳水化合物数值,
-      "protein": 蛋白质数值,
-      "fat": 脂肪数值,
-      "emoji": "图标"
-    }
-  ]
-}
-───────────────────────────────────────────────────────────────────────────────
+【2026-03-06】功能 #11：修复主题颜色启动闪烁问题
+- 问题：每次进入软件时，主题颜色会先显示默认绿色，然后才切换到用户选择的主题色
+- 根本原因：
+  1. 用户设置是异步从数据库加载的（Flow）
+  2. 在设置加载完成前，themeColorIndex 默认为 0（绿色）
+  3. 加载完成后才切换到用户选择的主题色，造成视觉闪烁
+- 解决方案：
+  1. 添加 AndroidX SplashScreen 库依赖
+  2. 创建 Splash Screen 主题（Theme.HealthTracker.Splash）
+  3. 使用 installSplashScreen() API 保持启动画面直到设置加载完成
+  4. 设置 setKeepOnScreenCondition 等待 settings 不为 null
+- 修改文件：
+  - app/build.gradle.kts - 添加 splashscreen 依赖
+  - res/values/themes.xml - 添加 Splash Screen 主题
+  - AndroidManifest.xml - Activity 使用 Splash 主题
+  - MainActivity.kt - 使用 installSplashScreen() 等待设置加载
+- 结果：BUILD SUCCESSFUL
 
-【JSON 示例】
-───────────────────────────────────────────────────────────────────────────────
-{
-  "dataSource": "USDA FoodData Central",
-  "foods": [
-    {
-      "name": "大米",
-      "category": "主食",
-      "calories": 346,
-      "carbohydrates": 77.2,
-      "protein": 7.4,
-      "fat": 0.8,
-      "emoji": "🍚"
-    },
-    {
-      "name": "鸡肉",
-      "category": "肉类",
-      "calories": 156,
-      "carbohydrates": 0.0,
-      "protein": 23.9,
-      "fat": 6.0,
-      "emoji": "🥩"
-    }
-  ]
-}
-───────────────────────────────────────────────────────────────────────────────
+【2026-03-06】功能 #12：用户资料页面 BMR/TDEE 计算
+- 问题：用户资料页面输入数据后保存，但没有显示计算出的 BMR 和 TDEE 数值
+- 根本原因：
+  1. UserProfileScreen 是静态 UI，没有 ViewModel
+  2. 没有实际保存数据到数据库
+  3. 没有调用 HealthCalculator 计算 BMR/TDEE
+- 解决方案：
+  1. UserSettingsEntity - 添加 age 和 weight 字段
+  2. HealthTrackerDatabase - 版本升级 5→6，添加 MIGRATION_5_6
+  3. UserSettingsDao - 添加 updateUserInfo() 方法
+  4. UserSettingsRepository - 添加 updateUserInfo() 方法
+  5. UserProfileViewModel - 新建 ViewModel 处理数据和计算
+  6. UserProfileScreen - 重写，使用 ViewModel，实时计算并显示结果
+- 功能特点：
+  - 加载时自动填充已保存的数据
+  - 输入身高、体重、年龄时实时计算并预览 BMR/TDEE
+  - 保存时计算并存储 BMR/TDEE 到数据库
+- 结果：BUILD SUCCESSFUL
 
-【CSV 格式】
-───────────────────────────────────────────────────────────────────────────────
-name,category,calories,carbohydrates,protein,fat,emoji
-大米,主食,346,77.2,7.4,0.8,🍚
-鸡肉,肉类,156,0.0,23.9,6.0,🥩
-───────────────────────────────────────────────────────────────────────────────
+【2026-03-06】功能 #12：用户资料页面 BMR/TDEE 计算
+- 问题：用户资料页面输入数据后保存，但没有显示计算出的 BMR 和 TDEE 数值
+- 根本原因：
+  1. UserProfileScreen 是静态 UI，没有 ViewModel
+  2. 没有实际保存数据到数据库
+  3. 没有调用 HealthCalculator 计算 BMR/TDEE
+- 解决方案：
+  1. UserSettingsEntity - 添加 age 和 weight 字段
+  2. HealthTrackerDatabase - 版本升级 5→6，添加 MIGRATION_5_6
+  3. UserSettingsDao - 添加 updateUserInfo() 方法
+  4. UserSettingsRepository - 添加 updateUserInfo() 方法
+  5. UserProfileViewModel - 新建 ViewModel 处理数据和计算
+  6. UserProfileScreen - 重写，使用 ViewModel，实时计算并显示结果
+- 功能特点：
+  - 加载时自动填充已保存的数据
+  - 输入身高、体重、年龄时实时计算并预览 BMR/TDEE
+  - 保存时计算并存储 BMR/TDEE 到数据库
+- 结果：BUILD SUCCESSFUL
 
-【字段说明】
-┌───────────────┬────────┬────────┬──────────────────────────────────────────┐
-│ 字段          │ 类型   │ 必填   │ 说明                                      │
-├───────────────┼────────┼────────┼──────────────────────────────────────────┤
-│ name          │ String │ ✅     │ 食物名称                                  │
-│ category      │ String │ ⭕     │ 分类                                      │
-│ calories      │ Double │ ✅     │ 热量（kcal/100g）                         │
-│ carbohydrates │ Double │ ✅     │ 碳水化合物（g/100g）                       │
-│ protein       │ Double │ ✅     │ 蛋白质（g/100g）                           │
-│ fat           │ Double │ ✅     │ 脂肪（g/100g）                             │
-│ emoji         │ String │ ⭕     │ 食物图标（emoji）                          │
-└───────────────┴────────┴────────┴──────────────────────────────────────────┘
+【2026-03-06】功能 #13：食物库"最近摄入"显示逻辑
+- 问题：食物库的"最近摄入"页面应显示食物库中所有食物（内置+自定义），按最近被记录的顺序排序
+- 根本原因：
+  1. 原实现显示的是 IntakeRecordEntity（摄入记录），而不是 FoodEntity（食物）
+  2. 没有按照"最近被记录的顺序"排序
+- 解决方案：
+  1. IntakeRecordDao - 添加 getFoodLastRecordTimes() 获取每个食物的最近记录时间
+  2. IntakeRecordRepository - 添加对应方法
+  3. FoodLibraryViewModel - 使用 combine 组合所有食物和最近记录时间，按时间排序
+  4. FoodLibraryScreen - 修改 RecentFoodsTab 显示 FoodEntity 列表，支持收藏功能
+- 结果：BUILD SUCCESSFUL
 
-【分类建议】
-┌────────┬────────────────────┬──────────────────────────────────────────────┐
-│ 分类   │ 说明               │ 示例                                         │
-├────────┼────────────────────┼──────────────────────────────────────────────┤
-│ 主食   │ 米面粮薯类         │ 大米、面粉、米饭、面条、馒头、红薯、土豆      │
-│ 肉类   │ 畜禽肉类           │ 猪肉、牛肉、羊肉、鸡肉、鸭肉                  │
-│ 海鲜   │ 鱼虾贝类           │ 草鱼、鲤鱼、虾、螃蟹、扇贝、鱿鱼              │
-│ 蔬菜   │ 各类蔬菜           │ 白菜、菠菜、西红柿、黄瓜、茄子、西兰花        │
-│ 水果   │ 各类水果           │ 苹果、香蕉、橙子、葡萄、西瓜、草莓            │
-│ 蛋奶   │ 蛋类和乳制品       │ 鸡蛋、鸭蛋、牛奶、酸奶、奶酪                  │
-│ 豆类   │ 豆类及豆制品       │ 黄豆、绿豆、豆腐、豆浆、腐竹                  │
-│ 坚果   │ 坚果和种子         │ 花生、核桃、杏仁、腰果、瓜子                  │
-│ 油脂   │ 食用油类           │ 植物油、橄榄油、猪油                          │
-└────────┴────────────────────┴──────────────────────────────────────────────┘
+【2026-03-06】功能 #15：食物管理页面完善
+- 问题：设置页面的"食物管理"应显示所有食物，按名称排序，右侧有字母导航栏
+- 解决方案：
+  1. FoodManagerViewModel - 新建 ViewModel 管理食物数据，支持搜索和首字母分组
+  2. FoodManagerScreen - 重写，添加字母导航栏，按首字母分组显示食物
+  3. 支持搜索、收藏、删除（仅自定义食物可删除）
+  4. FAB 点击跳转到添加自定义食物页面
+- 结果：BUILD SUCCESSFUL
 
-【Emoji 建议】
-同种类食物可使用相同 emoji：
-- 主食 → 🍚 🍜 🍞 🥟 🌾 🍠 🥔 🌽
-- 肉类 → 🥩 🍖 🍗
-- 海鲜 → 🐟 🦐 🦀 🦪 🦑
-- 蔬菜 → 🥬 🥦 🍅 🥒 🍆 🥕 🍄
-- 水果 → 🍎 🍌 🍊 🍇 🍉 🍓
-- 蛋奶 → 🥚 🥛 🧀
-- 豆类 → 🫘
-- 坚果 → 🥜 🌰
-- 油脂 → 🫒 🧈
+【2026-03-06】功能 #14：高刷新率支持
+- 问题：页面滑动时帧率低，显得卡顿
+- 解决方案：
+  1. MainActivity 添加 setHighRefreshRate() 方法
+  2. 获取设备支持的最高刷新率并设置
+  3. 使滑动更流畅
+- 结果：BUILD SUCCESSFUL
 
-【文件编码】
-- JSON 文件：UTF-8 编码
-- CSV 文件：UTF-8 编码
+【2026-03-06】功能 #17：日历页面完善
+- 需求：日历随页面一起滑动、左右滑动切换月份、点击年月弹出选择窗口
+- 修改内容：
+  1. CalendarScreen - 整个页面使用 verticalScroll 一起滑动
+  2. 添加 HorizontalDragGestures 检测左右滑动
+  3. 使用 AnimatedContent 添加月份切换动画
+  4. 简化 MonthYearPickerDialog 使用 ExposedDropdownMenuBox
+  5. 修复滑动方向：从左向右 = 上个月，从右向左 = 下个月
+  6. 移除 enableEdgeToEdge() 修复顶部空白问题
+- 结果：BUILD SUCCESSFUL
 
-【数据来源建议】
-1. 中国食物成分表（国家标准）
-2. USDA FoodData Central（美国农业部）
-3. foodwake.cn（食物派）
-4. fatsecret.cn（FatSecret 中国版）
+【2026-03-06】功能 #18：首页身体数据和睡眠区块底色
+- 需求：身体数据和睡眠两个区块添加主题色浅色底色
+- 修改内容：
+  1. BodyDataCard - 使用 primaryContainer.copy(alpha = 0.5f) 作为背景色
+  2. SleepDataCard - 使用相同的主题色背景
+  3. 添加圆角 RoundedCornerShape(12.dp)
+- 结果：BUILD SUCCESSFUL
 
-================================================================================
-                              2026-03-19 更新
-================================================================================
+【2026-03-06】功能 #21：添加饮食计划搜索食物库
+- 需求：添加饮食计划时可以搜索食物库中的食物，并支持添加自定义食物
+- 修改内容：
+  1. AddMealPlanScreen - 添加 onNavigateToCustomFood 参数
+  2. HealthTrackerNavGraph - 配置导航到自定义食物页面
+  3. "添加自定义食物"按钮现在可以正确跳转到自定义食物输入页面
+- 结果：BUILD SUCCESSFUL
 
-【修复问题】
-1. 🔧 修复首页食物图标与食物库不一致的问题
-   - 移除所有 isEmoji() 检查，直接使用存储的图标值
-   - 修复日历页面、食物库等页面的图标显示
+【2026-03-06】功能 #22：食物自定义 emoji 图标
+- 需求：修改/添加食物时可以自定义食物的 emoji 图标
+- 修改内容：
+  1. FoodEmojiUtils - 新建工具类，包含食物 emoji 列表和默认映射
+  2. EditFoodScreen - 添加 emoji 选择器对话框
+  3. EditFoodViewModel - 支持 icon 参数
+  4. CustomFoodInputScreen - 添加 emoji 选择器（仅在保存到食物库时显示）
+  5. AddIntakeViewModel - saveRecord 支持 icon 参数
+  6. 更新多个文件的 getFoodEmoji 函数优先使用食物自带的 icon
+- 功能特点：
+  - 食物 emoji 按分类组织（主食、肉类、海鲜、蔬菜、水果等）
+  - 自动根据食物名称推断默认 emoji
+  - 保存自定义食物时可选择 emoji 图标
+  - 编辑食物时可更换 emoji 图标
+- 结果：BUILD SUCCESSFUL
 
-2. 🔧 修复页面切换动画效果
-   - 删除页面渐变切换效果，改为硬切换（无动画）
-   - 在 NavHost 设置 EnterTransition.None 和 ExitTransition.None
+【2026-03-06】功能 #23：自定义食物点击编辑
+- 需求：自定义食物页面点击食物可以编辑数据
+- 状态：功能已存在
+  - EditFoodScreen 已存在，支持编辑食物名称、分类、营养数据
+  - 导航已配置，FoodLibraryScreen 的 CustomFoodsTab 点击可跳转编辑
+  - 现在新增了 emoji 图标编辑功能
+- 结果：BUILD SUCCESSFUL
 
-3. 🔧 修复营养素计算四舍五入问题
-   - 使用 kotlin.math.round().toInt() 替代 toInt()
-   - 确保弹窗显示的数值与总量计算一致
-   - 修复首页、日历页面所有数值显示位置
+【2026-03-05】初始设置
+- Git 仓库初始化完成
+- 创建 .gitignore 排除缓存文件
+- 初始提交：78 个文件，4502 行代码
+- 提交 hash：5b0f612
 
-4. 🔧 添加首页日期导航功能
-   - 在顶部日期按钮右侧添加前一天/今天/后一天按钮
-   - 使用 SelectedDateManager 全局状态管理
+【2026-03-05】构建问题修复
+- 问题1：AGP 9.1.0 与 Hilt 2.52 不兼容 → 降级 AGP 到 8.7.3
+- 问题2：缺少 AndroidX 配置 → 添加 android.useAndroidX=true
+- 结果：BUILD SUCCESSFUL
 
-【新增功能】
-1. ✨ 食物信息同步更新历史记录
-   - 编辑食物后自动同步更新所有相关历史记录
-   - 同步更新图标和营养数据
-   - 根据每条记录的 amount 重新计算营养值
+【2026-03-05】闪退问题修复
+- 问题：DatabaseModule 中初始化默认食品数据的逻辑错误
+  - 原代码：foodDao.getAllFoods().toString().isEmpty()
+  - 问题：getAllFoods() 返回 Flow，toString() 永远不为空
+- 解决方案：
+  1. 添加 getFoodCount() 方法到 FoodDao
+  2. 使用 runBlocking 同步检查并初始化数据
+  3. 添加异常处理防止初始化失败导致崩溃
+- 结果：BUILD SUCCESSFUL
 
-【修改文件】
-- HomeScreen.kt - 图标显示、数值四舍五入、日期导航
-- CalendarScreen.kt - 图标显示、数值四舍五入
-- HomeViewModel.kt - 日期导航方法
-- SelectedDateManager.kt - 日期导航方法
-- IntakeRecordDao.kt - 根据 foodId/foodName 查询记录
-- IntakeRecordRepository.kt - syncRecordsWithFood 方法
-- EditFoodViewModel.kt - 自动同步更新逻辑
-================================================================================
-                              2026-04-02 更新
-================================================================================
+【2026-03-05】ClassNotFoundException 修复（重大重构）
+- 问题：Hilt 生成的代码未正确打包，导致 HealthTrackerApplication 类找不到
+- 根本原因：
+  1. 缺少 kotlin-android 插件
+  2. KSP 与 Hilt 的兼容性问题
+  3. JVM target 版本不一致
+- 解决方案：
+  1. 切换从 KSP 到 KAPT 处理 Hilt 注解
+  2. 添加 kotlin-android 和 kotlin-kapt 插件
+  3. 统一 JVM target 为 17
+  4. 添加 material-icons-extended 依赖
+  5. 修复缺失的颜色定义（Color.kt）
+  6. 修复图标引用（FileDownload → Download, FileUpload → Upload）
+  7. 修复导入和包名问题
+- 结果：BUILD SUCCESSFUL
 
-【首页餐次卡片优化】
-1. ✨ 餐次卡片顶部添加碳蛋脂总量显示
-   - 格式：C:xx P:xx F:xx（碳水、蛋白质、脂肪）
-   - 使用 Spacer(weight(1f)) 实现居中布局
-   - 热量和碳蛋脂文字颜色改为主题色
+【2026-03-05】导航结构重构 - 首页与报表同级
+- 问题：报表页是首页的子页面，有返回键，不符合设计要求
+- 解决方案：
+  1. 创建 MainScreen.kt 作为主容器，包含底部导航栏
+  2. 首页和报表页作为同级页面，通过底部导航栏切换
+  3. 移除 HomeScreen 的底部导航栏和 onNavigateToReports 参数
+  4. 移除 ReportsScreen 的返回按钮和 onNavigateBack 参数
+  5. 更新 Screen.kt 添加 Main 路由
+  6. 更新 HealthTrackerNavGraph 使用 MainScreen
+- 结果：BUILD SUCCESSFUL
 
-2. 🔧 修复碳蛋脂计算四舍五入一致性问题
-   - 问题：单个食物四舍五入后相加（6+2+1=9）与总量四舍五入（8）不一致
-   - 原因：先求和再四舍五入 vs 先四舍五入再求和
-   - 解决：餐次卡片和全天总量都改为"先四舍五入再求和"
-   - 修改位置：
-     - HomeScreen.kt：餐次卡片碳蛋脂计算
-     - HomeViewModel.kt：全天总量计算
+【2026-03-05】功能 #2：完善摄入记录页面
+- 需求：记录食物重量、每百克营养数据、名称、备注、单位等
+- 修改内容：
+  1. IntakeRecordEntity - 添加 note, unit, amountInUnit, gramsPerUnit 字段
+  2. IntakeRecordEntity - 添加每百克营养数据字段（caloriesPer100g等）
+  3. IntakeRecordEntity - foodId 改为可空，支持自定义输入
+  4. HealthTrackerDatabase - 版本升级 1→2，添加 Migration
+  5. DatabaseModule - 添加 Migration 支持
+  6. AddIntakeScreen - 完整重写，支持所有输入字段和实时计算
+  7. AddIntakeViewModel - 新建，处理保存逻辑
+- 界面功能：
+  - 餐次选择（早餐/午餐/晚餐/加餐）
+  - 食物名称输入
+  - 重量输入（克/毫升）
+  - 单位选择（个/杯/瓶等）+ 单位换算
+  - 每百克营养数据输入（热量/碳水/蛋白质/脂肪）
+  - 实时计算结果预览
+  - 备注输入
+- 结果：BUILD SUCCESSFUL
 
-【日历热力图优化】
-1. ✨ 增强热力图颜色对比度
-   - 问题：1800kcal 和 2300kcal 颜色深浅差距不明显
-   - 解决：使用非线性映射（平方曲线）增强对比
-   - 公式：alpha = 0.1 + (ratio²) × 0.9
-   - 低热量日期更浅，高热量日期更深
+【2026-03-05】功能 #3：添加食物库页面
+- 需求：添加与首页、报表同层级的食物库页面，显示最近摄入、自定义、收藏食物
+- 修改内容：
+  1. FoodEntity - 添加 isFavorite 字段
+  2. FoodDao - 添加 getCustomFoods(), getFavoriteFoods(), toggleFavorite(), setFavorite() 方法
+  3. IntakeRecordDao - 添加 getRecentRecords() 方法
+  4. FoodRepository - 添加对应方法
+  5. IntakeRecordRepository - 添加 getRecentRecords() 方法
+  6. HealthTrackerDatabase - 版本升级 2→3，添加 MIGRATION_2_3
+  7. DatabaseModule - 添加新 Migration
+  8. FoodLibraryScreen - 新建，包含三个 Tab 页面
+  9. FoodLibraryViewModel - 新建，处理数据和操作
+  10. Screen.kt - 添加 FoodLibrary 路由
+  11. MainScreen.kt - 添加第三个底部导航项
+- 界面功能：
+  - 三个 Tab：最近摄入、自定义食物、收藏食物
+  - 最近摄入：显示最近吃过的食物（去重）
+  - 自定义食物：显示用户添加的食物，可删除、收藏
+  - 收藏食物：显示收藏的食物，可取消收藏
+- 结果：BUILD SUCCESSFUL
 
-【修改文件】
-- HomeScreen.kt - 餐次卡片碳蛋脂显示和计算逻辑
-- HomeViewModel.kt - 全天总量计算逻辑
-- CalendarScreen.kt - 热力图颜色对比度
+【2026-03-05】功能 #4：添加饮食计划页面
+- 需求：添加第四个同级页面，显示所有饮食计划，支持添加单餐/单日/周计划
+- 修改内容：
+  1. MealPlanItemEntity - 移除 foodId 外键约束，改为可空，添加营养数据字段
+  2. HealthTrackerDatabase - 版本升级 3→4，添加 MIGRATION_3_4
+  3. DatabaseModule - 添加新 Migration
+  4. MealPlanScreen - 新建，显示所有饮食计划列表
+  5. MealPlanViewModel - 新建，处理计划和状态
+  6. AddMealPlanScreen - 新建，添加/编辑饮食计划
+  7. AddMealPlanViewModel - 新建，处理添加计划逻辑
+  8. Screen.kt - 添加 MealPlan, AddMealPlan 路由
+  9. MainScreen.kt - 添加第四个底部导航项"计划"
+  10. HealthTrackerNavGraph.kt - 添加 AddMealPlan 导航
+- 界面功能：
+  - 饮食计划列表，可展开查看详情
+  - 计划类型：单餐、单日（三餐）、周计划（每天三餐）
+  - 每个计划可激活/停用、删除
+  - 添加计划时可设置名称、类型，选择餐次和星期
+  - 添加食物对话框支持输入名称、份量、营养数据
+- 结果：BUILD SUCCESSFUL
+
+【2026-03-05】功能 #5：生成测试数据
+- 需求：模拟用户填写方式生成10天测试数据，用于测试报表
+- 修改内容：
+  1. TestDataGenerator - 新建，生成模拟的摄入、身体、睡眠数据
+  2. TestDataViewModel - 新建，处理数据生成逻辑
+  3. SettingsScreen - 添加"生成测试数据"选项和确认对话框
+- 功能特点：
+  - 摄入记录：每天3-5顿，包含常见食物（米饭、鸡蛋、牛奶等15种）
+  - 身体数据：体重轻微波动、体脂率、肌肉量、三围
+  - 睡眠记录：入睡时间21:00-01:00，睡眠时长5-9小时
+  - 所有数据随机化，模拟真实用户行为
+- 操作方式：设置 → 开发者选项 → 生成测试数据
+- 结果：BUILD SUCCESSFUL
+
