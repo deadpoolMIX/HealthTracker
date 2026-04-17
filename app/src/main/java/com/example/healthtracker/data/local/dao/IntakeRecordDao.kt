@@ -98,6 +98,17 @@ interface IntakeRecordDao {
     // 批量更新记录
     @Update
     suspend fun updateRecords(records: List<IntakeRecordEntity>)
+
+    /**
+     * 搜索摄入记录
+     * @param query 食物名称关键词
+     */
+    @Query("""
+        SELECT * FROM intake_records 
+        WHERE foodName LIKE '%' || :query || '%' 
+        ORDER BY date DESC, createdAt DESC
+    """)
+    fun searchRecords(query: String): Flow<List<IntakeRecordEntity>>
 }
 
 /**

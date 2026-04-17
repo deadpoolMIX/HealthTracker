@@ -9,6 +9,7 @@ sealed class Screen(val route: String) {
     object MealPlan : Screen("meal_plan")
     object Reports : Screen("reports")
     object Calendar : Screen("calendar")
+    object Search : Screen("search")
 
     // 报表详情页面
     object NutritionDetail : Screen("nutrition_detail")

@@ -33,9 +33,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.healthtracker.data.local.entity.CycleFoodEntity
 import com.example.healthtracker.data.local.entity.IntakeRecordEntity
+import com.example.healthtracker.ui.components.IntakeRecordItem
+import com.example.healthtracker.ui.components.getMealTypeName
 import com.example.healthtracker.util.DateTimeUtils
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -49,7 +50,8 @@ fun HomeScreen(
     onNavigateToCalendar: () -> Unit = {},
     onNavigateToEditIntake: (Long) -> Unit = {},
     onNavigateToAddCycleFood: () -> Unit = {},
-    onNavigateToEditCycleFood: (Long) -> Unit = {}
+    onNavigateToEditCycleFood: (Long) -> Unit = {},
+    onNavigateToSearch: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var fabExpanded by remember { mutableStateOf(false) }
@@ -62,7 +64,6 @@ fun HomeScreen(
     var showCycleFoodMenu by remember { mutableStateOf<CycleFoodEntity?>(null) }
     var showDeleteCycleFoodDialog by remember { mutableStateOf<CycleFoodEntity?>(null) }
 
-    // 确保每次页面显示时 FAB 选项是收起状态
     DisposableEffect(Unit) {
         fabExpanded = false
         onDispose { }
@@ -73,122 +74,67 @@ fun HomeScreen(
             TopAppBar(
                 title = {
                     if (selectionMode) {
-                        Text(
-                            text = "已选择 ${selectedIds.size} 项",
-                            fontWeight = FontWeight.Medium
-                        )
+                        Text(text = "已选择 ${selectedIds.size} 项", fontWeight = FontWeight.Medium)
                     } else {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // 日期按钮
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Row(
                                 modifier = Modifier.clickable(onClick = onNavigateToCalendar),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = DateTimeUtils.formatDate(uiState.selectedDate),
+                                    text = DateTimeUtils.formatDateShort(uiState.selectedDate),
                                     fontWeight = FontWeight.Medium
                                 )
-                                Icon(
-                                    imageVector = Icons.Default.ExpandMore,
-                                    contentDescription = "查看日历",
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                Icon(Icons.Default.ExpandMore, contentDescription = "日历", modifier = Modifier.size(20.dp))
                             }
-                            // 日期导航按钮
                             Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(
-                                onClick = { viewModel.goToPreviousDay() },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.ChevronLeft,
-                                    contentDescription = "前一天",
-                                    modifier = Modifier.size(20.dp)
-                                )
+                            IconButton(onClick = { viewModel.goToPreviousDay() }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.ChevronLeft, contentDescription = "前一天", modifier = Modifier.size(20.dp))
                             }
-                            IconButton(
-                                onClick = { viewModel.goToToday() },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Circle,
-                                    contentDescription = "今天",
-                                    modifier = Modifier.size(12.dp)
-                                )
+                            IconButton(onClick = { viewModel.goToToday() }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.Circle, contentDescription = "今天", modifier = Modifier.size(12.dp))
                             }
-                            IconButton(
-                                onClick = { viewModel.goToNextDay() },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.ChevronRight,
-                                    contentDescription = "后一天",
-                                    modifier = Modifier.size(20.dp)
-                                )
+                            IconButton(onClick = { viewModel.goToNextDay() }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.ChevronRight, contentDescription = "后一天", modifier = Modifier.size(20.dp))
                             }
                         }
                     }
                 },
                 navigationIcon = {
                     if (selectionMode) {
-                        IconButton(onClick = {
-                            selectionMode = false
-                            selectedIds = emptySet()
-                        }) {
-                            Icon(Icons.Default.Close, contentDescription = "取消选择")
+                        IconButton(onClick = { selectionMode = false; selectedIds = emptySet() }) {
+                            Icon(Icons.Default.Close, contentDescription = "取消")
                         }
                     } else {
-                        IconButton(onClick = onNavigateToUserProfile) {
-                            Icon(
-                                imageVector = Icons.Outlined.AccountCircle,
-                                contentDescription = "用户资料"
-                            )
+                        IconButton(onClick = onNavigateToSettings) {
+                            Icon(Icons.Outlined.Settings, contentDescription = "设置")
                         }
                     }
                 },
                 actions = {
                     if (selectionMode) {
                         IconButton(onClick = {
-                            if (selectedIds.size == uiState.todayIntake.size) {
-                                selectedIds = emptySet()
-                            } else {
-                                selectedIds = uiState.todayIntake.map { it.id }.toSet()
-                            }
+                            selectedIds = if (selectedIds.size == uiState.todayIntake.size) emptySet() else uiState.todayIntake.map { it.id }.toSet()
                         }) {
-                            Icon(
-                                if (selectedIds.size == uiState.todayIntake.size)
-                                    Icons.Default.Deselect
-                                else
-                                    Icons.Default.SelectAll,
-                                contentDescription = "全选"
-                            )
+                            Icon(if (selectedIds.size == uiState.todayIntake.size) Icons.Default.Deselect else Icons.Default.SelectAll, contentDescription = "全选")
                         }
                         IconButton(
                             onClick = {
                                 if (selectedIds.isNotEmpty()) {
                                     viewModel.deleteRecordsByIds(selectedIds.toList())
-                                    selectionMode = false
-                                    selectedIds = emptySet()
+                                    selectionMode = false; selectedIds = emptySet()
                                 }
                             },
                             enabled = selectedIds.isNotEmpty()
                         ) {
-                            Icon(Icons.Default.Delete, contentDescription = "删除选中")
+                            Icon(Icons.Default.Delete, contentDescription = "删除")
                         }
                     } else {
-                        IconButton(onClick = onNavigateToSettings) {
-                            Icon(
-                                imageVector = Icons.Outlined.Settings,
-                                contentDescription = "设置"
-                            )
+                        IconButton(onClick = onNavigateToSearch) {
+                            Icon(Icons.Default.Search, contentDescription = "搜索")
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                }
             )
         },
         floatingActionButton = {
@@ -196,389 +142,119 @@ fun HomeScreen(
                 MultiActionFab(
                     expanded = fabExpanded,
                     onExpandChange = { fabExpanded = it },
-                    onIntakeClick = {
-                        fabExpanded = false
-                        onNavigateToAddIntake()
-                    },
-                    onBodyClick = {
-                        fabExpanded = false
-                        onNavigateToAddBodyData()
-                    },
-                    onSleepClick = {
-                        fabExpanded = false
-                        onNavigateToAddSleep()
-                    },
-                    onCycleFoodClick = {
-                        fabExpanded = false
-                        onNavigateToAddCycleFood()
-                    }
+                    onIntakeClick = { fabExpanded = false; onNavigateToAddIntake() },
+                    onBodyClick = { fabExpanded = false; onNavigateToAddBodyData() },
+                    onSleepClick = { fabExpanded = false; onNavigateToAddSleep() },
+                    onCycleFoodClick = { fabExpanded = false; onNavigateToAddCycleFood() }
                 )
             }
         }
     ) { paddingValues ->
-        // 餐次分组颜色 - 统一使用主题色，比背景浅一点
         val mealCardColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 热量半圆显示
-            item {
-                CalorieArcCard(
-                    consumed = uiState.totalCalories,
-                    target = uiState.targetCalories,
-                    bmr = uiState.bmr,
-                    percentage = uiState.caloriePercentage,
-                    onLongClick = { showTargetCaloriesDialog = true }
-                )
-            }
-
-            // 今日营养素摄入
-            item {
-                NutrientSummaryCard(
-                    carbs = uiState.totalCarbs,
-                    protein = uiState.totalProtein,
-                    fat = uiState.totalFat,
-                    targetCarbs = uiState.targetCarbs,
-                    targetProtein = uiState.targetProtein,
-                    targetFat = uiState.targetFat
-                )
-            }
-
-            // 进行中的周期食物
+            item { CalorieArcCard(uiState.totalCalories, uiState.targetCalories, uiState.bmr, uiState.caloriePercentage, onLongClick = { showTargetCaloriesDialog = true }) }
+            item { NutrientSummaryCard(uiState.totalCarbs, uiState.totalProtein, uiState.totalFat, uiState.targetCarbs, uiState.targetProtein, uiState.targetFat) }
+            
             if (uiState.activeCycleFoods.isNotEmpty()) {
-                item {
-                    Text(
-                        text = "周期食物",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                items(uiState.activeCycleFoods.size) { index ->
-                    val cycleFood = uiState.activeCycleFoods[index]
-
+                item { Text("周期食物", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                items(uiState.activeCycleFoods) { cycleFood ->
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .combinedClickable(
-                                onClick = { },
-                                onLongClick = { showCycleFoodMenu = cycleFood }
-                            ),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-                        )
+                        modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { }, onLongClick = { showCycleFoodMenu = cycleFood }),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f))
                     ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = cycleFood.icon,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(cycleFood.icon, style = MaterialTheme.typography.titleMedium)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = cycleFood.name,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.weight(1f)
-                                )
+                                Text(cycleFood.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                             }
                             Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "剩余: ${String.format("%.0f", cycleFood.remainingCalories)} kcal",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "约 ${cycleFood.getRemainingPortions()} 份",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("剩余: ${cycleFood.remainingCalories.roundToInt()} kcal", style = MaterialTheme.typography.bodySmall)
+                                Text("约 ${cycleFood.getRemainingPortions()} 份", style = MaterialTheme.typography.bodySmall)
                             }
                             Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                OutlinedButton(
-                                    onClick = {
-                                        viewModel.eatCycleFoodPortion(cycleFood)
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("吃一份")
-                                }
-                                Button(
-                                    onClick = {
-                                        viewModel.finishCycleFood(cycleFood)
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("吃完剩余")
-                                }
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = { viewModel.eatCycleFoodPortion(cycleFood) }, modifier = Modifier.weight(1f)) { Text("吃一份") }
+                                Button(onClick = { viewModel.finishCycleFood(cycleFood) }, modifier = Modifier.weight(1f)) { Text("吃完剩余") }
                             }
                         }
                     }
                 }
             }
 
-            // 今日摄入记录
-            item {
-                Text(
-                    text = "今日摄入",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
+            item { Text("今日摄入", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
             if (uiState.todayIntake.isEmpty()) {
                 item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        )
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "暂无摄入记录\n点击右下角 + 添加",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))) {
+                        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                            Text("暂无记录", textAlign = TextAlign.Center)
                         }
                     }
                 }
             } else {
-                // 按餐次分组显示
-                val mealTypes = listOf(0, 1, 2, 3) // 早餐、午餐、晚餐、加餐
-
-                mealTypes.forEach { mealType ->
-                    val recordsForMeal = uiState.todayIntake.filter { it.mealType == mealType }
-                    if (recordsForMeal.isNotEmpty()) {
-                        // 餐次分组卡片
+                listOf(0, 1, 2, 3).forEach { mealType ->
+                    val records = uiState.todayIntake.filter { it.mealType == mealType }
+                    if (records.isNotEmpty()) {
                         item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = mealCardColor
-                                ),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp)
-                                ) {
-                                    // 餐次标题、碳蛋脂和总热量
-                                    val mealCalories = recordsForMeal.sumOf { it.calories }
-                                    // 先四舍五入再求和，与用户手动计算一致
-                                    val mealCarbs = recordsForMeal.sumOf { kotlin.math.round(it.carbohydrates).toInt() }
-                                    val mealProtein = recordsForMeal.sumOf { kotlin.math.round(it.protein).toInt() }
-                                    val mealFat = recordsForMeal.sumOf { kotlin.math.round(it.fat).toInt() }
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = getMealTypeName(mealType),
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
+                            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = mealCardColor)) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(getMealTypeName(mealType), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                         Spacer(modifier = Modifier.weight(1f))
-                                        // 碳蛋脂显示（中间）- 碳水、蛋白质、脂肪顺序
-                                        Text(
-                                            text = "C:$mealCarbs P:$mealProtein F:$mealFat",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        Spacer(modifier = Modifier.weight(1f))
-                                        // 热量显示（右侧）
-                                        Text(
-                                            text = "${kotlin.math.round(mealCalories).toInt()} kcal",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
+                                        Text("C:${records.sumOf { it.carbohydrates.roundToInt() }} P:${records.sumOf { it.protein.roundToInt() }} F:${records.sumOf { it.fat.roundToInt() }}", style = MaterialTheme.typography.bodySmall)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("${records.sumOf { it.calories.roundToInt() }} kcal", fontWeight = FontWeight.Bold)
                                     }
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    // 该餐次的食物列表
-                                    recordsForMeal.forEach { record ->
-                                        MealIntakeItem(
-                                            record = record,
-                                            isSelected = selectedIds.contains(record.id),
-                                            selectionMode = selectionMode,
-                                            onClick = {
-                                                if (selectionMode) {
-                                                    selectedIds = if (selectedIds.contains(record.id)) {
-                                                        selectedIds - record.id
-                                                    } else {
-                                                        selectedIds + record.id
-                                                    }
-                                                } else {
-                                                    showEditIntakeDialog = record
-                                                }
-                                            },
-                                            onLongClick = {
-                                                if (!selectionMode) {
-                                                    showContextMenu = record
-                                                }
-                                            }
-                                        )
-                                        if (record != recordsForMeal.last()) {
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                        }
+                                    records.forEach { record ->
+                                        IntakeRecordItem(record, isSelected = selectedIds.contains(record.id), selectionMode = selectionMode, showMealType = false,
+                                            onClick = { if (selectionMode) selectedIds = if (selectedIds.contains(record.id)) selectedIds - record.id else selectedIds + record.id else showEditIntakeDialog = record },
+                                            onLongClick = { if (!selectionMode) showContextMenu = record })
                                     }
                                 }
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
                 }
             }
 
-            // 今日身体数据
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "今日身体数据",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            item {
-                BodyDataCard(
-                    bodyRecord = uiState.todayBodyRecord,
-                    onClick = onNavigateToAddBodyData
-                )
-            }
-
-            // 今日睡眠
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "今日睡眠",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            item {
-                SleepDataCard(
-                    sleepRecord = uiState.todaySleepRecord,
-                    onClick = onNavigateToAddSleep
-                )
-            }
-
-            // 底部间距
-            item {
-                Spacer(modifier = Modifier.height(80.dp))
-            }
+            item { Text("今日身体数据", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+            item { BodyDataCard(uiState.todayBodyRecord, onClick = onNavigateToAddBodyData) }
+            item { Text("今日睡眠", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+            item { SleepDataCard(uiState.todaySleepRecord, onClick = onNavigateToAddSleep) }
+            item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }
 
-    // 删除确认对话框
-    showDeleteDialog?.let { record ->
+    if (showDeleteDialog != null) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
             title = { Text("删除记录") },
-            text = { Text("确定要删除 \"${record.foodName}\" 吗？") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.deleteRecord(record)
-                        showDeleteDialog = null
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("删除")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = null }) {
-                    Text("取消")
-                }
-            }
+            text = { Text("确定要删除吗？") },
+            confirmButton = { Button(onClick = { viewModel.deleteRecord(showDeleteDialog!!); showDeleteDialog = null }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("删除") } },
+            dismissButton = { TextButton(onClick = { showDeleteDialog = null }) { Text("取消") } }
         )
     }
 
-    // 长按菜单
-    showContextMenu?.let { record ->
+    if (showContextMenu != null) {
+        val record = showContextMenu!!
         AlertDialog(
             onDismissRequest = { showContextMenu = null },
             title = { Text(record.foodName) },
             text = {
                 Column {
-                    TextButton(
-                        onClick = {
-                            showContextMenu = null
-                            onNavigateToEditIntake(record.id)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Edit, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("编辑")
-                    }
-                    TextButton(
-                        onClick = {
-                            showContextMenu = null
-                            showDeleteDialog = record
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("删除")
-                    }
-                    HorizontalDivider()
-                    TextButton(
-                        onClick = {
-                            showContextMenu = null
-                            selectionMode = true
-                            selectedIds = setOf(record.id)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Checklist, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("批量选择")
-                    }
+                    TextButton(onClick = { showContextMenu = null; onNavigateToEditIntake(record.id) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Edit, null); Spacer(Modifier.width(8.dp)); Text("编辑") }
+                    TextButton(onClick = { showContextMenu = null; showDeleteDialog = record }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Icon(Icons.Default.Delete, null); Spacer(Modifier.width(8.dp)); Text("删除") }
+                    TextButton(onClick = { showContextMenu = null; selectionMode = true; selectedIds = setOf(record.id) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Checklist, null); Spacer(Modifier.width(8.dp)); Text("批量选择") }
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { showContextMenu = null }) {
-                    Text("取消")
-                }
-            }
+            confirmButton = { TextButton(onClick = { showContextMenu = null }) { Text("取消") } }
         )
     }
 
-    // 设置目标卡路里对话框
     if (showTargetCaloriesDialog) {
         TargetCaloriesDialog(
             currentTarget = uiState.targetCalories,
@@ -592,1238 +268,236 @@ fun HomeScreen(
             onDismiss = { showTargetCaloriesDialog = false },
             onConfirm = { newTarget, nutrientMode, carbsRatio, proteinRatio, fatRatio, targetCarbs, targetProtein, targetFat ->
                 viewModel.updateTargetCalories(newTarget)
-                viewModel.updateNutrientSettings(
-                    nutrientMode, carbsRatio, proteinRatio, fatRatio,
-                    targetCarbs, targetProtein, targetFat
-                )
+                viewModel.updateNutrientSettings(nutrientMode, carbsRatio, proteinRatio, fatRatio, targetCarbs, targetProtein, targetFat)
                 showTargetCaloriesDialog = false
             }
         )
     }
 
-    // 编辑摄入记录对话框
-    showEditIntakeDialog?.let { record ->
+    if (showEditIntakeDialog != null) {
         EditIntakeDialog(
-            record = record,
+            record = showEditIntakeDialog!!,
             onDismiss = { showEditIntakeDialog = null },
-            onConfirm = { updatedRecord ->
-                viewModel.updateRecord(updatedRecord)
-                showEditIntakeDialog = null
-            }
+            onConfirm = { updatedRecord -> viewModel.updateRecord(updatedRecord); showEditIntakeDialog = null }
         )
     }
 
-    // 周期食物长按菜单
-    showCycleFoodMenu?.let { cycleFood ->
+    if (showCycleFoodMenu != null) {
+        val cycleFood = showCycleFoodMenu!!
         AlertDialog(
             onDismissRequest = { showCycleFoodMenu = null },
             title = { Text(cycleFood.name) },
             text = {
                 Column {
-                    TextButton(
-                        onClick = {
-                            showCycleFoodMenu = null
-                            onNavigateToEditCycleFood(cycleFood.id)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Edit, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("编辑")
-                    }
-                    TextButton(
-                        onClick = {
-                            showCycleFoodMenu = null
-                            showDeleteCycleFoodDialog = cycleFood
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("删除")
-                    }
+                    TextButton(onClick = { showCycleFoodMenu = null; onNavigateToEditCycleFood(cycleFood.id) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Edit, null); Spacer(Modifier.width(8.dp)); Text("编辑") }
+                    TextButton(onClick = { showCycleFoodMenu = null; showDeleteCycleFoodDialog = cycleFood }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Icon(Icons.Default.Delete, null); Spacer(Modifier.width(8.dp)); Text("删除") }
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { showCycleFoodMenu = null }) {
-                    Text("取消")
-                }
-            }
+            confirmButton = { TextButton(onClick = { showCycleFoodMenu = null }) { Text("取消") } }
         )
     }
 
-    // 删除周期食物确认对话框
-    showDeleteCycleFoodDialog?.let { cycleFood ->
+    if (showDeleteCycleFoodDialog != null) {
+        val cycleFood = showDeleteCycleFoodDialog!!
         AlertDialog(
             onDismissRequest = { showDeleteCycleFoodDialog = null },
             title = { Text("删除周期食物") },
-            text = { Text("确定要删除 \"${cycleFood.name}\" 吗？\n此操作不会删除已记录的摄入数据。") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.deleteCycleFood(cycleFood)
-                        showDeleteCycleFoodDialog = null
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("删除")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteCycleFoodDialog = null }) {
-                    Text("取消")
-                }
-            }
+            text = { Text("确定要删除 \"${cycleFood.name}\" 吗？") },
+            confirmButton = { Button(onClick = { viewModel.deleteCycleFood(cycleFood); showDeleteCycleFoodDialog = null }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("删除") } },
+            dismissButton = { TextButton(onClick = { showDeleteCycleFoodDialog = null }) { Text("取消") } }
         )
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CalorieArcCard(
-    consumed: Double,
-    target: Double,
-    bmr: Double,
-    percentage: Int,
-    onLongClick: () -> Unit = {}
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = {},
-                onLongClick = onLongClick
-            ),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "今日可摄入热量",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
+fun CalorieArcCard(consumed: Double, target: Double, bmr: Double, percentage: Int, onLongClick: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth().combinedClickable(onClick = {}, onLongClick = onLongClick), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))) {
+        Column(modifier = Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("今日可摄入热量", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(16.dp))
-
-            // 半圆进度条
-            Box(
-                modifier = Modifier.size(180.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                // 背景弧
-                CircularProgressIndicator(
-                    progress = { 1f },
-                    modifier = Modifier.size(180.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    strokeWidth = 16.dp,
-                    strokeCap = StrokeCap.Round,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-
-                // 进度弧
-                CircularProgressIndicator(
-                    progress = { (percentage / 100f).coerceIn(0f, 1f) },
-                    modifier = Modifier.size(180.dp),
-                    color = if (percentage > 100) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    },
-                    strokeWidth = 16.dp,
-                    strokeCap = StrokeCap.Round,
-                    trackColor = Color.Transparent
-                )
-
-                // 中心文字
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "${consumed.toInt()}",
-                        style = MaterialTheme.typography.displaySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "/ ${target.toInt()} kcal",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            Box(modifier = Modifier.size(180.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(progress = { 1f }, modifier = Modifier.size(180.dp), color = MaterialTheme.colorScheme.surfaceVariant, strokeWidth = 16.dp, strokeCap = StrokeCap.Round)
+                CircularProgressIndicator(progress = { (percentage / 100f).coerceIn(0f, 1f) }, modifier = Modifier.size(180.dp), color = if (percentage > 100) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary, strokeWidth = 16.dp, strokeCap = StrokeCap.Round)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("${consumed.toInt()}", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                    Text("/ ${target.toInt()} kcal", style = MaterialTheme.typography.bodyMedium)
                 }
             }
-
-            // BMR 标记
-            if (bmr > 0 && bmr < target) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "基础代谢: ${bmr.toInt()} kcal",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            // 剩余热量
+            if (bmr > 0 && bmr < target) { Text("基础代谢: ${bmr.toInt()} kcal", style = MaterialTheme.typography.bodySmall) }
             val remaining = target - consumed
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = if (remaining >= 0) "还可摄入 ${remaining.toInt()} kcal" else "已超出 ${(-remaining).toInt()} kcal",
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (remaining >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-            )
+            Text(if (remaining >= 0) "还可摄入 ${remaining.toInt()} kcal" else "已超出 ${(-remaining).toInt()} kcal", color = if (remaining >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
         }
     }
 }
 
 @Composable
-private fun NutrientSummaryCard(
-    carbs: Double,
-    protein: Double,
-    fat: Double,
-    targetCarbs: Double,
-    targetProtein: Double,
-    targetFat: Double
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            NutrientProgressItem(
-                name = "碳水",
-                value = carbs,
-                target = targetCarbs,
-                color = MaterialTheme.colorScheme.primary
-            )
-            NutrientProgressItem(
-                name = "蛋白质",
-                value = protein,
-                target = targetProtein,
-                color = MaterialTheme.colorScheme.secondary
-            )
-            NutrientProgressItem(
-                name = "脂肪",
-                value = fat,
-                target = targetFat,
-                color = MaterialTheme.colorScheme.tertiary
-            )
+fun NutrientSummaryCard(carbs: Double, protein: Double, fat: Double, targetCarbs: Double, targetProtein: Double, targetFat: Double) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            NutrientProgressItem("碳水", carbs, targetCarbs, MaterialTheme.colorScheme.primary)
+            NutrientProgressItem("蛋白质", protein, targetProtein, MaterialTheme.colorScheme.secondary)
+            NutrientProgressItem("脂肪", fat, targetFat, MaterialTheme.colorScheme.tertiary)
         }
     }
 }
 
 @Composable
-private fun NutrientProgressItem(
-    name: String,
-    value: Double,
-    target: Double,
-    color: Color
-) {
+fun NutrientProgressItem(name: String, value: Double, target: Double, color: Color) {
     val progress = if (target > 0) (value / target).coerceIn(0.0, 1.0).toFloat() else 0f
-    val isOverTarget = target > 0 && value > target
-
     Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = if (target > 0) {
-                    "${kotlin.math.round(value).toInt()}/${kotlin.math.round(target).toInt()}g"
-                } else {
-                    "${kotlin.math.round(value).toInt()}g"
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (isOverTarget) MaterialTheme.colorScheme.error else color
-            )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(name, style = MaterialTheme.typography.bodyMedium)
+            Text("${value.roundToInt()}/${target.roundToInt()}g", color = if (value > target) MaterialTheme.colorScheme.error else color)
         }
-        Spacer(modifier = Modifier.height(4.dp))
-        LinearProgressIndicator(
-            progress = { progress },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(RoundedCornerShape(4.dp)),
-            color = if (isOverTarget) MaterialTheme.colorScheme.error else color,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-            strokeCap = StrokeCap.Round
-        )
-    }
-}
-
-/**
- * 餐次分组内的食物项（带食物对应的emoji）
- */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun MealIntakeItem(
-    record: IntakeRecordEntity,
-    isSelected: Boolean = false,
-    selectionMode: Boolean = false,
-    onClick: () -> Unit = {},
-    onLongClick: () -> Unit = {}
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
-        color = if (isSelected)
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-        else
-            MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // 选中复选框或食物图标
-            if (selectionMode) {
-                Checkbox(
-                    checked = isSelected,
-                    onCheckedChange = { onClick() }
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-            } else {
-                // 食物对应的emoji图标
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surface),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = getFoodEmoji(record),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-            }
-
-            // 食物信息
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = record.foodName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "${kotlin.math.round(record.amount).toInt()}g",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            // 热量
-            Text(
-                text = "${kotlin.math.round(record.calories).toInt()} kcal",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun IntakeRecordItem(
-    record: IntakeRecordEntity,
-    isSelected: Boolean = false,
-    selectionMode: Boolean = false,
-    showMealType: Boolean = true,
-    onClick: () -> Unit = {},
-    onLongClick: () -> Unit = {},
-    onSelect: () -> Unit = {}
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected)
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-            else
-                MaterialTheme.colorScheme.surface
-        ),
-        border = if (isSelected)
-            androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-        else
-            null
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // 选中复选框或食物图标
-            if (selectionMode) {
-                Checkbox(
-                    checked = isSelected,
-                    onCheckedChange = { onClick() }
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = getFoodEmoji(record),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-            }
-
-            // 食物信息
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = record.foodName,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                // 只在需要时显示餐次
-                Text(
-                    text = if (showMealType) "${kotlin.math.round(record.amount).toInt()}g · ${getMealTypeName(record.mealType)}" else "${kotlin.math.round(record.amount).toInt()}g",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            // 热量
-            Text(
-                text = "${kotlin.math.round(record.calories).toInt()} kcal",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
+        LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape), color = if (value > target) MaterialTheme.colorScheme.error else color, strokeCap = StrokeCap.Round)
     }
 }
 
 @Composable
-private fun BodyDataCard(
-    bodyRecord: com.example.healthtracker.data.local.entity.BodyRecordEntity?,
-    onClick: () -> Unit
-) {
-    // 使用主题色，比背景浅一点
-    val cardColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = cardColor
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        if (bodyRecord == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "点击添加今日身体数据",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                bodyRecord.weight?.let {
-                    DataItem(label = "体重", value = "${it} kg")
-                }
-                bodyRecord.bodyFatRate?.let {
-                    DataItem(label = "体脂率", value = "${it}%")
-                }
-                bodyRecord.muscleMass?.let {
-                    DataItem(label = "肌肉量", value = "${it} kg")
-                }
+fun BodyDataCard(record: com.example.healthtracker.data.local.entity.BodyRecordEntity?, onClick: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))) {
+        if (record == null) { Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { Text("点击添加身体数据") } }
+        else {
+            Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                DataItem("体重", "${record.weight}kg"); DataItem("体脂", "${record.bodyFatRate}%"); DataItem("肌肉", "${record.muscleMass}kg")
             }
         }
     }
 }
 
 @Composable
-private fun SleepDataCard(
-    sleepRecord: com.example.healthtracker.data.local.entity.SleepRecordEntity?,
-    onClick: () -> Unit
-) {
-    // 使用主题色，比背景浅一点
-    val cardColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = cardColor
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        if (sleepRecord == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "点击添加今日睡眠记录",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                DataItem(
-                    label = "入睡",
-                    value = DateTimeUtils.formatTime(sleepRecord.sleepTime)
-                )
-                DataItem(
-                    label = "起床",
-                    value = DateTimeUtils.formatTime(sleepRecord.wakeTime)
-                )
-                DataItem(
-                    label = "时长",
-                    value = DateTimeUtils.formatDuration(sleepRecord.duration)
-                )
+fun SleepDataCard(record: com.example.healthtracker.data.local.entity.SleepRecordEntity?, onClick: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))) {
+        if (record == null) { Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { Text("点击添加睡眠记录") } }
+        else {
+            Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                DataItem("入睡", DateTimeUtils.formatTime(record.sleepTime)); DataItem("起床", DateTimeUtils.formatTime(record.wakeTime)); DataItem("时长", DateTimeUtils.formatDuration(record.duration))
             }
         }
     }
 }
 
 @Composable
-private fun DataItem(label: String, value: String) {
+fun DataItem(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Text(value, fontWeight = FontWeight.Bold); Text(label, style = MaterialTheme.typography.bodySmall)
     }
 }
 
 @Composable
-private fun MultiActionFab(
-    expanded: Boolean,
-    onExpandChange: (Boolean) -> Unit,
-    onIntakeClick: () -> Unit,
-    onBodyClick: () -> Unit,
-    onSleepClick: () -> Unit,
-    onCycleFoodClick: () -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // 展开的选项
-        AnimatedVisibility(
-            visible = expanded,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
-        ) {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                FabOption(
-                    icon = Icons.Outlined.Restaurant,
-                    label = "摄入",
-                    onClick = onIntakeClick
-                )
-                FabOption(
-                    icon = Icons.Outlined.MonitorWeight,
-                    label = "身体",
-                    onClick = onBodyClick
-                )
-                FabOption(
-                    icon = Icons.Outlined.Bedtime,
-                    label = "睡眠",
-                    onClick = onSleepClick
-                )
-                FabOption(
-                    icon = Icons.Outlined.Schedule,
-                    label = "周期",
-                    onClick = onCycleFoodClick
-                )
+fun MultiActionFab(expanded: Boolean, onExpandChange: (Boolean) -> Unit, onIntakeClick: () -> Unit, onBodyClick: () -> Unit, onSleepClick: () -> Unit, onCycleFoodClick: () -> Unit) {
+    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        AnimatedVisibility(visible = expanded, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                FabOption(Icons.Outlined.Restaurant, "摄入", onIntakeClick)
+                FabOption(Icons.Outlined.MonitorWeight, "身体", onBodyClick)
+                FabOption(Icons.Outlined.Bedtime, "睡眠", onSleepClick)
+                FabOption(Icons.Outlined.Schedule, "周期", onCycleFoodClick)
             }
         }
-
-        // 主 FAB
-        FloatingActionButton(
-            onClick = { onExpandChange(!expanded) },
-            containerColor = MaterialTheme.colorScheme.primary
-        ) {
-            Icon(
-                imageVector = if (expanded) Icons.Default.Close else Icons.Default.Add,
-                contentDescription = if (expanded) "关闭" else "添加"
-            )
-        }
+        FloatingActionButton(onClick = { onExpandChange(!expanded) }) { Icon(if (expanded) Icons.Default.Close else Icons.Default.Add, null) }
     }
 }
 
 @Composable
-private fun FabOption(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            shape = RoundedCornerShape(4.dp)
-        ) {
-            Text(
-                text = label,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                style = MaterialTheme.typography.labelMedium
-            )
-        }
-        FloatingActionButton(
-            onClick = onClick,
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            modifier = Modifier.size(48.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                modifier = Modifier.size(24.dp)
-            )
-        }
+fun FabOption(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(4.dp)) { Text(label, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium) }
+        FloatingActionButton(onClick = onClick, modifier = Modifier.size(48.dp)) { Icon(icon, label, modifier = Modifier.size(24.dp)) }
     }
 }
 
-private fun getMealTypeName(mealType: Int): String {
-    return when (mealType) {
-        0 -> "早餐"
-        1 -> "午餐"
-        2 -> "晚餐"
-        3 -> "加餐"
-        else -> "其他"
-    }
-}
-
-private fun getMealTypeEmoji(mealType: Int): String {
-    return when (mealType) {
-        0 -> "🌅"
-        1 -> "☀️"
-        2 -> "🌙"
-        3 -> "🍎"
-        else -> "🍽️"
-    }
-}
-
-/**
- * 根据摄入记录获取食物图标
- * 优先使用记录中存储的图标，否则根据名称推断
- */
-private fun getFoodEmoji(record: IntakeRecordEntity): String {
-    // 如果记录中有存储的图标且不是空字符串，直接使用
-    if (!record.foodIcon.isNullOrEmpty()) {
-        return record.foodIcon
-    }
-    // 否则根据名称推断
-    return getFoodEmoji(record.foodName)
-}
-
-/**
- * 根据食物名称返回对应的emoji
- */
-private fun getFoodEmoji(name: String): String {
-    return when {
-        name.contains("饭") || name.contains("粥") -> "🍚"
-        name.contains("面") || name.contains("粉") -> "🍜"
-        name.contains("馒头") || name.contains("包子") -> "🥟"
-        name.contains("面包") -> "🍞"
-        name.contains("猪") -> "🥩"
-        name.contains("牛") -> "🥩"
-        name.contains("羊") -> "🍖"
-        name.contains("鸡") || name.contains("鸭") -> "🍗"
-        name.contains("鱼") -> "🐟"
-        name.contains("虾") || name.contains("蟹") -> "🦐"
-        name.contains("蛋") -> "🥚"
-        name.contains("奶") || name.contains("牛奶") -> "🥛"
-        name.contains("豆") || name.contains("豆腐") -> "🫘"
-        name.contains("蔬菜") || name.contains("白菜") || name.contains("青菜") -> "🥬"
-        name.contains("西红柿") || name.contains("番茄") -> "🍅"
-        name.contains("黄瓜") -> "🥒"
-        name.contains("土豆") -> "🥔"
-        name.contains("胡萝卜") -> "🥕"
-        name.contains("苹果") -> "🍎"
-        name.contains("香蕉") -> "🍌"
-        name.contains("橙") || name.contains("橘子") -> "🍊"
-        name.contains("葡萄") -> "🍇"
-        name.contains("草莓") -> "🍓"
-        name.contains("西瓜") -> "🍉"
-        name.contains("水果") -> "🍇"
-        name.contains("油") -> "🫒"
-        name.contains("坚果") || name.contains("花生") || name.contains("核桃") -> "🥜"
-        name.contains("零食") -> "🍪"
-        name.contains("饮料") || name.contains("可乐") || name.contains("汽水") -> "🥤"
-        name.contains("咖啡") -> "☕"
-        name.contains("茶") -> "🍵"
-        name.contains("酒") -> "🍺"
-        name.contains("汤") -> "🥣"
-        name.contains("水") -> "💧"
-        else -> "🍽️"
-    }
-}
-
-/**
- * 设置目标卡路里对话框
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TargetCaloriesDialog(
-    currentTarget: Double,
-    nutrientMode: Int,
-    carbsRatio: Double,
-    proteinRatio: Double,
-    fatRatio: Double,
-    targetCarbs: Double,
-    targetProtein: Double,
-    targetFat: Double,
-    onDismiss: () -> Unit,
-    onConfirm: (
-        targetCalories: Double,
-        nutrientMode: Int,
-        carbsRatio: Double,
-        proteinRatio: Double,
-        fatRatio: Double,
-        targetCarbs: Double?,
-        targetProtein: Double?,
-        targetFat: Double?
-    ) -> Unit
-) {
+fun EditIntakeDialog(record: IntakeRecordEntity, onDismiss: () -> Unit, onConfirm: (IntakeRecordEntity) -> Unit) {
+    var selectedMealType by remember { mutableIntStateOf(record.mealType) }
+    var amountText by remember { mutableStateOf(record.amount.toInt().toString()) }
+    var selectedUnit by remember { mutableStateOf(record.unit ?: "克") }
+    var expandedUnit by remember { mutableStateOf(false) }
+    val mealTypes = listOf("早餐", "午餐", "晚餐", "加餐")
+    val units = listOf("克", "毫升", "个", "杯", "勺", "份", "块", "片", "包", "碗")
+    val amount = amountText.toDoubleOrNull() ?: 0.0
+    val ratio = if (record.amount > 0) amount / record.amount else 1.0
+    val calories = record.calories * ratio
+    val carbs = record.carbohydrates * ratio
+    val protein = record.protein * ratio
+    val fat = record.fat * ratio
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(record.foodName) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    mealTypes.forEachIndexed { index, type ->
+                        FilterChip(selected = selectedMealType == index, onClick = { selectedMealType = index }, label = { Text(type) }, modifier = Modifier.weight(1f))
+                    }
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = amountText, onValueChange = { amountText = it.filter { c -> c.isDigit() } }, label = { Text("数值") }, modifier = Modifier.weight(1f))
+                    ExposedDropdownMenuBox(expanded = expandedUnit, onExpandedChange = { expandedUnit = it }, modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(value = selectedUnit, onValueChange = {}, label = { Text("单位") }, modifier = Modifier.menuAnchor(), readOnly = true, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedUnit) })
+                        ExposedDropdownMenu(expanded = expandedUnit, onDismissRequest = { expandedUnit = false }) {
+                            units.forEach { unit -> DropdownMenuItem(text = { Text(unit) }, onClick = { selectedUnit = unit; expandedUnit = false }) }
+                        }
+                    }
+                }
+                if (amount > 0) {
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f))) {
+                        Row(modifier = Modifier.padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            DataItem("热量", "${calories.roundToInt()}"); DataItem("碳水", "${carbs.roundToInt()}g"); DataItem("蛋白", "${protein.roundToInt()}g"); DataItem("脂肪", "${fat.roundToInt()}g")
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { Button(onClick = { onConfirm(record.copy(mealType = selectedMealType, amount = amount, calories = calories, carbohydrates = carbs, protein = protein, fat = fat, unit = selectedUnit)) }, enabled = amount > 0) { Text("保存") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TargetCaloriesDialog(currentTarget: Double, nutrientMode: Int, carbsRatio: Double, proteinRatio: Double, fatRatio: Double, targetCarbs: Double, targetProtein: Double, targetFat: Double, onDismiss: () -> Unit, onConfirm: (Double, Int, Double, Double, Double, Double?, Double?, Double?) -> Unit) {
     var targetValue by remember { mutableStateOf(currentTarget.toInt().toString()) }
     var currentNutrientMode by remember { mutableIntStateOf(nutrientMode) }
     var currentCarbsRatio by remember { mutableFloatStateOf(carbsRatio.toFloat()) }
     var currentProteinRatio by remember { mutableFloatStateOf(proteinRatio.toFloat()) }
     var currentFatRatio by remember { mutableFloatStateOf(fatRatio.toFloat()) }
-    var currentTargetCarbs by remember { mutableStateOf(if (targetCarbs > 0) targetCarbs.toInt().toString() else "") }
-    var currentTargetProtein by remember { mutableStateOf(if (targetProtein > 0) targetProtein.toInt().toString() else "") }
-    var currentTargetFat by remember { mutableStateOf(if (targetFat > 0) targetFat.toInt().toString() else "") }
-
-    val totalRatio = currentCarbsRatio + currentProteinRatio + currentFatRatio
-
-    // 自动计算营养素目标
-    val calories = targetValue.toDoubleOrNull() ?: 0.0
-    val autoCarbs = (calories * currentCarbsRatio / 100.0) / 4.0
-    val autoProtein = (calories * currentProteinRatio / 100.0) / 4.0
-    val autoFat = (calories * currentFatRatio / 100.0) / 9.0
+    var cCarbs by remember { mutableStateOf(if (targetCarbs > 0) targetCarbs.toInt().toString() else "") }
+    var cProtein by remember { mutableStateOf(if (targetProtein > 0) targetProtein.toInt().toString() else "") }
+    var cFat by remember { mutableStateOf(if (targetFat > 0) targetFat.toInt().toString() else "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("设置每日目标") },
         text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // 目标热量输入
-                Text(
-                    text = "目标热量",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                OutlinedTextField(
-                    value = targetValue,
-                    onValueChange = { targetValue = it.filter { c -> c.isDigit() } },
-                    suffix = { Text("kcal") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                HorizontalDivider()
-
-                // 模式切换
-                Text(
-                    text = "营养素目标",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    FilterChip(
-                        selected = currentNutrientMode == 0,
-                        onClick = { currentNutrientMode = 0 },
-                        label = { Text("自动计算") }
-                    )
-                    FilterChip(
-                        selected = currentNutrientMode == 1,
-                        onClick = { currentNutrientMode = 1 },
-                        label = { Text("手动设置") }
-                    )
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                OutlinedTextField(value = targetValue, onValueChange = { targetValue = it.filter { c -> c.isDigit() } }, label = { Text("目标热量") }, suffix = { Text("kcal") }, modifier = Modifier.fillMaxWidth())
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    FilterChip(selected = currentNutrientMode == 0, onClick = { currentNutrientMode = 0 }, label = { Text("自动") })
+                    FilterChip(selected = currentNutrientMode == 1, onClick = { currentNutrientMode = 1 }, label = { Text("手动") })
                 }
-
                 if (currentNutrientMode == 0) {
-                    // 自动计算模式 - 滑块
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // 碳水
-                        Column {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("碳水", style = MaterialTheme.typography.bodyMedium)
-                                Text("${currentCarbsRatio.toInt()}%", style = MaterialTheme.typography.bodyMedium)
-                            }
-                            Slider(
-                                value = currentCarbsRatio,
-                                onValueChange = { currentCarbsRatio = it },
-                                valueRange = 0f..100f,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Text(
-                                "目标: ${autoCarbs.toInt()}g",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        // 蛋白质
-                        Column {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("蛋白质", style = MaterialTheme.typography.bodyMedium)
-                                Text("${currentProteinRatio.toInt()}%", style = MaterialTheme.typography.bodyMedium)
-                            }
-                            Slider(
-                                value = currentProteinRatio,
-                                onValueChange = { currentProteinRatio = it },
-                                valueRange = 0f..100f,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Text(
-                                "目标: ${autoProtein.toInt()}g",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        // 脂肪
-                        Column {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("脂肪", style = MaterialTheme.typography.bodyMedium)
-                                Text("${currentFatRatio.toInt()}%", style = MaterialTheme.typography.bodyMedium)
-                            }
-                            Slider(
-                                value = currentFatRatio,
-                                onValueChange = { currentFatRatio = it },
-                                valueRange = 0f..100f,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Text(
-                                "目标: ${autoFat.toInt()}g",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        // 比例总和提示
-                        if (totalRatio != 100f) {
-                            Text(
-                                "比例总和: ${totalRatio.toInt()}%（建议100%）",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("碳水 ${currentCarbsRatio.toInt()}%"); Slider(value = currentCarbsRatio, onValueChange = { currentCarbsRatio = it }, valueRange = 0f..100f)
+                        Text("蛋白 ${currentProteinRatio.toInt()}%"); Slider(value = currentProteinRatio, onValueChange = { currentProteinRatio = it }, valueRange = 0f..100f)
+                        Text("脂肪 ${currentFatRatio.toInt()}%"); Slider(value = currentFatRatio, onValueChange = { currentFatRatio = it }, valueRange = 0f..100f)
                     }
                 } else {
-                    // 手动模式 - 输入框
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = currentTargetCarbs,
-                            onValueChange = { currentTargetCarbs = it.filter { c -> c.isDigit() } },
-                            label = { Text("目标碳水") },
-                            suffix = { Text("g") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        OutlinedTextField(
-                            value = currentTargetProtein,
-                            onValueChange = { currentTargetProtein = it.filter { c -> c.isDigit() } },
-                            label = { Text("目标蛋白质") },
-                            suffix = { Text("g") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        OutlinedTextField(
-                            value = currentTargetFat,
-                            onValueChange = { currentTargetFat = it.filter { c -> c.isDigit() } },
-                            label = { Text("目标脂肪") },
-                            suffix = { Text("g") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(value = cCarbs, onValueChange = { cCarbs = it.filter { c -> c.isDigit() } }, label = { Text("目标碳水(g)") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = cProtein, onValueChange = { cProtein = it.filter { c -> c.isDigit() } }, label = { Text("目标蛋白(g)") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = cFat, onValueChange = { cFat = it.filter { c -> c.isDigit() } }, label = { Text("目标脂肪(g)") }, modifier = Modifier.fillMaxWidth())
                     }
                 }
             }
         },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val target = targetValue.toDoubleOrNull()
-                    if (target != null && target > 0) {
-                        if (currentNutrientMode == 0) {
-                            // 自动模式
-                            onConfirm(
-                                target,
-                                currentNutrientMode,
-                                currentCarbsRatio.toDouble(),
-                                currentProteinRatio.toDouble(),
-                                currentFatRatio.toDouble(),
-                                null, null, null
-                            )
-                        } else {
-                            // 手动模式
-                            onConfirm(
-                                target,
-                                currentNutrientMode,
-                                currentCarbsRatio.toDouble(),
-                                currentProteinRatio.toDouble(),
-                                currentFatRatio.toDouble(),
-                                currentTargetCarbs.toDoubleOrNull(),
-                                currentTargetProtein.toDoubleOrNull(),
-                                currentTargetFat.toDoubleOrNull()
-                            )
-                        }
-                    }
-                }
-            ) {
-                Text("确定")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
-        }
+        confirmButton = { Button(onClick = { onConfirm(targetValue.toDoubleOrNull() ?: currentTarget, currentNutrientMode, currentCarbsRatio.toDouble(), currentProteinRatio.toDouble(), currentFatRatio.toDouble(), cCarbs.toDoubleOrNull(), cProtein.toDoubleOrNull(), cFat.toDoubleOrNull()) }) { Text("确定") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
     )
 }
 
-/**
- * 编辑摄入记录对话框
- * 显示餐次、数值、单位，允许修改
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun EditIntakeDialog(
-    record: IntakeRecordEntity,
-    onDismiss: () -> Unit,
-    onConfirm: (IntakeRecordEntity) -> Unit
-) {
-    var selectedMealType by remember { mutableIntStateOf(record.mealType) }
-    var amountText by remember { mutableStateOf(record.amount.toInt().toString()) }
-    var selectedUnit by remember { mutableStateOf(record.unit ?: "克") }
-    var expandedUnit by remember { mutableStateOf(false) }
-
-    val mealTypes = listOf("早餐", "午餐", "晚餐", "加餐")
-    val units = listOf("克", "毫升", "个", "杯", "勺", "份", "块", "片", "包", "碗")
-
-    // 计算营养值 - 使用数据库中存储的值或根据 per100g 字段计算
-    val amount = amountText.toDoubleOrNull() ?: 0.0
-    val originalAmount = record.amount
-
-    // 营养值计算：如果数量没变，直接用存储的值；如果变了，按比例计算
-    val calories: Double
-    val carbs: Double
-    val protein: Double
-    val fat: Double
-
-    if (amount == originalAmount) {
-        // 数量没变，直接使用数据库中存储的营养值（这是最准确的）
-        calories = record.calories
-        carbs = record.carbohydrates
-        protein = record.protein
-        fat = record.fat
-    } else if (originalAmount > 0) {
-        // 数量变了，按比例计算
-        val ratio = amount / originalAmount
-        calories = record.calories * ratio
-        carbs = record.carbohydrates * ratio
-        protein = record.protein * ratio
-        fat = record.fat * ratio
-    } else {
-        // 原始数量为0的异常情况，使用 per100g 字段计算
-        calories = if (record.caloriesPer100g > 0) (amount / 100.0) * record.caloriesPer100g else record.calories
-        carbs = if (record.carbsPer100g > 0) (amount / 100.0) * record.carbsPer100g else record.carbohydrates
-        protein = if (record.proteinPer100g > 0) (amount / 100.0) * record.proteinPer100g else record.protein
-        fat = if (record.fatPer100g > 0) (amount / 100.0) * record.fatPer100g else record.fat
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = getFoodEmoji(record), fontSize = 16.sp)
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(record.foodName, fontWeight = FontWeight.Medium)
-            }
-        },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // 餐次选择
-                Text(
-                    text = "餐次",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                // 使用固定宽度确保所有选项等高等宽，且在同一行
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
-                ) {
-                    mealTypes.forEachIndexed { index, type ->
-                        FilterChip(
-                            selected = selectedMealType == index,
-                            onClick = { selectedMealType = index },
-                            label = {
-                                Text(
-                                    type,
-                                    maxLines = 1,
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-
-                // 数值和单位输入
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // 数值输入框
-                    OutlinedTextField(
-                        value = amountText,
-                        onValueChange = { amountText = it.filter { c -> c.isDigit() } },
-                        label = { Text("数值") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-
-                    // 单位选择框
-                    ExposedDropdownMenuBox(
-                        expanded = expandedUnit,
-                        onExpandedChange = { expandedUnit = it },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        OutlinedTextField(
-                            value = selectedUnit,
-                            onValueChange = {},
-                            label = { Text("单位") },
-                            modifier = Modifier.menuAnchor(),
-                            singleLine = true,
-                            readOnly = true,
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedUnit)
-                            }
-                        )
-                        ExposedDropdownMenu(
-                            expanded = expandedUnit,
-                            onDismissRequest = { expandedUnit = false }
-                        ) {
-                            units.forEach { unit ->
-                                DropdownMenuItem(
-                                    text = { Text(unit) },
-                                    onClick = {
-                                        selectedUnit = unit
-                                        expandedUnit = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // 营养预览
-                if (amount > 0) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp)
-                        ) {
-                            Text(
-                                text = "营养预览",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("${kotlin.math.round(calories).toInt()}", fontWeight = FontWeight.Bold)
-                                    Text("热量", style = MaterialTheme.typography.labelSmall)
-                                }
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("${kotlin.math.round(carbs).toInt()}g", fontWeight = FontWeight.Bold)
-                                    Text("碳水", style = MaterialTheme.typography.labelSmall)
-                                }
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("${kotlin.math.round(protein).toInt()}g", fontWeight = FontWeight.Bold)
-                                    Text("蛋白质", style = MaterialTheme.typography.labelSmall)
-                                }
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("${kotlin.math.round(fat).toInt()}g", fontWeight = FontWeight.Bold)
-                                    Text("脂肪", style = MaterialTheme.typography.labelSmall)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    // 保持 per100g 字段不变（如果已有值），否则根据新值计算
-                    val newCaloriesPer100g = if (record.caloriesPer100g > 0) {
-                        record.caloriesPer100g
-                    } else if (amount > 0) {
-                        calories / (amount / 100.0)
-                    } else {
-                        record.caloriesPer100g
-                    }
-
-                    val newCarbsPer100g = if (record.carbsPer100g > 0) {
-                        record.carbsPer100g
-                    } else if (amount > 0) {
-                        carbs / (amount / 100.0)
-                    } else {
-                        record.carbsPer100g
-                    }
-
-                    val newProteinPer100g = if (record.proteinPer100g > 0) {
-                        record.proteinPer100g
-                    } else if (amount > 0) {
-                        protein / (amount / 100.0)
-                    } else {
-                        record.proteinPer100g
-                    }
-
-                    val newFatPer100g = if (record.fatPer100g > 0) {
-                        record.fatPer100g
-                    } else if (amount > 0) {
-                        fat / (amount / 100.0)
-                    } else {
-                        record.fatPer100g
-                    }
-
-                    val updatedRecord = record.copy(
-                        mealType = selectedMealType,
-                        amount = amount,
-                        calories = calories,
-                        carbohydrates = carbs,
-                        protein = protein,
-                        fat = fat,
-                        unit = selectedUnit,
-                        caloriesPer100g = newCaloriesPer100g,
-                        carbsPer100g = newCarbsPer100g,
-                        proteinPer100g = newProteinPer100g,
-                        fatPer100g = newFatPer100g
-                    )
-                    onConfirm(updatedRecord)
-                },
-                enabled = amount > 0
-            ) {
-                Text("保存")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
-        }
-    )
+private fun getFoodEmoji(record: IntakeRecordEntity): String {
+    return record.foodIcon ?: "🍴"
 }

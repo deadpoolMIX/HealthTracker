@@ -75,6 +75,17 @@ fun HealthTrackerNavGraph(
                 onNavigateToAddCycleFood = { navController.navigate(Screen.AddCycleFood.route) },
                 onNavigateToEditCycleFood = { cycleFoodId ->
                     navController.navigate("edit_cycle_food/$cycleFoodId")
+                },
+                onNavigateToSearch = { navController.navigate(Screen.Search.route) }
+            )
+        }
+
+        // 搜索页面
+        composable(Screen.Search.route) {
+            com.example.healthtracker.ui.screens.home.SearchScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEditIntake = { recordId ->
+                    navController.navigate("edit_intake/$recordId")
                 }
             )
         }

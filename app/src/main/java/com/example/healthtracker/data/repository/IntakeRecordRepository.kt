@@ -68,6 +68,9 @@ class IntakeRecordRepository @Inject constructor(
     suspend fun getRecordsByFoodName(foodName: String): List<IntakeRecordEntity> =
         intakeRecordDao.getRecordsByFoodName(foodName)
 
+    fun searchRecords(query: String): Flow<List<IntakeRecordEntity>> =
+        intakeRecordDao.searchRecords(query)
+
     /**
      * 同步更新所有使用该食物的历史记录
      * @param food 更新后的食物数据
