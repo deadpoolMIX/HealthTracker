@@ -1,5 +1,6 @@
 package com.example.healthtracker.ui.screens.food
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,6 +15,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,6 +37,18 @@ fun FoodLibraryScreen(
     val filteredCustomFoods by viewModel.filteredCustomFoods.collectAsState()
 
     val tabs = listOf("最近摄入", "自定义食物")
+    
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(uiState.isSearching) {
+        if (uiState.isSearching) {
+            focusRequester.requestFocus()
+        }
+    }
+
+    BackHandler(enabled = uiState.isSearching) {
+        viewModel.closeSearch()
+    }
 
     Scaffold(
         topBar = {
@@ -44,7 +59,9 @@ fun FoodLibraryScreen(
                             value = uiState.searchQuery,
                             onValueChange = { viewModel.setSearchQuery(it) },
                             placeholder = { Text("搜索食物...") },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequester),
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = Color.Transparent,
