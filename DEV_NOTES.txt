@@ -1450,3 +1450,10 @@ Token 使用量：15.7m（模型：glm-5）
 - 操作方式：设置 → 开发者选项 → 生成测试数据
 - 结果：BUILD SUCCESSFUL
 
+【2026-04-17】修复界面显示问题
+- 修复内容：
+  1. 首页食物记录编辑弹窗（`EditIntakeDialog`）：清理旧数据的单位字段，使用正则过滤前置数值，只显示纯单位名。
+  2. 添加食物弹窗（`AddIntakeScreen` 与 `AddMealPlanScreen`）：修改确认回调，确保只存入单位名称（如"克"），不再存入数值拼接的单位名称。
+  3. 搜索页面筛选弹窗（`SearchFilterDialog`）：移除餐次选项的 `weight(1f)` 并改为 `Arrangement.SpaceEvenly` 分布，解决内容拥挤导致的换行问题。
+- 结果：BUILD FAILED (由于未配置JAVA_HOME，构建依赖失败，但UI修改已完成)
+

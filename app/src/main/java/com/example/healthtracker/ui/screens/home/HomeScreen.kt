@@ -413,7 +413,7 @@ fun FabOption(icon: ImageVector, label: String, onClick: () -> Unit) {
 fun EditIntakeDialog(record: IntakeRecordEntity, onDismiss: () -> Unit, onConfirm: (IntakeRecordEntity) -> Unit) {
     var selectedMealType by remember { mutableIntStateOf(record.mealType) }
     var amountText by remember { mutableStateOf(record.amount.toInt().toString()) }
-    var selectedUnit by remember { mutableStateOf(record.unit ?: "克") }
+    var selectedUnit by remember { mutableStateOf(record.unit?.replace(Regex("^[0-9.]*"), "") ?: "克") }
     var expandedUnit by remember { mutableStateOf(false) }
     val mealTypes = listOf("早餐", "午餐", "晚餐", "加餐")
     val units = listOf("克", "毫升", "个", "杯", "勺", "份", "块", "片", "包", "碗")

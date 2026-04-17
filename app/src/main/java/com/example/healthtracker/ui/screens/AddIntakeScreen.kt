@@ -651,7 +651,7 @@ private fun AddFoodDialog(
                                 amountError = "请输入有效数值"
                             } else {
                                 // 返回实际克数
-                                onConfirm(grams, "$amount${currentUnit}")
+                                onConfirm(grams, currentUnit)
                             }
                         },
                         modifier = Modifier.weight(1f)

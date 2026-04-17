@@ -611,7 +611,7 @@ private fun AddMealPlanFoodDialog(
                             if (amount <= 0) {
                                 amountError = "请输入有效数值"
                             } else {
-                                onConfirm(grams, "$amount${currentUnit}")
+                                onConfirm(grams, currentUnit)
                             }
                         },
                         modifier = Modifier.weight(1f)

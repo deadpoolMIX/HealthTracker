@@ -193,14 +193,13 @@ fun SearchFilterDialog(
                 Text("餐次", style = MaterialTheme.typography.titleSmall)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     mealTypes.forEachIndexed { index, name ->
                         FilterChip(
                             selected = selectedMealTypes.contains(index),
                             onClick = { viewModel.toggleMealType(index) },
-                            label = { Text(name) },
-                            modifier = Modifier.weight(1f)
+                            label = { Text(name) }
                         )
                     }
                 }
