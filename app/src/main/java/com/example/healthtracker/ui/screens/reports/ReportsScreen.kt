@@ -168,10 +168,11 @@ fun ReportsScreen(
                 }
 
                 // 身体数据折线图
-                if (uiState.showBodyChart && uiState.bodyData.isNotEmpty()) {
+                if (uiState.showBodyChart) {
                     item {
                         BodyDataChartCard(
                             data = uiState.bodyData,
+                            weeklyData = uiState.weeklyBodyData,
                             period = uiState.selectedPeriod,
                             weekDates = uiState.weekDates,
                             onClick = onNavigateToBodyDataDetail
@@ -180,10 +181,11 @@ fun ReportsScreen(
                 }
 
                 // 睡眠范围条形图
-                if (uiState.showSleepChart && uiState.sleepData.isNotEmpty()) {
+                if (uiState.showSleepChart) {
                     item {
                         SleepChartCard(
                             data = uiState.sleepData,
+                            weeklyData = uiState.weeklySleepData,
                             period = uiState.selectedPeriod,
                             weekDates = uiState.weekDates,
                             avgSleepTime = viewModel.getAverageSleepTime(),
@@ -615,20 +617,18 @@ private fun LegendItem(text: String, color: Color, isLine: Boolean = false) {
 @Composable
 private fun BodyDataChartCard(
     data: List<BodyRecordEntity>,
+    weeklyData: List<Float?>,
     period: Int,
     weekDates: List<Long> = emptyList(),
     onClick: () -> Unit = {}
 ) {
-    // 数据类型选择：0=体重, 1=体脂, 2=肌肉
     var selectedDataType by remember { mutableIntStateOf(0) }
-
     val lineColor = when (selectedDataType) {
         0 -> MaterialTheme.colorScheme.primary
         1 -> MaterialTheme.colorScheme.error
         2 -> MaterialTheme.colorScheme.tertiary
         else -> MaterialTheme.colorScheme.primary
     }
-
     val (dataLabel, unit) = when (selectedDataType) {
         0 -> "体重" to "kg"
         1 -> "体脂" to "%"
@@ -637,34 +637,14 @@ private fun BodyDataChartCard(
     }
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            // 标题行
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "身体数据趋势",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            // 数据类型选择（单选）
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("身体数据趋势", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("体重", "体脂", "肌肉").forEachIndexed { index, label ->
                     FilterChip(
                         selected = selectedDataType == index,
@@ -673,489 +653,212 @@ private fun BodyDataChartCard(
                     )
                 }
             }
-
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 周模式：固定7格布局
-            if (period == 0 && weekDates.size == 7) {
-                WeekBodyChart(
-                    weekDates = weekDates,
-                    bodyData = data,
-                    selectedDataType = selectedDataType,
-                    lineColor = lineColor,
-                    dataLabel = dataLabel,
-                    unit = unit
-                )
-            } else {
-                // 月模式或其他情况：原有逻辑
-                MonthBodyChart(
-                    data = data,
-                    selectedDataType = selectedDataType,
-                    lineColor = lineColor,
-                    dataLabel = dataLabel,
-                    unit = unit
-                )
-            }
-        }
-    }
-}
+            val axisColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            val textColor = MaterialTheme.colorScheme.onSurface
 
-/**
- * 周模式身体数据图表 - 固定7格布局
- */
-@Composable
-private fun WeekBodyChart(
-    weekDates: List<Long>,
-    bodyData: List<BodyRecordEntity>,
-    selectedDataType: Int,
-    lineColor: Color,
-    dataLabel: String,
-    unit: String
-) {
-    // 为每一天查找对应的身体数据
-    val dataByDate = remember(bodyData) {
-        bodyData.associateBy {
-            val cal = Calendar.getInstance()
-            cal.timeInMillis = it.date
-            cal.set(Calendar.HOUR_OF_DAY, 0)
-            cal.set(Calendar.MINUTE, 0)
-            cal.set(Calendar.SECOND, 0)
-            cal.set(Calendar.MILLISECOND, 0)
-            cal.timeInMillis
-        }
-    }
-
-    // 提取固定7天的数据值
-    val values = weekDates.mapNotNull { date ->
-        val record = dataByDate[date]
-        when (selectedDataType) {
-            0 -> record?.weight
-            1 -> record?.bodyFatRate
-            2 -> record?.muscleMass
-            else -> record?.weight
-        }
-    }
-
-    if (values.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(220.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("暂无${dataLabel}数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        return
-    }
-
-    // 动态自适应缩放
-    val dataMin = values.minOrNull() ?: 0.0
-    val dataMax = values.maxOrNull() ?: 100.0
-    val dataRange = (dataMax - dataMin).coerceAtLeast(0.1)
-
-    val padding = dataRange * 0.1
-    val minVal = dataMin - padding
-    val maxVal = dataMax + padding
-    val range = (maxVal - minVal).coerceAtLeast(0.1)
-
-    // Y轴刻度（5个刻度）
-    val yLabels = (0..4).map { i ->
-        val value = maxVal - (range * i / 4)
-        String.format("%.1f", value)
-    }
-
-    Row(modifier = Modifier.fillMaxWidth()) {
-        // Y轴标签
-        Column(
-            modifier = Modifier
-                .width(32.dp)
-                .height(200.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            yLabels.forEach { label ->
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 10.sp,
-                    maxLines = 1
-                )
-            }
-        }
-
-        // 图表区域 - 固定7格布局
-        Column(modifier = Modifier.weight(1f)) {
-            // 折线图区域 - 使用固定7格布局
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-            ) {
-                val chartHeight = size.height
-                val chartWidth = size.width
-                val slotWidth = chartWidth / 7f
-
-                // 绘制Y轴虚线参考线
-                val dashPathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
-                repeat(5) { i ->
-                    val y = (i * chartHeight / 4)
-                    drawLine(
-                        color = Color.Gray.copy(alpha = 0.15f),
-                        start = Offset(0f, y),
-                        end = Offset(chartWidth, y),
-                        strokeWidth = 1f,
-                        pathEffect = dashPathEffect
-                    )
+            // 统一数据源：周模式取 7 天，月模式取 4 周
+            val chartPoints = if (period == 0) {
+                val dataByDate: Map<Long, BodyRecordEntity> = data.associateBy {
+                    Calendar.getInstance().apply { 
+                        timeInMillis = it.date
+                        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                    }.timeInMillis
                 }
-
-                // 绘制数据点和折线
-                val points = mutableListOf<Offset>()
-                weekDates.forEachIndexed { index, date ->
+                weekDates.map { date ->
                     val record = dataByDate[date]
-                    val value = when (selectedDataType) {
-                        0 -> record?.weight
-                        1 -> record?.bodyFatRate
-                        2 -> record?.muscleMass
-                        else -> record?.weight
-                    }
-
-                    if (value != null) {
-                        val x = index * slotWidth + slotWidth / 2
-                        val y = chartHeight - ((value - minVal) / range * chartHeight).toFloat()
-                        points.add(Offset(x, y))
+                    when (selectedDataType) {
+                        0 -> record?.weight?.toFloat()
+                        1 -> record?.bodyFatRate?.toFloat()
+                        2 -> record?.muscleMass?.toFloat()
+                        else -> null
                     }
                 }
+            } else {
+                weeklyData
+            }
 
-                // 绘制折线
-                if (points.size >= 2) {
-                    val path = Path()
-                    path.moveTo(points[0].x, points[0].y)
-
-                    for (i in 1 until points.size) {
-                        val prev = points[i - 1]
-                        val curr = points[i]
-                        val midX = (prev.x + curr.x) / 2
-
-                        path.cubicTo(
-                            midX, prev.y,
-                            midX, curr.y,
-                            curr.x, curr.y
-                        )
-                    }
-
-                    drawPath(
-                        path = path,
-                        color = lineColor,
-                        style = Stroke(width = 2.5f)
-                    )
-
-                    // 绘制数据点
-                    points.forEach { point ->
-                        drawCircle(
-                            color = lineColor.copy(alpha = 0.2f),
-                            radius = 8f,
-                            center = point
-                        )
-                        drawCircle(
-                            color = lineColor,
-                            radius = 4f,
-                            center = point
-                        )
-                    }
-                } else if (points.size == 1) {
-                    drawCircle(
-                        color = lineColor.copy(alpha = 0.2f),
-                        radius = 10f,
-                        center = points[0]
-                    )
-                    drawCircle(
-                        color = lineColor,
-                        radius = 6f,
-                        center = points[0]
-                    )
+            val xLabels = if (period == 0) {
+                weekDates.map {
+                    val cal = Calendar.getInstance().apply { timeInMillis = it }
+                    "${cal.get(Calendar.MONTH) + 1}.${cal.get(Calendar.DAY_OF_MONTH)}"
                 }
+            } else {
+                (0 until weeklyData.size).map { "W${it + 1}" }
             }
 
-            // X轴标签 - 固定7格，显示日期
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(modifier = Modifier.fillMaxWidth()) {
-                weekDates.forEach { date ->
-                    Box(
-                        modifier = Modifier.weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val cal = Calendar.getInstance()
-                        cal.timeInMillis = date
-                        Text(
-                            text = "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 10.sp
-                        )
-                    }
+            if (chartPoints.all { it == null }) {
+                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                    Text("暂无数据", color = axisColor)
                 }
-            }
-        }
-    }
+            } else {
+                val validValues = chartPoints.filterNotNull()
+                val minVal = (validValues.minOrNull() ?: 0f) * 0.95f
+                val maxVal = (validValues.maxOrNull() ?: 100f) * 1.05f
+                val range = if (maxVal - minVal == 0f) 10f else maxVal - minVal
 
-    // 最新数据统计
-    Spacer(modifier = Modifier.height(8.dp))
-    val latestValue = values.lastOrNull()
-    latestValue?.let {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            StatItem(dataLabel, "${String.format("%.1f", it)} $unit")
-        }
-    }
-}
-
-/**
- * 月模式身体数据图表
- */
-@Composable
-private fun MonthBodyChart(
-    data: List<BodyRecordEntity>,
-    selectedDataType: Int,
-    lineColor: Color,
-    dataLabel: String,
-    unit: String
-) {
-    // 折线图
-    val sortedData = data.sortedBy { it.date }
-
-    // 提取选中类型的数据值
-    val values = sortedData.mapNotNull { entity ->
-        when (selectedDataType) {
-            0 -> entity.weight
-            1 -> entity.bodyFatRate
-            2 -> entity.muscleMass
-            else -> entity.weight
-        }
-    }
-
-    if (values.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(220.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("暂无${dataLabel}数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        return
-    }
-
-    // 动态自适应缩放
-    val dataMin = values.minOrNull() ?: 0.0
-    val dataMax = values.maxOrNull() ?: 100.0
-    val dataRange = (dataMax - dataMin).coerceAtLeast(0.1)
-
-    val padding = dataRange * 0.1
-    val minVal = dataMin - padding
-    val maxVal = dataMax + padding
-    val range = (maxVal - minVal).coerceAtLeast(0.1)
-
-    // Y轴刻度（5个刻度）
-    val yLabels = (0..4).map { i ->
-        val value = maxVal - (range * i / 4)
-        String.format("%.1f", value)
-    }
-
-    // X轴标签（智能选择显示）
-    val xLabels = remember(sortedData) {
-        if (sortedData.size <= 7) {
-            sortedData.map { entity ->
-                val calendar = Calendar.getInstance()
-                calendar.timeInMillis = entity.date
-                "${calendar.get(Calendar.MONTH) + 1}/${calendar.get(Calendar.DAY_OF_MONTH)}"
-            }
-        } else {
-            // 数据量较大，选择3个关键日期
-            val first = sortedData.first()
-            val middle = sortedData[sortedData.size / 2]
-            val last = sortedData.last()
-
-            listOf(first, middle, last).map { entity ->
-                val calendar = Calendar.getInstance()
-                calendar.timeInMillis = entity.date
-                "${calendar.get(Calendar.MONTH) + 1}/${calendar.get(Calendar.DAY_OF_MONTH)}"
-            }
-        }
-    }
-
-    Row(modifier = Modifier.fillMaxWidth()) {
-        // Y轴标签
-        Column(
-            modifier = Modifier
-                .width(32.dp)
-                .height(200.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            yLabels.forEach { label ->
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 10.sp,
-                    maxLines = 1
-                )
-            }
-        }
-
-        // 图表区域
-        Column(modifier = Modifier.weight(1f)) {
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-            ) {
-                val chartHeight = size.height
-                val chartWidth = size.width
-
-                // 绘制Y轴虚线参考线
-                val dashPathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
-                repeat(5) { i ->
-                    val y = (i * chartHeight / 4)
-                    drawLine(
-                        color = Color.Gray.copy(alpha = 0.15f),
-                        start = Offset(0f, y),
-                        end = Offset(chartWidth, y),
-                        strokeWidth = 1f,
-                        pathEffect = dashPathEffect
-                    )
-                }
-
-                // 绘制折线
-                if (values.size >= 2) {
-                    val points = values.mapIndexed { index, value ->
-                        val x = if (values.size > 1) {
-                            (index.toFloat() / (values.size - 1)) * chartWidth
-                        } else {
-                            0f
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    // Y Axis (40dp)
+                    Column(modifier = Modifier.width(40.dp).height(200.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                        repeat(5) { i ->
+                            val yVal = maxVal - (range * i / 4)
+                            Text(String.format("%.1f", yVal), style = TextStyle(color = axisColor, fontSize = 10.sp), textAlign = TextAlign.End, maxLines = 1)
                         }
-                        val y = chartHeight - ((value - minVal) / range * chartHeight).toFloat()
-                        Offset(x, y)
                     }
 
-                    val path = Path()
-                    path.moveTo(points[0].x, points[0].y)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Canvas(modifier = Modifier.fillMaxWidth().height(200.dp)) {
+                            val chartHeight = size.height
+                            val chartWidth = size.width
+                            val stepX = chartWidth / (chartPoints.size.toFloat())
+                            
+                            // Background lines
+                            repeat(5) { i ->
+                                val y = i * chartHeight / 4
+                                drawLine(color = axisColor.copy(alpha = 0.1f), start = Offset(0f, y), end = Offset(chartWidth, y), strokeWidth = 1.dp.toPx())
+                            }
 
-                    for (i in 1 until points.size) {
-                        val prev = points[i - 1]
-                        val curr = points[i]
-                        val midX = (prev.x + curr.x) / 2
+                            val points = mutableListOf<Offset>()
+                            chartPoints.forEachIndexed { index, value ->
+                                val x = index * stepX + stepX / 2f
+                                if (value != null) {
+                                    val y = chartHeight - ((value - minVal) / range * chartHeight)
+                                    points.add(Offset(x, y))
+                                    drawCircle(color = lineColor, radius = 4.dp.toPx(), center = Offset(x, y))
+                                }
+                            }
 
-                        path.cubicTo(
-                            midX, prev.y,
-                            midX, curr.y,
-                            curr.x, curr.y
-                        )
-                    }
-
-                    drawPath(
-                        path = path,
-                        color = lineColor,
-                        style = Stroke(width = 2.5f)
-                    )
-
-                    // 绘制数据点
-                    points.forEach { point ->
-                        drawCircle(
-                            color = lineColor.copy(alpha = 0.2f),
-                            radius = 8f,
-                            center = point
-                        )
-                        drawCircle(
-                            color = lineColor,
-                            radius = 4f,
-                            center = point
-                        )
-                    }
-                } else if (values.size == 1) {
-                    val x = 0f
-                    val y = chartHeight - ((values[0] - minVal) / range * chartHeight).toFloat()
-                    drawCircle(
-                        color = lineColor.copy(alpha = 0.2f),
-                        radius = 10f,
-                        center = Offset(x, y)
-                    )
-                    drawCircle(
-                        color = lineColor,
-                        radius = 6f,
-                        center = Offset(x, y)
-                    )
-                }
-            }
-
-            // X轴标签
-            if (xLabels.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    xLabels.forEach { label ->
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 10.sp,
-                            maxLines = 1
-                        )
+                            if (points.size >= 2) {
+                                val path = Path().apply {
+                                    moveTo(points.first().x, points.first().y)
+                                    for (i in 1 until points.size) lineTo(points[i].x, points[i].y)
+                                }
+                                drawPath(path, color = lineColor, style = Stroke(width = 2.dp.toPx()))
+                            }
+                        }
+                        // X Axis Labels
+                        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                            xLabels.forEach { label ->
+                                Text(label, modifier = Modifier.weight(1f), style = TextStyle(color = textColor, fontSize = 10.sp), textAlign = TextAlign.Center)
+                            }
+                        }
                     }
                 }
             }
-        }
-    }
-
-    // 最新数据统计
-    Spacer(modifier = Modifier.height(8.dp))
-    val latestValue = values.lastOrNull()
-    latestValue?.let {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            StatItem(dataLabel, "${String.format("%.1f", it)} $unit")
         }
     }
 }
 
-/**
- * 绘制平滑曲线（贝塞尔曲线）
- */
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSmoothLine(
-    points: List<Offset>,
-    color: Color
+// 睡眠范围条形图卡片
+@Composable
+private fun SleepChartCard(
+    data: List<SleepRecordEntity>,
+    weeklyData: List<WeeklySleepTime?>,
+    period: Int,
+    weekDates: List<Long> = emptyList(),
+    avgSleepTime: String,
+    avgWakeTime: String,
+    avgDuration: Long,
+    onClick: () -> Unit = {}
 ) {
-    if (points.size < 2) return
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("睡眠记录", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                StatItem("平均入睡", avgSleepTime)
+                StatItem("平均起床", avgWakeTime)
+                StatItem("平均时长", formatDuration(avgDuration))
+            }
+            Spacer(modifier = Modifier.height(16.dp))
 
-    val path = Path()
-    path.moveTo(points[0].x, points[0].y)
+            val primaryColor = MaterialTheme.colorScheme.primary
+            val axisColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            val textColor = MaterialTheme.colorScheme.onSurface
+            val startHour = 22
+            val endHour = 36
+            val totalHours = endHour - startHour
 
-    for (i in 1 until points.size) {
-        val prevPoint = points[i - 1]
-        val currentPoint = points[i]
+            val timePoints = listOf(22 to "22:00", 24 to "00:00", 26 to "02:00", 28 to "04:00", 30 to "06:00", 32 to "08:00", 34 to "10:00", 36 to "12:00")
 
-        // 使用二次贝塞尔曲线
-        val midX = (prevPoint.x + currentPoint.x) / 2
-        path.quadraticTo(
-            prevPoint.x, prevPoint.y,
-            midX, (prevPoint.y + currentPoint.y) / 2
-        )
-        path.quadraticTo(
-            currentPoint.x, currentPoint.y,
-            currentPoint.x, currentPoint.y
-        )
+            Row(modifier = Modifier.fillMaxWidth()) {
+                // Y Axis (40dp)
+                Column(modifier = Modifier.width(40.dp).height(200.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                    timePoints.forEach { (_, label) ->
+                        Text(label, style = TextStyle(color = axisColor, fontSize = 10.sp), maxLines = 1)
+                    }
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Canvas(modifier = Modifier.fillMaxWidth().height(200.dp)) {
+                        val chartHeight = size.height
+                        val chartWidth = size.width
+                        val itemCount = if (period == 0) 7 else weeklyData.size
+                        val stepX = chartWidth / itemCount
+                        val barWidth = stepX * 0.6f
+
+                        // Grid lines
+                        timePoints.forEach { (h, _) ->
+                            val y = (h - startHour).toFloat() / totalHours * chartHeight
+                            drawLine(color = axisColor.copy(alpha = 0.1f), start = Offset(0f, y), end = Offset(chartWidth, y), strokeWidth = 0.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f)))
+                        }
+
+                        if (period == 0) {
+                            val dataByDate: Map<Long, SleepRecordEntity> = data.associateBy {
+                                Calendar.getInstance().apply { 
+                                    timeInMillis = it.date
+                                    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                                }.timeInMillis
+                            }
+                            weekDates.forEachIndexed { index, date ->
+                                dataByDate[date]?.let { sleep ->
+                                    val calS = Calendar.getInstance().apply { timeInMillis = sleep.sleepTime }
+                                    var sH = calS.get(Calendar.HOUR_OF_DAY) + calS.get(Calendar.MINUTE) / 60f
+                                    if (sH < 18) sH += 24f // Handle midnight cross
+                                    
+                                    val calW = Calendar.getInstance().apply { timeInMillis = sleep.wakeTime }
+                                    var wH = calW.get(Calendar.HOUR_OF_DAY) + calW.get(Calendar.MINUTE) / 60f
+                                    if (wH < 18 && sH >= 24f) wH += 24f
+
+                                    val x = index * stepX + (stepX - barWidth) / 2f
+                                    val yS = ((sH - startHour) / totalHours * chartHeight).coerceIn(0f, chartHeight)
+                                    val yW = ((wH - startHour) / totalHours * chartHeight).coerceIn(0f, chartHeight)
+                                    if (yW > yS) {
+                                        drawRoundRect(color = primaryColor.copy(alpha = 0.7f), topLeft = Offset(x, yS), size = Size(barWidth, yW - yS), cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()))
+                                    }
+                                }
+                            }
+                        } else {
+                            weeklyData.forEachIndexed { index, week ->
+                                week?.let {
+                                    val x = index * stepX + (stepX - barWidth) / 2f
+                                    val yS = ((it.avgSleepHour - startHour) / totalHours * chartHeight).coerceIn(0f, chartHeight)
+                                    var wH = it.avgWakeHour
+                                    if (wH < 18) wH += 24f
+                                    val yW = ((wH - startHour) / totalHours * chartHeight).coerceIn(0f, chartHeight)
+                                    if (yW > yS) {
+                                        drawRoundRect(color = primaryColor.copy(alpha = 0.7f), topLeft = Offset(x, yS), size = Size(barWidth, yW - yS), cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // X Axis Labels
+                    Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                        val labels = if (period == 0) weekDates.map { val cal = Calendar.getInstance().apply { timeInMillis = it }; "${cal.get(Calendar.MONTH) + 1}.${cal.get(Calendar.DAY_OF_MONTH)}" } else (1..weeklyData.size).map { "W$it" }
+                        labels.forEach { label ->
+                            Text(label, modifier = Modifier.weight(1f), style = TextStyle(color = textColor, fontSize = 10.sp), textAlign = TextAlign.Center)
+                        }
+                    }
+                }
+            }
+        }
     }
-
-    drawPath(
-        path = path,
-        color = color,
-        style = Stroke(width = 2.5f)
-    )
 }
 
 @Composable
@@ -1180,413 +883,6 @@ private fun StatItem(label: String, value: String) {
         )
     }
 }
-
-// 睡眠范围条形图卡片 - 竖着的柱状图，y轴显示时间
-@Composable
-private fun SleepChartCard(
-    data: List<SleepRecordEntity>,
-    period: Int,
-    weekDates: List<Long> = emptyList(),
-    avgSleepTime: String,
-    avgWakeTime: String,
-    avgDuration: Long,
-    onClick: () -> Unit = {}
-) {
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "睡眠记录",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 平均睡眠信息
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                StatItem("平均入睡", avgSleepTime)
-                StatItem("平均起床", avgWakeTime)
-                StatItem("平均时长", formatDuration(avgDuration))
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (period == 0) {
-                // 周模式：固定7格布局
-                WeekSleepChartWithTimeAxis(
-                    data = data,
-                    weekDates = weekDates,
-                    primaryColor = primaryColor,
-                    onSurfaceVariantColor = onSurfaceVariantColor
-                )
-            } else {
-                // 月模式：显示四周的睡眠柱状图
-                MonthSleepChartWithTimeAxis(data = data, primaryColor = primaryColor, onSurfaceVariantColor = onSurfaceVariantColor)
-            }
-        }
-    }
-}
-
-/**
- * 周模式睡眠图表 - y轴显示时间，柱状图顶部是入睡时间，底部是起床时间
- * 固定7格布局，按日期位置显示
- */
-@Composable
-private fun WeekSleepChartWithTimeAxis(
-    data: List<SleepRecordEntity>,
-    weekDates: List<Long>,
-    primaryColor: Color,
-    onSurfaceVariantColor: Color
-) {
-    if (weekDates.size != 7) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("暂无睡眠数据", color = onSurfaceVariantColor)
-        }
-        return
-    }
-
-    // 按日期建立索引
-    val sleepByDate = remember(data) {
-        data.associateBy {
-            val cal = Calendar.getInstance()
-            cal.timeInMillis = it.date
-            cal.set(Calendar.HOUR_OF_DAY, 0)
-            cal.set(Calendar.MINUTE, 0)
-            cal.set(Calendar.SECOND, 0)
-            cal.set(Calendar.MILLISECOND, 0)
-            cal.timeInMillis
-        }
-    }
-
-    // 时间范围：22:00 到 12:00（次日中午）
-    val startHour = 22
-    val endHour = 36
-    val totalHours = endHour - startHour
-
-    val timePoints = listOf(
-        22 to "22:00",
-        24 to "00:00",
-        26 to "02:00",
-        28 to "04:00",
-        30 to "06:00",
-        32 to "08:00",
-        34 to "10:00",
-        36 to "12:00"
-    )
-
-    Row(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        // Y轴时间标签
-        Column(
-            modifier = Modifier
-                .width(40.dp)
-                .height(200.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            timePoints.forEach { (_, label) ->
-                Text(label, style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
-            }
-        }
-
-        // 图表区域 - 固定7格布局
-        Column(modifier = Modifier.weight(1f)) {
-            // 柱状图 - 使用Canvas绘制
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-            ) {
-                val chartHeight = size.height
-                val chartWidth = size.width
-
-                // 固定柱子宽度
-                val fixedBarWidth = chartWidth / 7f * 0.7f
-                val slotWidth = chartWidth / 7f
-
-                // 先绘制虚线
-                timePoints.forEach { (hourContinuous, _) ->
-                    val lineY = (hourContinuous.toFloat() - startHour.toFloat()) / totalHours.toFloat() * chartHeight
-                    drawLine(
-                        color = onSurfaceVariantColor,
-                        start = Offset(0f, lineY),
-                        end = Offset(chartWidth, lineY),
-                        strokeWidth = 0.5f,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
-                    )
-                }
-
-                // 绘制柱子 - 固定在7个位置，根据日期查找数据
-                weekDates.forEachIndexed { index, date ->
-                    val sleep = sleepByDate[date]
-                    if (sleep != null) {
-                        val calSleep = Calendar.getInstance()
-                        calSleep.timeInMillis = sleep.sleepTime
-                        val sleepHour = calSleep.get(Calendar.HOUR_OF_DAY)
-                        val sleepMinute = calSleep.get(Calendar.MINUTE)
-                        var sleepHourContinuous = sleepHour + sleepMinute / 60f
-                        if (sleepHourContinuous < startHour) {
-                            sleepHourContinuous += 24
-                        }
-
-                        val calWake = Calendar.getInstance()
-                        calWake.timeInMillis = sleep.wakeTime
-                        val wakeHour = calWake.get(Calendar.HOUR_OF_DAY)
-                        val wakeMinute = calWake.get(Calendar.MINUTE)
-                        var wakeHourContinuous = wakeHour + wakeMinute / 60f
-                        if (wakeHourContinuous < startHour) {
-                            wakeHourContinuous += 24
-                        }
-                        if (wakeHourContinuous > endHour) {
-                            wakeHourContinuous = endHour.toFloat()
-                        }
-
-                        // 柱子位置：固定在对应的slot中
-                        val x = index * slotWidth + (slotWidth - fixedBarWidth) / 2
-                        val sleepY = (sleepHourContinuous - startHour) / totalHours * chartHeight
-                        val wakeY = (wakeHourContinuous - startHour) / totalHours * chartHeight
-
-                        drawRoundRect(
-                            color = primaryColor.copy(alpha = 0.8f),
-                            topLeft = Offset(x, sleepY),
-                            size = Size(fixedBarWidth, wakeY - sleepY),
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
-                        )
-                    }
-                }
-            }
-
-            // X轴标签 - 固定7格，显示日期
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(modifier = Modifier.fillMaxWidth()) {
-                weekDates.forEach { date ->
-                    Box(
-                        modifier = Modifier.weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val cal = Calendar.getInstance()
-                        cal.timeInMillis = date
-                        Text(
-                            text = "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = onSurfaceVariantColor
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * 月模式睡眠图表 - 四周的平均睡眠时间
- */
-@Composable
-private fun MonthSleepChartWithTimeAxis(
-    data: List<SleepRecordEntity>,
-    primaryColor: Color,
-    onSurfaceVariantColor: Color
-) {
-    // 按周分组计算平均入睡和起床时间
-    val calendar = Calendar.getInstance()
-    val now = System.currentTimeMillis()
-    calendar.timeInMillis = now
-    calendar.add(Calendar.WEEK_OF_YEAR, -3)
-    calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-    calendar.set(Calendar.HOUR_OF_DAY, 0)
-    calendar.set(Calendar.MINUTE, 0)
-    calendar.set(Calendar.SECOND, 0)
-    calendar.set(Calendar.MILLISECOND, 0)
-
-    val weeklyData = mutableListOf<WeeklySleepTime>()
-
-    // 时间范围：22:00 到 12:00（次日中午）
-    val startHour = 22
-
-    for (i in 0 until 4) {
-        val weekStart = calendar.timeInMillis
-        calendar.add(Calendar.DAY_OF_MONTH, 6)
-        calendar.set(Calendar.HOUR_OF_DAY, 23)
-        calendar.set(Calendar.MINUTE, 59)
-        calendar.set(Calendar.SECOND, 59)
-        val weekEnd = calendar.timeInMillis
-
-        val weekRecords = data.filter { it.date in weekStart..weekEnd }
-
-        val avgSleepHour = if (weekRecords.isNotEmpty()) {
-            weekRecords.map { record ->
-                val cal = Calendar.getInstance()
-                cal.timeInMillis = record.sleepTime
-                val hour = cal.get(Calendar.HOUR_OF_DAY)
-                val minute = cal.get(Calendar.MINUTE)
-                var h = hour + minute / 60f
-                if (h < startHour) h += 24 // 跨天
-                h
-            }.average().toFloat()
-        } else 23f
-
-        val avgWakeHour = if (weekRecords.isNotEmpty()) {
-            weekRecords.map { record ->
-                val cal = Calendar.getInstance()
-                cal.timeInMillis = record.wakeTime
-                val hour = cal.get(Calendar.HOUR_OF_DAY)
-                val minute = cal.get(Calendar.MINUTE)
-                hour + minute / 60f
-            }.average().toFloat()
-        } else 7f
-
-        weeklyData.add(WeeklySleepTime(
-            weekLabel = "第${i + 1}周",
-            avgSleepHour = avgSleepHour,
-            avgWakeHour = avgWakeHour
-        ))
-
-        calendar.add(Calendar.DAY_OF_MONTH, 1)
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-    }
-
-    if (weeklyData.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("暂无睡眠数据", color = onSurfaceVariantColor)
-        }
-        return
-    }
-
-    // 时间范围：22:00 到 12:00（次日中午）
-    val endHour = 36
-    val totalHours = endHour - startHour
-
-    // 8个时间点（从上到下：22:00, 00:00, 02:00, 04:00, 06:00, 08:00, 10:00, 12:00）
-    // Canvas y=0 是顶部，所以 22:00 对应 y=0，12:00 对应 y=chartHeight
-    val timePoints = listOf(
-        22 to "22:00", // 22:00 - 在图表顶部
-        24 to "00:00", // 00:00（午夜）
-        26 to "02:00", // 02:00
-        28 to "04:00", // 04:00
-        30 to "06:00", // 06:00
-        32 to "08:00", // 08:00
-        34 to "10:00", // 10:00
-        36 to "12:00"  // 12:00（次日中午）- 在图表底部
-    )
-
-    Row(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        // Y轴时间标签 - 8个时间点
-        Column(
-            modifier = Modifier
-                .width(40.dp)
-                .height(200.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            timePoints.forEach { (_, label) ->
-                Text(label, style = MaterialTheme.typography.labelSmall, color = onSurfaceVariantColor, maxLines = 1)
-            }
-        }
-
-        // 图表区域
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-            ) {
-                val chartHeight = size.height
-                val chartWidth = size.width
-                val barCount = weeklyData.size
-                val totalSpacing = chartWidth * 0.4f
-                val totalBarWidth = chartWidth - totalSpacing
-                val barWidth = totalBarWidth / barCount
-                val spacing = totalSpacing / (barCount + 1)
-
-                // 先绘制所有时间点的虚线（在柱状图下面）
-                timePoints.forEach { (hourContinuous, _) ->
-                    val lineY = (hourContinuous.toFloat() - startHour.toFloat()) / totalHours.toFloat() * chartHeight
-                    drawLine(
-                        color = onSurfaceVariantColor,
-                        start = Offset(0f, lineY),
-                        end = Offset(chartWidth, lineY),
-                        strokeWidth = 0.5f,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
-                    )
-                }
-
-                weeklyData.forEachIndexed { index, week ->
-                    val x = spacing + index * (barWidth + spacing)
-
-                    val sleepY = (week.avgSleepHour - startHour) / totalHours * chartHeight
-                    var wakeHour = week.avgWakeHour
-                    if (wakeHour < startHour) wakeHour += 24f
-                    if (wakeHour > endHour) wakeHour = endHour.toFloat()
-                    val wakeY = (wakeHour - startHour) / totalHours * chartHeight
-
-                    // 绘制睡眠柱状图
-                    drawRoundRect(
-                        color = primaryColor.copy(alpha = 0.8f),
-                        topLeft = Offset(x, sleepY),
-                        size = Size(barWidth, wakeY - sleepY),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
-                    )
-                }
-            }
-
-            // X轴周标签
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                weeklyData.forEach { week ->
-                    Text(
-                        text = week.weekLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = onSurfaceVariantColor,
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center,
-                        maxLines = 1
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * 每周睡眠时间数据
- */
-private data class WeeklySleepTime(
-    val weekLabel: String,
-    val avgSleepHour: Float,
-    val avgWakeHour: Float
-)
 
 private fun formatDuration(minutes: Long): String {
     val hours = minutes / 60

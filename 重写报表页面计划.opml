@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>重写报表页面计划</title>
+  </head>
+  <body>
+    <outline text="报表页面" _mubu_text="%3Cspan%3E%E6%8A%A5%E8%A1%A8%E9%A1%B5%E9%9D%A2%3C/span%3E" _note="" _mubu_note="">
+      <outline text="显示摄入、身体、睡眠三个区块" _mubu_text="%3Cspan%3E%E6%98%BE%E7%A4%BA%E6%91%84%E5%85%A5%E3%80%81%E8%BA%AB%E4%BD%93%E3%80%81%E7%9D%A1%E7%9C%A0%E4%B8%89%E4%B8%AA%E5%8C%BA%E5%9D%97%3C/span%3E" _note="" _mubu_note=""/>
+      <outline text="睡眠区块和睡眠子页面不要改变，保持原样" _mubu_text="%3Cspan%3E%E7%9D%A1%E7%9C%A0%E5%8C%BA%E5%9D%97%E5%92%8C%E7%9D%A1%E7%9C%A0%E5%AD%90%E9%A1%B5%E9%9D%A2%E4%B8%8D%E8%A6%81%E6%94%B9%E5%8F%98%EF%BC%8C%E4%BF%9D%E6%8C%81%E5%8E%9F%E6%A0%B7%3C/span%3E" _note="" _mubu_note=""/>
+      <outline text="点击区块后进入对应子页面" _mubu_text="%3Cspan%3E%E7%82%B9%E5%87%BB%E5%8C%BA%E5%9D%97%E5%90%8E%E8%BF%9B%E5%85%A5%E5%AF%B9%E5%BA%94%E5%AD%90%E9%A1%B5%E9%9D%A2%3C/span%3E" _note="" _mubu_note=""/>
+      <outline text="每个区块显示一个简易的图表，该简易图表随子页面的实际图表同步" _mubu_text="%3Cspan%3E%E6%AF%8F%E4%B8%AA%E5%8C%BA%E5%9D%97%E6%98%BE%E7%A4%BA%E4%B8%80%E4%B8%AA%E7%AE%80%E6%98%93%E7%9A%84%E5%9B%BE%E8%A1%A8%EF%BC%8C%E8%AF%A5%E7%AE%80%E6%98%93%E5%9B%BE%E8%A1%A8%E9%9A%8F%E5%AD%90%E9%A1%B5%E9%9D%A2%E7%9A%84%E5%AE%9E%E9%99%85%E5%9B%BE%E8%A1%A8%E5%90%8C%E6%AD%A5%3C/span%3E" _note="" _mubu_note=""/>
+    </outline>
+    <outline text="区块子页面" _mubu_text="%3Cspan%3E%E5%8C%BA%E5%9D%97%E5%AD%90%E9%A1%B5%E9%9D%A2%3C/span%3E" _note="" _mubu_note="">
+      <outline text="摄入子页面" _mubu_text="%3Cspan%3E%E6%91%84%E5%85%A5%E5%AD%90%E9%A1%B5%E9%9D%A2%3C/span%3E" _note="" _mubu_note="">
+        <outline text="计数规则" _mubu_text="%3Cspan%3E%E8%AE%A1%E6%95%B0%E8%A7%84%E5%88%99%3C/span%3E" _note="" _mubu_note="">
+          <outline text="从一年的1号开始，每七天为一周，周次递增（例如：第x周）" _mubu_text="%3Cspan%3E%E4%BB%8E%E4%B8%80%E5%B9%B4%E7%9A%841%E5%8F%B7%E5%BC%80%E5%A7%8B%EF%BC%8C%E6%AF%8F%E4%B8%83%E5%A4%A9%E4%B8%BA%E4%B8%80%E5%91%A8%EF%BC%8C%E5%91%A8%E6%AC%A1%E9%80%92%E5%A2%9E%EF%BC%88%E4%BE%8B%E5%A6%82%EF%BC%9A%E7%AC%ACx%E5%91%A8%EF%BC%89%3C/span%3E" _note="" _mubu_note=""/>
+        </outline>
+        <outline text="显示" _mubu_text="%3Cspan%3E%E6%98%BE%E7%A4%BA%3C/span%3E" _note="" _mubu_note="">
+          <outline text="一次显示一周七天的数据" _mubu_text="%3Cspan%3E%E4%B8%80%E6%AC%A1%E6%98%BE%E7%A4%BA%E4%B8%80%E5%91%A8%E4%B8%83%E5%A4%A9%E7%9A%84%E6%95%B0%E6%8D%AE%3C/span%3E" _note="" _mubu_note=""/>
+        </outline>
+        <outline text="图表（柱状图）" _mubu_text="%3Cspan%3E%E5%9B%BE%E8%A1%A8%EF%BC%88%E6%9F%B1%E7%8A%B6%E5%9B%BE%EF%BC%89%3C/span%3E" _note="" _mubu_note="">
+          <outline text="显示一周七天七根柱状图" _mubu_text="%3Cspan%3E%E6%98%BE%E7%A4%BA%E4%B8%80%E5%91%A8%E4%B8%83%E5%A4%A9%E4%B8%83%E6%A0%B9%E6%9F%B1%E7%8A%B6%E5%9B%BE%3C/span%3E" _note="" _mubu_note=""/>
+          <outline text="图表x轴显示日期x.x（例如5.6）" _mubu_text="%3Cspan%3E%E5%9B%BE%E8%A1%A8x%E8%BD%B4%E6%98%BE%E7%A4%BA%E6%97%A5%E6%9C%9Fx.x%EF%BC%88%E4%BE%8B%E5%A6%825.6%EF%BC%89%3C/span%3E" _note="" _mubu_note=""/>
+          <outline text="图表y轴在左侧，显示热量数值" _mubu_text="%3Cspan%3E%E5%9B%BE%E8%A1%A8y%E8%BD%B4%E5%9C%A8%E5%B7%A6%E4%BE%A7%EF%BC%8C%E6%98%BE%E7%A4%BA%E7%83%AD%E9%87%8F%E6%95%B0%E5%80%BC%3C/span%3E" _note="" _mubu_note=""/>
+          <outline text="用一根平行于x轴的红线贯穿整个图表，表示目标热量" _mubu_text="%3Cspan%3E%E7%94%A8%E4%B8%80%E6%A0%B9%E5%B9%B3%E8%A1%8C%E4%BA%8Ex%E8%BD%B4%E7%9A%84%E7%BA%A2%E7%BA%BF%E8%B4%AF%E7%A9%BF%E6%95%B4%E4%B8%AA%E5%9B%BE%E8%A1%A8%EF%BC%8C%E8%A1%A8%E7%A4%BA%E7%9B%AE%E6%A0%87%E7%83%AD%E9%87%8F%3C/span%3E" _note="" _mubu_note=""/>
+          <outline text="用三种颜色表示三大营养素" _mubu_text="%3Cspan%3E%E7%94%A8%E4%B8%89%E7%A7%8D%E9%A2%9C%E8%89%B2%E8%A1%A8%E7%A4%BA%E4%B8%89%E5%A4%A7%E8%90%A5%E5%85%BB%E7%B4%A0%3C/span%3E" _note="" _mubu_note=""/>
+          <outline text="每根柱状图顶部显示总热量数kcal" _mubu_text="%3Cspan%3E%E6%AF%8F%E6%A0%B9%E6%9F%B1%E7%8A%B6%E5%9B%BE%E9%A1%B6%E9%83%A8%E6%98%BE%E7%A4%BA%E6%80%BB%E7%83%AD%E9%87%8F%E6%95%B0kcal%3C/span%3E" _note="" _mubu_note=""/>
+          <outline text="点击每根柱状图，弹出弹窗，弹窗显示当日日期（年月日）、热量kcal、碳水g、蛋白质g、脂肪g，点击弹窗外区域即可关闭弹窗" _mubu_text="%3Cspan%3E%E7%82%B9%E5%87%BB%E6%AF%8F%E6%A0%B9%E6%9F%B1%E7%8A%B6%E5%9B%BE%EF%BC%8C%E5%BC%B9%E5%87%BA%E5%BC%B9%E7%AA%97%EF%BC%8C%E5%BC%B9%E7%AA%97%E6%98%BE%E7%A4%BA%E5%BD%93%E6%97%A5%E6%97%A5%E6%9C%9F%EF%BC%88%E5%B9%B4%E6%9C%88%E6%97%A5%EF%BC%89%E3%80%81%E7%83%AD%E9%87%8Fkcal%E3%80%81%E7%A2%B3%E6%B0%B4g%E3%80%81%E8%9B%8B%E7%99%BD%E8%B4%A8g%E3%80%81%E8%84%82%E8%82%AAg%EF%BC%8C%E7%82%B9%E5%87%BB%E5%BC%B9%E7%AA%97%E5%A4%96%E5%8C%BA%E5%9F%9F%E5%8D%B3%E5%8F%AF%E5%85%B3%E9%97%AD%E5%BC%B9%E7%AA%97%3C/span%3E" _note="" _mubu_note=""/>
+        </outline>
+        <outline text="数据总结" _mubu_text="%3Cspan%3E%E6%95%B0%E6%8D%AE%E6%80%BB%E7%BB%93%3C/span%3E" _note="" _mubu_note="">
+          <outline text="数据计算，根据这一周实际记录天数作为除数（而非固定的7）" _mubu_text="%3Cspan%3E%E6%95%B0%E6%8D%AE%E8%AE%A1%E7%AE%97%EF%BC%8C%E6%A0%B9%E6%8D%AE%E8%BF%99%E4%B8%80%E5%91%A8%E5%AE%9E%E9%99%85%E8%AE%B0%E5%BD%95%E5%A4%A9%E6%95%B0%E4%BD%9C%E4%B8%BA%E9%99%A4%E6%95%B0%EF%BC%88%E8%80%8C%E9%9D%9E%E5%9B%BA%E5%AE%9A%E7%9A%847%EF%BC%89%3C/span%3E" _note="" _mubu_note=""/>
+          <outline text="区块1：显示一周内平均每天的热量kcal、碳水g、蛋白质g、脂肪g" _mubu_text="%3Cspan%3E%E5%8C%BA%E5%9D%971%EF%BC%9A%E6%98%BE%E7%A4%BA%E4%B8%80%E5%91%A8%E5%86%85%E5%B9%B3%E5%9D%87%E6%AF%8F%E5%A4%A9%E7%9A%84%E7%83%AD%E9%87%8Fkcal%E3%80%81%E7%A2%B3%E6%B0%B4g%E3%80%81%E8%9B%8B%E7%99%BD%E8%B4%A8g%E3%80%81%E8%84%82%E8%82%AAg%3C/span%3E" _note="" _mubu_note=""/>
+          <outline text="区块2：显示一周内平均每个餐次的热量kcal、碳水g、蛋白质g、脂肪g" _mubu_text="%3Cspan%3E%E5%8C%BA%E5%9D%972%EF%BC%9A%E6%98%BE%E7%A4%BA%E4%B8%80%E5%91%A8%E5%86%85%E5%B9%B3%E5%9D%87%E6%AF%8F%E4%B8%AA%E9%A4%90%E6%AC%A1%E7%9A%84%E7%83%AD%E9%87%8Fkcal%E3%80%81%E7%A2%B3%E6%B0%B4g%E3%80%81%E8%9B%8B%E7%99%BD%E8%B4%A8g%E3%80%81%E8%84%82%E8%82%AAg%3C/span%3E" _note="" _mubu_note=""/>
+        </outline>
+      </outline>
+      <outline text="身体子页面" _mubu_text="%3Cspan%3E%E8%BA%AB%E4%BD%93%E5%AD%90%E9%A1%B5%E9%9D%A2%3C/span%3E" _note="" _mubu_note="">
+        <outline text="计数规则" _mubu_text="%3Cspan%3E%E8%AE%A1%E6%95%B0%E8%A7%84%E5%88%99%3C/span%3E" _note="" _mubu_note="">
+          <outline text="从一年的1号开始，每七天为一周，周次递增（例如：第x周）" _mubu_text="%3Cspan%3E%E4%BB%8E%E4%B8%80%E5%B9%B4%E7%9A%841%E5%8F%B7%E5%BC%80%E5%A7%8B%EF%BC%8C%E6%AF%8F%E4%B8%83%E5%A4%A9%E4%B8%BA%E4%B8%80%E5%91%A8%EF%BC%8C%E5%91%A8%E6%AC%A1%E9%80%92%E5%A2%9E%EF%BC%88%E4%BE%8B%E5%A6%82%EF%BC%9A%E7%AC%ACx%E5%91%A8%EF%BC%89%3C/span%3E" _note="" _mubu_note=""/>
+        </outline>
+        <outline text="筛选条件" _mubu_text="%3Cspan%3E%E7%AD%9B%E9%80%89%E6%9D%A1%E4%BB%B6%3C/span%3E" _note="" _mubu_note="">
+          <outline text="可以选择查看六种数据类型：体重、体脂、肌肉、胸围、腰围、臀围（一次只能选择一种数据）" _mubu_text="%3Cspan%3E%E5%8F%AF%E4%BB%A5%E9%80%89%E6%8B%A9%E6%9F%A5%E7%9C%8B%E5%85%AD%E7%A7%8D%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%EF%BC%9A%E4%BD%93%E9%87%8D%E3%80%81%E4%BD%93%E8%84%82%E3%80%81%E8%82%8C%E8%82%89%E3%80%81%E8%83%B8%E5%9B%B4%E3%80%81%E8%85%B0%E5%9B%B4%E3%80%81%E8%87%80%E5%9B%B4%EF%BC%88%E4%B8%80%E6%AC%A1%E5%8F%AA%E8%83%BD%E9%80%89%E6%8B%A9%E4%B8%80%E7%A7%8D%E6%95%B0%E6%8D%AE%EF%BC%89%3C/span%3E" _note="" _mubu_note=""/>
+          <outline text="可以选择平均数/中位数" _mubu_text="%3Cspan%3E%E5%8F%AF%E4%BB%A5%E9%80%89%E6%8B%A9%E5%B9%B3%E5%9D%87%E6%95%B0/%E4%B8%AD%E4%BD%8D%E6%95%B0%3C/span%3E" _note="" _mubu_note=""/>
+          <outline text="在查看数据为体重、体脂、肌肉时，可选择kg/斤（默认为kg）" _mubu_text="%3Cspan%3E%E5%9C%A8%E6%9F%A5%E7%9C%8B%E6%95%B0%E6%8D%AE%E4%B8%BA%E4%BD%93%E9%87%8D%E3%80%81%E4%BD%93%E8%84%82%E3%80%81%E8%82%8C%E8%82%89%E6%97%B6%EF%BC%8C%E5%8F%AF%E9%80%89%E6%8B%A9kg/%E6%96%A4%EF%BC%88%E9%BB%98%E8%AE%A4%E4%B8%BAkg%EF%BC%89%3C/span%3E" _note="" _mubu_note=""/>
+          <outline text="只能选择周次（例如：选择第2周到第4周）" _mubu_text="%3Cspan%3E%E5%8F%AA%E8%83%BD%E9%80%89%E6%8B%A9%E5%91%A8%E6%AC%A1%EF%BC%88%E4%BE%8B%E5%A6%82%EF%BC%9A%E9%80%89%E6%8B%A9%E7%AC%AC2%E5%91%A8%E5%88%B0%E7%AC%AC4%E5%91%A8%EF%BC%89%3C/span%3E" _note="" _mubu_note=""/>
+          <outline text="可以选择显示第x周到第y周的数据（最少选择两周，最多选择8周）" _mubu_text="%3Cspan%3E%E5%8F%AF%E4%BB%A5%E9%80%89%E6%8B%A9%E6%98%BE%E7%A4%BA%E7%AC%ACx%E5%91%A8%E5%88%B0%E7%AC%ACy%E5%91%A8%E7%9A%84%E6%95%B0%E6%8D%AE%EF%BC%88%E6%9C%80%E5%B0%91%E9%80%89%E6%8B%A9%E4%B8%A4%E5%91%A8%EF%BC%8C%E6%9C%80%E5%A4%9A%E9%80%89%E6%8B%A98%E5%91%A8%EF%BC%89%3C/span%3E" _note="" _mubu_note=""/>
+        </outline>
+        <outline text="显示" _mubu_text="%3Cspan%3E%E6%98%BE%E7%A4%BA%3C/span%3E" _note="" _mubu_note="">
+          <outline text="以周为单位显示（例如一周的体重平均数）" _mubu_text="%3Cspan%3E%E4%BB%A5%E5%91%A8%E4%B8%BA%E5%8D%95%E4%BD%8D%E6%98%BE%E7%A4%BA%EF%BC%88%E4%BE%8B%E5%A6%82%E4%B8%80%E5%91%A8%E7%9A%84%E4%BD%93%E9%87%8D%E5%B9%B3%E5%9D%87%E6%95%B0%EF%BC%89%3C/span%3E" _note="" _mubu_note=""/>
+        </outline>
+        <outline text="图表（折线图）" _mubu_text="%3Cspan%3E%E5%9B%BE%E8%A1%A8%EF%BC%88%E6%8A%98%E7%BA%BF%E5%9B%BE%EF%BC%89%3C/span%3E" _note="" _mubu_note="">
+          <outline text="图表x轴显示周数（例如3周、5周）" _mubu_text="%3Cspan%3E%E5%9B%BE%E8%A1%A8x%E8%BD%B4%E6%98%BE%E7%A4%BA%E5%91%A8%E6%95%B0%EF%BC%88%E4%BE%8B%E5%A6%823%E5%91%A8%E3%80%815%E5%91%A8%EF%BC%89%3C/span%3E" _note="" _mubu_note=""/>
+          <outline text="图表y轴在左侧，显示选择的数据类型的数值（例如体重就显示xxkg）" _mubu_text="%3Cspan%3E%E5%9B%BE%E8%A1%A8y%E8%BD%B4%E5%9C%A8%E5%B7%A6%E4%BE%A7%EF%BC%8C%E6%98%BE%E7%A4%BA%E9%80%89%E6%8B%A9%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%E7%9A%84%E6%95%B0%E5%80%BC%EF%BC%88%E4%BE%8B%E5%A6%82%E4%BD%93%E9%87%8D%E5%B0%B1%E6%98%BE%E7%A4%BAxxkg%EF%BC%89%3C/span%3E" _note="" _mubu_note=""/>
+          <outline text="折线图由多个小点构成，点击小点要求实现如图效果‪D:\Projects\HealthTracker\bugs shot\IMG_20260417_232536.jpg" _mubu_text="%3Cspan%3E%E6%8A%98%E7%BA%BF%E5%9B%BE%E7%94%B1%E5%A4%9A%E4%B8%AA%E5%B0%8F%E7%82%B9%E6%9E%84%E6%88%90%EF%BC%8C%E7%82%B9%E5%87%BB%E5%B0%8F%E7%82%B9%E8%A6%81%E6%B1%82%E5%AE%9E%E7%8E%B0%E5%A6%82%E5%9B%BE%E6%95%88%E6%9E%9C%E2%80%AAD:%5CProjects%5CHealthTracker%5Cbugs%20shot%5CIMG_20260417_232536.jpg%3C/span%3E" _note="" _mubu_note=""/>
+        </outline>
+        <outline text="数据总结" _mubu_text="%3Cspan%3E%E6%95%B0%E6%8D%AE%E6%80%BB%E7%BB%93%3C/span%3E" _note="" _mubu_note="">
+          <outline text="区块1（四个数据）：选择的第x周到第y周的：数据下降/上升的数值（根据之前的条件选择的单位）；数据下降/上升的百分值；区间内的最大数据；区间内的最小数据；" _mubu_text="%3Cspan%3E%E5%8C%BA%E5%9D%971%EF%BC%88%E5%9B%9B%E4%B8%AA%E6%95%B0%E6%8D%AE%EF%BC%89%EF%BC%9A%E9%80%89%E6%8B%A9%E7%9A%84%E7%AC%ACx%E5%91%A8%E5%88%B0%E7%AC%ACy%E5%91%A8%E7%9A%84%EF%BC%9A%E6%95%B0%E6%8D%AE%E4%B8%8B%E9%99%8D/%E4%B8%8A%E5%8D%87%E7%9A%84%E6%95%B0%E5%80%BC%EF%BC%88%E6%A0%B9%E6%8D%AE%E4%B9%8B%E5%89%8D%E7%9A%84%E6%9D%A1%E4%BB%B6%E9%80%89%E6%8B%A9%E7%9A%84%E5%8D%95%E4%BD%8D%EF%BC%89%EF%BC%9B%E6%95%B0%E6%8D%AE%E4%B8%8B%E9%99%8D/%E4%B8%8A%E5%8D%87%E7%9A%84%E7%99%BE%E5%88%86%E5%80%BC%EF%BC%9B%E5%8C%BA%E9%97%B4%E5%86%85%E7%9A%84%E6%9C%80%E5%A4%A7%E6%95%B0%E6%8D%AE%EF%BC%9B%E5%8C%BA%E9%97%B4%E5%86%85%E7%9A%84%E6%9C%80%E5%B0%8F%E6%95%B0%E6%8D%AE%EF%BC%9B%3C/span%3E" _note="" _mubu_note=""/>
+          <outline text="区块2：显示周与周之间的变化数据数值（例如选择了第1周到第4周，则在该区块显示，1→2   ↓0.6kg；2→3   ↓0.4kg；3→4  ↓0.7kg以此类推）" _mubu_text="%3Cspan%3E%E5%8C%BA%E5%9D%972%EF%BC%9A%E6%98%BE%E7%A4%BA%E5%91%A8%E4%B8%8E%E5%91%A8%E4%B9%8B%E9%97%B4%E7%9A%84%E5%8F%98%E5%8C%96%E6%95%B0%E6%8D%AE%E6%95%B0%E5%80%BC%EF%BC%88%E4%BE%8B%E5%A6%82%E9%80%89%E6%8B%A9%E4%BA%86%E7%AC%AC1%E5%91%A8%E5%88%B0%E7%AC%AC4%E5%91%A8%EF%BC%8C%E5%88%99%E5%9C%A8%E8%AF%A5%E5%8C%BA%E5%9D%97%E6%98%BE%E7%A4%BA%EF%BC%8C1%E2%86%922%20%20%20%E2%86%930.6kg%EF%BC%9B2%E2%86%923%20%20%20%E2%86%930.4kg%EF%BC%9B3%E2%86%924%20%20%E2%86%930.7kg%E4%BB%A5%E6%AD%A4%E7%B1%BB%E6%8E%A8%EF%BC%89%3C/span%3E" _note="" _mubu_note=""/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="" _mubu_text="" _note="" _mubu_note=""/>
+  </body>
+</opml>

@@ -147,6 +147,7 @@
 102、✅ 首页顶部栏重构：将设置按钮移至最左侧，合并用户入口，日期改为只显示月/日（已完成）
 103、✅ 新增全屏搜索页面：支持按食物名称搜索历史记录，每项显示详细营养素（已完成）
 104、✅ 搜索页增强筛选：支持按餐次和日期范围过滤搜索结果（已完成）
+105、✅ 报表页面重写（阶段四）：主报表页面整合（同步标准周逻辑与 Canvas 图表样式）（已完成）
 
  为期5天的vibe
 coding终于告一段落了，非常感谢你的帮助，感谢你与我一同学习进步，教会了我很多东西
@@ -327,7 +328,7 @@ name,category,calories,carbohydrates,protein,fat,emoji
 - 主食 → 🍚 🍜 🍞 🥟 🌾 🍠 🥔 🌽
 - 肉类 → 🥩 🍖 🍗
 - 海鲜 → 🐟 🦐 🦀 🦪 🦑
-- 蔬菜 → 🥬 🥦 🍅 🥒 🍆 🥕 🍄
+- 蔬菜 → 🥬 🥦 🍅 🥒  eggplant 🥕 🍄
 - 水果 → 🍎 🍌 🍊 🍇 🍉 🍓
 - 蛋奶 → 🥚 🥛 🧀
 - 豆类 → 🫘
@@ -348,6 +349,130 @@ name,category,calories,carbohydrates,protein,fat,emoji
                                  修复记录
 ================================================================================
 
+【2026-04-18】报表页面重写（阶段三补充）：折线图视觉对齐与快捷跳转
+- 需求：1. 身体数据子页面的折线图数据点点击弹窗要求完全照搬截图设计（暗色圆角框，内部带上下排文字，并且有一条竖线垂直到 X 轴）。2. 筛选区的起始/结束周数要求可以直接点击输入进行快速跳转。
+- 解决：
+  1. 重写了 `BodyDataDetailScreen` 中的 Canvas 绘制逻辑。移除了原有的 `AlertDialog`。
+  2. 现在当选中数据点时，会在 Canvas 内部通过坐标计算绘制出一条精确对齐 X 轴的参考垂直线。
+  3. 通过 `textMeasurer` 精确计算文本宽高度，并在点击点上方动态绘制圆角矩形和内外边距填充，实现了高度还原的暗色数据浮窗。
+  4. 将筛选区内的起止周数文本组件添加了 `clickable` 修饰符，点击弹出包含 `OutlinedTextField` 的对话框，利用校验逻辑防乱输并实时触发 `viewModel.updateFilters` 更新图表。
+- 修改文件：
+  - BodyDataDetailScreen.kt
+- 结果：BUILD SUCCESSFUL，Git已提交。准备进入最后阶段：主报表页面整合。
+
+【2026-04-18】报表页面重写（阶段三）：身体子页面完全重构
+- 需求：支持6种身体数据类型的切换；支持平均数与中位数统计的动态切换；支持 kg/斤 的动态转换；提供“第 X 周到 第 Y 周”（2-8周限制）的动态区间选择；完全重写基于 Canvas 的交互折线图；重写周环比及极值变化的数据总结算法。
+- 解决：
+  1. 重构了 `BodyDataDetailViewModel`。将原有状态重构，增加 dataType (0-5)、statMode、unitMode、startWeek、endWeek 状态流转。
+  2. 实现底层数据的复杂按周聚合，引入了阶段一编写的 `ReportStatUtils` 进行中位数计算。
+  3. 重构了 `BodyDataDetailScreen`。彻底废弃原有框架，采用 `FlowRow` 搭建全新的筛选操作区。
+  4. 使用纯 Canvas 从头绘制了一套带有数据坐标系和交互红点弹窗的折线图，精确显示了数值曲线。
+  5. 新增两个总结区块卡片：区块1负责显示“数值/百分比升降及极小极大值”；区块2利用循环算法输出所有选定区间内的“周与周之间的数值环比”。
+- 修改文件：
+  - BodyDataDetailViewModel.kt
+  - BodyDataDetailScreen.kt
+- 结果：BUILD SUCCESSFUL，Git 已提交。等待测试验证。
+
+【2026-04-18】报表页面重写（阶段二补充）：主页图表同步与快捷跳转
+- 需求：1. 摄入子页面支持点击周数弹出快捷跳转弹窗。2. 主报表页面的摄入区块图表必须与子页面“一模一样”且同步使用“1月1日起计周”的新逻辑，避免数据不同步。
+- 解决：
+  1. 在 `NutritionDetailScreen` 的标题处增加 Dialog，允许用户输入数字进行跨周跳转。
+  2. 重构 `ReportsViewModel` 中的 `intakeData` 拉取逻辑，隔离了原本与身体、睡眠混合的自然日历聚合，强制摄入区块使用 `ReportPeriodManager` 计算。
+  3. 在 `ReportsScreen` 中完全复用纯 Canvas 的 `IntakeChartCard` 组件，实现了视觉与交互的 100% 同步。
+- 修改文件：
+  - NutritionDetailScreen.kt
+  - NutritionDetailViewModel.kt
+  - ReportsScreen.kt
+  - ReportsViewModel.kt
+- 结果：BUILD SUCCESSFUL，Git已提交。准备进入身体子页面重写。
+
+【2026-04-18】报表页面重写（阶段二）：摄入子页面重构
+- 需求：基于自然年标准周（1月1日起计周）重写摄入子页面及图表逻辑。要求显示七天柱状图、红线贯穿的目标热量，并精确计算实际均值。
+- 解决：
+  1. 重写 NutritionDetailViewModel，接入 ReportPeriodManager 和 ReportStatUtils，移除原有的自然日历周月计算。
+  2. 使用纯 Canvas 完全重写了 NutritionDetailScreen 的柱状图。支持动态高度渲染碳蛋脂叠加效果，通过点击坐标换算实现了特定柱体的悬浮数据弹窗。
+  3. 解决了重名组件（LegendItem等）导致的编译冲突。
+- 修改文件：
+  - NutritionDetailViewModel.kt
+  - NutritionDetailScreen.kt
+- 结果：BUILD SUCCESSFUL，Git已提交。
+
+【2026-04-18】报表页面重写（阶段一）：基础计算工具类
+- 需求：为新的报表页面设计开发专门的基于“1月1日起计周”的工具类，以及支持中位数、实际均值统计算法。
+- 解决：创建了 ReportPeriodManager.kt 和 ReportStatUtils.kt，并编写完善了单元测试。
+- 修改文件：
+  - ReportPeriodManager.kt
+  - ReportStatUtils.kt
+  - ReportPeriodManagerTest.kt
+  - ReportStatUtilsTest.kt
+- 结果：测试通过，准备进入子页面重构。
+
+【2026-04-18】生成 UI 描述文档 `describe`
+- 需求：详尽描述报表页面的睡眠记录区块和睡眠记录详情页，以便 AI 能够复现。
+- 解决：创建了根目录文件 `describe`，详细记录了 Canvas 图表坐标换算逻辑、Y 轴时间轴布局、X 轴对齐方式、全局配色及交互细节。
+- 结果：文档已生成并提交。同步推送至 GitHub。
+
+【2026-04-18】修复带有单位重量食物的录入与编辑联动 Bug（深度修复）
+- 需求：解决进入食物记录编辑弹窗时数值误显为总克数（如 48.5 包）的 Bug。实现在加载食物库数据后自动纠偏，并将克数换算回份数。
+- 解决：
+  1. 修改 `AddIntakeViewModel.kt` 的 `saveRecord`，增强了特殊单位的默认换算比例逻辑。
+  2. 在 `HomeViewModel.kt` 中增加 `getFoodById` 接口供弹窗实时查询。
+  3. **核心重构**：在 `HomeScreen.kt` 的 `EditIntakeDialog` 中引入了基于 `LaunchedEffect` 的响应式纠偏机制。当弹窗打开并加载完食物原始数据后，如果发现当前记录的单位重量为默认值（1.0），则会自动应用食物库中的正确比例，并将显示的数值从“克”自动回弹为“份/个/包”。
+  4. 增强了默认单位重量映射表，确保在离线或数据缺失时也能提供合理的初始显示。
+- 修改文件：
+  - `AddIntakeViewModel.kt`
+  - `HomeViewModel.kt`
+  - `HomeScreen.kt`
+- 结果：经过两轮迭代，纠偏逻辑已实现闭环，构建通过，Git 已提交。
+
+【2026-04-18】Vibe Coding 阶段性成果总结
+- 状态：项目目前处于 SUCCESSFUL 构建状态，核心逻辑已闭环。
+- 成果：
+  1. 搜索页面：实现了与首页一致的卡片样式、自动弹出键盘、按日期/餐次分组。
+  2. 录入系统：完美修复了单位重量食物（个/包等）与克数的换算联动逻辑，持久化了 gramsPerUnit 数据。
+  3. 架构优化：完成了首页、搜索页的解耦，支持 @Preview 直接预览。
+  4. 规范确立：明确了规避 PowerShell 乱码和强制构建验证的开发准则。
+- 下一阶段：建议重启会话以清理上下文，从轻量级的状态继续迭代新功能。
+
+【2026-04-18】构建自愈与预览规则废除
+- 需求：修复由于架构重构导致的构建失败；废除强制 Preview 的规则以提高开发效率。
+- 解决：
+  1. 补全 `AddIntakeViewModel.kt` 中缺失的 `saveRecord` 方法，解决 `CustomFoodInputScreen` 的编译报错。
+  2. 在 `FoodEmojiUtils.kt` 中实现 `inferCategoryByName` 逻辑，修复 `FoodEntity` 创建时的分类参数缺失。
+  3. 修正 `HomeScreen.kt` 重构后遗漏的回调参数，并通过 `@OptIn` 消除实验性 API 导致的编译阻断。
+  4. 从 `GEMINI.md` 中删除 UI 强制预览规则。
+- 修改文件：
+  - `AddIntakeViewModel.kt`
+  - `FoodEmojiUtils.kt`
+  - `HomeScreen.kt`
+  - `GEMINI.md`
+- 结果：BUILD SUCCESSFUL，Git 已提交。
+
+【2026-04-18】修复修改自定义食物相关Bug
+- 修复内容：
+  1. `IntakeRecordRepository.kt` 与 `EditFoodViewModel.kt`：修复食物数据修改后历史记录不同步的问题。同步机制现优先通过 `foodId` 和旧的 `food.name` 匹配，并同步更新关联记录中的 `foodName` 字段。
+  2. `EditFoodScreen.kt`：修复点击“保存修改”后无反应的问题。移除死胡同状态 UI（showSaveResult），保存成功后自动 Toast 提示并执行 `onNavigateBack()` 退出页面。
+- 结果：BUILD SUCCESSFUL
+
+【2026-04-18】搜索结果样式对齐首页
+- 需求：将搜索结果展示逻辑改为按日期和餐次分组，并照搬首页餐次区块的 Card 样式和汇总逻辑。
+- 解决：
+  1. 修改 SearchScreen.kt 的数据分组逻辑，实现日期内嵌套餐次分组。
+  2. 迁移 HomeScreen.kt 的餐次卡片颜色、边距及宏量营养素汇总统计代码。
+  3. 在搜索结果项中隐藏冗余的餐次标签，确保视觉高度一致。
+- 修改文件：
+  - SearchScreen.kt
+- 结果：功能实现完成，Git 已提交。
+
+【2026-04-18】搜索页面体验优化与Bug修复
+- 需求：进入搜索页面自动弹出键盘；消除搜索结果中重复显示的碳蛋脂数据。
+- 解决：
+  1. 在 SearchScreen.kt 中引入 FocusRequester，并利用 LaunchedEffect 在页面加载时触发键盘弹出。
+  2. 将 IntakeRecordItem 的 showMacros 参数设为 false，避免与餐次卡片头部的统计数据重复，保持与首页视觉一致。
+- 修改文件：
+  - SearchScreen.kt
+- 结果：Git 已提交。
+
 【2026-04-18】修复带有单位重量食物的录入联动逻辑
 - 需求：修复带有单位重量的食物（如雪糕 75g/个）在录入和编辑时逻辑混乱的问题。实现数值框显示份数，单位框联动，并正确保存单位重量及按单位计的数值。
 - 解决：
@@ -363,24 +488,12 @@ name,category,calories,carbohydrates,protein,fat,emoji
   - `HomeScreen.kt`
 - 结果：功能逻辑修复，Git 已提交。
 
-【2026-04-18】搜索页面体验优化与Bug修复
-- 需求：进入搜索页面自动弹出键盘；消除搜索结果中重复显示的碳蛋脂数据。
-- 解决：
-  1. 在 SearchScreen.kt 中引入 FocusRequester，并利用 LaunchedEffect 在页面加载时触发键盘弹出。
-  2. 将 IntakeRecordItem 的 showMacros 参数设为 false，避免与餐次卡片头部的统计数据重复，保持与首页视觉一致。
-- 修改文件：
-  - SearchScreen.kt
-- 结果：Git 已提交。
-
-【2026-04-18】搜索结果样式对齐首页
-- 需求：将搜索结果展示逻辑改为按日期和餐次分组，并照搬首页餐次区块的 Card 样式和汇总逻辑。
-- 解决：
-  1. 修改 SearchScreen.kt 的数据分组逻辑，实现日期内嵌套餐次分组。
-  2. 迁移 HomeScreen.kt 的餐次卡片颜色、边距及宏量营养素汇总统计代码。
-  3. 在搜索结果项中隐藏冗余的餐次标签，确保视觉高度一致。
-- 修改文件：
-  - SearchScreen.kt
-- 结果：功能实现完成，Git 已提交。
+【2026-04-17】修复界面显示问题
+- 修复内容：
+  1. 首页食物记录编辑弹窗（`EditIntakeDialog`）：清理旧数据的单位字段，使用正则过滤前置数值，只显示纯单位名。
+  2. 添加食物弹窗（`AddIntakeScreen` 与 `AddMealPlanScreen`）：修改确认回调，确保只存入单位名称（如"克"），不再存入数值拼接的单位名称。
+  3. 搜索页面筛选弹窗（`SearchFilterDialog`）：移除餐次选项的 `weight(1f)` 并改为 `Arrangement.SpaceEvenly` 分布，解决内容拥挤导致的换行问题。
+- 结果：BUILD SUCCESSFUL
 
 【2026-04-17】修复 HomeScreen 编译报错
 - 需求：修复由于使用实验性 API `combinedClickable` 导致的编译错误。
@@ -1245,7 +1358,7 @@ Token 使用量：15.7m（模型：glm-5）
 【2026-03-06】功能 #12：用户资料页面 BMR/TDEE 计算
 - 问题：用户资料页面输入数据后保存，但没有显示计算出的 BMR 和 TDEE 数值
 - 根本原因：
-  1. UserProfileScreen 是静态 UI，没有 ViewModel
+  1. UserProfileScreen - 是静态 UI，没有 ViewModel
   2. 没有实际保存数据到数据库
   3. 没有调用 HealthCalculator 计算 BMR/TDEE
 - 解决方案：
@@ -1264,7 +1377,7 @@ Token 使用量：15.7m（模型：glm-5）
 【2026-03-06】功能 #12：用户资料页面 BMR/TDEE 计算
 - 问题：用户资料页面输入数据后保存，但没有显示计算出的 BMR 和 TDEE 数值
 - 根本原因：
-  1. UserProfileScreen 是静态 UI，没有 ViewModel
+  1. UserProfileScreen - 是静态 UI，没有 ViewModel
   2. 没有实际保存数据到数据库
   3. 没有调用 HealthCalculator 计算 BMR/TDEE
 - 解决方案：
@@ -1483,91 +1596,3 @@ Token 使用量：15.7m（模型：glm-5）
   - 所有数据随机化，模拟真实用户行为
 - 操作方式：设置 → 开发者选项 → 生成测试数据
 - 结果：BUILD SUCCESSFUL
-
-【2026-04-17】修复界面显示问题
-- 修复内容：
-  1. 首页食物记录编辑弹窗（`EditIntakeDialog`）：清理旧数据的单位字段，使用正则过滤前置数值，只显示纯单位名。
-  2. 添加食物弹窗（`AddIntakeScreen` 与 `AddMealPlanScreen`）：修改确认回调，确保只存入单位名称（如"克"），不再存入数值拼接的单位名称。
-  3. 搜索页面筛选弹窗（`SearchFilterDialog`）：移除餐次选项的 `weight(1f)` 并改为 `Arrangement.SpaceEvenly` 分布，解决内容拥挤导致的换行问题。
-- 结果：BUILD SUCCESSFUL
-
-【2026-04-18】修复带有单位重量食物的录入联动逻辑
-- 需求：修复带有单位重量的食物（如雪糕 75g/个）在录入和编辑时逻辑混乱的问题。实现数值框显示份数，单位框联动，并正确保存单位重量及按单位计的数值。
-- 解决：
-  1. 修改 `AddIntakeViewModel.kt`：在保存记录时新增持久化 `gramsPerUnit` 和 `amountInUnit` 字段。
-  2. 修改 `AddIntakeScreen.kt`：更新 `AddFoodDialog` 及其确认回调，确保数值（份数）与单位数据分离传递。
-  3. 重构 `HomeScreen.kt` 中的 `EditIntakeDialog`：
-     - 增加逆向换算逻辑：进入编辑时，若单位为非“克/毫升”，数值框自动根据 `amount / gramsPerUnit` 计算并显示份数。
-     - 修正实时计算：预览营养素时统一基于“每百克”数据与“实时换算总克数”的比例进行计算，确保绝对精确。
-     - 保存时同步更新所有相关字段（`amount`, `amountInUnit`, `calories` 等）。
-- 修改文件：
-  - `AddIntakeViewModel.kt`
-  - `AddIntakeScreen.kt`
-  - `HomeScreen.kt`
-- 结果：功能逻辑修复，Git 已提交。
-
-【2026-04-18】搜索页面体验优化与Bug修复
-- 需求：进入搜索页面自动弹出键盘；消除搜索结果中重复显示的碳蛋脂数据。
-- 解决：
-  1. 在 SearchScreen.kt 中引入 FocusRequester，并利用 LaunchedEffect 在页面加载时触发键盘弹出。
-  2. 将 IntakeRecordItem 的 showMacros 参数设为 false，避免与餐次卡片头部的统计数据重复，保持与首页视觉一致。
-- 修改文件：
-  - SearchScreen.kt
-- 结果：Git 已提交。
-
-【2026-04-18】搜索结果样式对齐首页
-- 需求：将搜索结果展示逻辑改为按日期和餐次分组，并照搬首页餐次区块的 Card 样式和汇总逻辑。
-- 解决：
-  1. 修改 SearchScreen.kt 的数据分组逻辑，实现日期内嵌套餐次分组。
-  2. 迁移 HomeScreen.kt 的餐次卡片颜色、边距及宏量营养素汇总统计代码。
-  3. 在搜索结果项中隐藏冗余的餐次标签，确保视觉高度一致。
-- 修改文件：
-  - SearchScreen.kt
-- 结果：功能实现完成，Git 已提交。
-
-【2026-04-18】修复修改自定义食物相关Bug
-- 修复内容：
-  1. `IntakeRecordRepository.kt` 与 `EditFoodViewModel.kt`：修复食物数据修改后历史记录不同步的问题。同步机制现优先通过 `foodId` 和旧的 `food.name` 匹配，并同步更新关联记录中的 `foodName` 字段。
-  2. `EditFoodScreen.kt`：修复点击“保存修改”后无反应的问题。移除死胡同状态 UI（showSaveResult），保存成功后自动 Toast 提示并执行 `onNavigateBack()` 退出页面。
-- 结果：BUILD SUCCESSFUL
-
-【2026-04-18】构建自愈与预览规则废除
-- 需求：修复由于架构重构导致的构建失败；废除强制 Preview 的规则以提高开发效率。
-- 解决：
-  1. 补全 `AddIntakeViewModel.kt` 中缺失的 `saveRecord` 方法，解决 `CustomFoodInputScreen` 的编译报错。
-  2. 在 `FoodEmojiUtils.kt` 中实现 `inferCategoryByName` 逻辑，修复 `FoodEntity` 创建时的分类参数缺失。
-  3. 修正 `HomeScreen.kt` 重构后遗漏的回调参数，并通过 `@OptIn` 消除实验性 API 导致的编译阻断。
-  4. 从 `GEMINI.md` 中删除 UI 强制预览规则。
-- 修改文件：
-  - `AddIntakeViewModel.kt`
-  - `FoodEmojiUtils.kt`
-  - `HomeScreen.kt`
-  - `GEMINI.md`
-- 结果：BUILD SUCCESSFUL，Git 已提交。
-
-【2026-04-18】Vibe Coding 阶段性成果总结
-- 状态：项目目前处于 SUCCESSFUL 构建状态，核心逻辑已闭环。
-- 成果：
-  1. 搜索页面：实现了与首页一致的卡片样式、自动弹出键盘、按日期/餐次分组。
-  2. 录入系统：完美修复了单位重量食物（个/包等）与克数的换算联动逻辑，持久化了 gramsPerUnit 数据。
-  3. 架构优化：完成了首页、搜索页的解耦，支持 @Preview 直接预览。
-  4. 规范确立：明确了规避 PowerShell 乱码和强制构建验证的开发准则。
-- 下一阶段：建议重启会话以清理上下文，从轻量级的状态继续迭代新功能。
-
-【2026-04-18】修复带有单位重量食物的录入与编辑联动 Bug（深度修复）
-- 需求：解决进入食物记录编辑弹窗时数值误显为总克数（如 48.5 包）的 Bug。实现在加载食物库数据后自动纠偏，并将克数换算回份数。
-- 解决：
-  1. 修改 `AddIntakeViewModel.kt` 的 `saveRecord`，增强了特殊单位的默认换算比例逻辑。
-  2. 在 `HomeViewModel.kt` 中增加 `getFoodById` 接口供弹窗实时查询。
-  3. **核心重构**：在 `HomeScreen.kt` 的 `EditIntakeDialog` 中引入了基于 `LaunchedEffect` 的响应式纠偏机制。当弹窗打开并加载完食物原始数据后，如果发现当前记录的单位重量为默认值（1.0），则会自动应用食物库中的正确比例，并将显示的数值从“克”自动回弹为“份/个/包”。
-  4. 增强了默认单位重量映射表，确保在离线或数据缺失时也能提供合理的初始显示。
-- 修改文件：
-  - `AddIntakeViewModel.kt`
-  - `HomeViewModel.kt`
-  - `HomeScreen.kt`
-- 结果：经过两轮迭代，纠偏逻辑已实现闭环，构建通过，Git 已提交。
-
-【2026-04-18】生成 UI 描述文档 `describe`
-- 需求：详尽描述报表页面的睡眠记录区块和睡眠记录详情页，以便 AI 能够复现。
-- 解决：创建了根目录文件 `describe`，详细记录了 Canvas 图表坐标换算逻辑、Y 轴时间轴布局、X 轴对齐方式、全局配色及交互细节。
-- 结果：文档已生成并提交。同步推送至 GitHub。

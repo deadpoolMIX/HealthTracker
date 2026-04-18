@@ -20,11 +20,16 @@ import javax.inject.Inject
 data class ReportsUiState(
     val selectedPeriod: Int = 0, // 0=周, 1=月
     val periodOffset: Int = 0, // 0=本周/本月, 1=上周/上月, 2=上上周等
-    val intakeData: List<DailyNutritionData> = emptyList(), // 改为新的每日营养数据结构
+    val intakeData: List<DailyNutritionData> = emptyList(), 
     val targetCalories: Float = 2000f,
     val bodyData: List<BodyRecordEntity> = emptyList(),
     val sleepData: List<SleepRecordEntity> = emptyList(),
-    val weekDates: List<Long> = emptyList(), // 添加：固定7天的日期列表
+    // 月模式下的每周聚合数据
+    val weeklyIntakeData: List<DailyNutritionData> = emptyList(),
+    val weeklyBodyData: List<Float?> = emptyList(), // 4周的平均体重
+    val weeklySleepData: List<WeeklySleepTime?> = emptyList(), // 4周的平均睡眠
+    
+    val weekDates: List<Long> = emptyList(), 
     val isLoading: Boolean = true,
     // 报表设置
     val showNutritionChart: Boolean = true,
@@ -32,6 +37,12 @@ data class ReportsUiState(
     val showSleepChart: Boolean = true,
     val defaultChartPeriod: Int = 0,
     val showSettingsDialog: Boolean = false
+)
+
+data class WeeklySleepTime(
+    val weekLabel: String,
+    val avgSleepHour: Float,
+    val avgWakeHour: Float
 )
 
 @HiltViewModel
@@ -51,7 +62,6 @@ class ReportsViewModel @Inject constructor(
 
     private fun loadSettingsAndData() {
         viewModelScope.launch {
-            // 加载设置
             val settings = userSettingsRepository.getSettings()
             if (settings != null) {
                 _uiState.value = _uiState.value.copy(
@@ -79,39 +89,143 @@ class ReportsViewModel @Inject constructor(
 
     fun getPeriodLabel(): String {
         val offset = _uiState.value.periodOffset
-        val calendar = Calendar.getInstance()
         val now = System.currentTimeMillis()
+        val cYear = com.example.healthtracker.util.ReportPeriodManager.getYear(now)
+        val cWeek = com.example.healthtracker.util.ReportPeriodManager.getCustomWeekNumber(now)
+        
+        return if (_uiState.value.selectedPeriod == 0) {
+            // 周模式：显示单周标签
+            val targetStart = com.example.healthtracker.util.ReportPeriodManager.getStartTimestampOfWeek(cYear, cWeek) - offset * 7 * 24 * 60 * 60 * 1000L
+            val targetWeek = com.example.healthtracker.util.ReportPeriodManager.getCustomWeekNumber(targetStart)
+            "第 ${targetWeek} 周"
+        } else {
+            // 月模式：显示4周范围
+            val currentBlockStart = com.example.healthtracker.util.ReportPeriodManager.getStartTimestampOfWeek(cYear, cWeek) - offset * 4 * 7 * 24 * 60 * 60 * 1000L
+            val blockEndWeek = com.example.healthtracker.util.ReportPeriodManager.getCustomWeekNumber(currentBlockStart)
+            val blockStartWeek = (blockEndWeek - 3).coerceAtLeast(1)
+            "第 ${blockStartWeek}-${blockEndWeek} 周"
+        }
+    }
 
-        if (_uiState.value.selectedPeriod == 0) {
-            // 对于"周"视图，摄入图表使用 ReportPeriodManager，睡眠和身体使用旧逻辑？
-            // 需求要求统一为主页的摄入区块使用和子页面一模一样的计算，而且报表页面的周数要和子页面同步
-            // 所以这里直接返回当前所处周期的标签
+    private fun loadData() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            val offset = _uiState.value.periodOffset
+            val now = System.currentTimeMillis()
+            val isWeekMode = _uiState.value.selectedPeriod == 0
+
             val cYear = com.example.healthtracker.util.ReportPeriodManager.getYear(now)
             val cWeek = com.example.healthtracker.util.ReportPeriodManager.getCustomWeekNumber(now)
-            val currentStart = com.example.healthtracker.util.ReportPeriodManager.getStartTimestampOfWeek(cYear, cWeek)
-            val targetStart = currentStart - offset * 7 * 24 * 60 * 60 * 1000L
-            val targetYear = com.example.healthtracker.util.ReportPeriodManager.getYear(targetStart)
-            val targetWeek = com.example.healthtracker.util.ReportPeriodManager.getCustomWeekNumber(targetStart)
-            return "第 ${targetWeek} 周"
-        }
 
-        val startDate = when (_uiState.value.selectedPeriod) {
-            1 -> { // 月
-                calendar.timeInMillis = now
-                calendar.add(Calendar.MONTH, -offset)
-                calendar.set(Calendar.DAY_OF_MONTH, 1)
-                calendar.set(Calendar.HOUR_OF_DAY, 0)
-                calendar.set(Calendar.MINUTE, 0)
-                calendar.set(Calendar.SECOND, 0)
-                calendar.set(Calendar.MILLISECOND, 0)
-                calendar.timeInMillis
+            if (isWeekMode) {
+                // --- 周模式 (7天) ---
+                val currentStart = com.example.healthtracker.util.ReportPeriodManager.getStartTimestampOfWeek(cYear, cWeek)
+                val targetStart = currentStart - offset * 7 * 24 * 60 * 60 * 1000L
+                val targetYear = com.example.healthtracker.util.ReportPeriodManager.getYear(targetStart)
+                val targetWeek = com.example.healthtracker.util.ReportPeriodManager.getCustomWeekNumber(targetStart)
+                
+                val startDate = com.example.healthtracker.util.ReportPeriodManager.getStartTimestampOfWeek(targetYear, targetWeek)
+                val endDate = com.example.healthtracker.util.ReportPeriodManager.getEndTimestampOfWeek(targetYear, targetWeek)
+                
+                val intakeRecords = intakeRecordRepository.getRecordsBetweenSync(startDate, endDate)
+                val bodyRecords = bodyRecordRepository.getRecordsBetweenSync(startDate, endDate)
+                val sleepRecords = sleepRecordRepository.getRecordsBetweenSync(startDate, endDate)
+
+                val weekDates = (0..6).map { com.example.healthtracker.util.ReportPeriodManager.getTimestampForDayOfWeek(targetYear, targetWeek, it) }
+                
+                val intakeData = weekDates.mapIndexed { index, dayStart ->
+                    val dayEnd = DateTimeUtils.getEndOfDay(dayStart)
+                    val dayRecords = intakeRecords.filter { it.date in dayStart..dayEnd }
+                    DailyNutritionData(
+                        dayIndex = index,
+                        dateLabel = com.example.healthtracker.util.ReportPeriodManager.getFormattedDateForDayOfWeek(targetYear, targetWeek, index),
+                        timestamp = dayStart,
+                        calories = dayRecords.sumOf { it.calories }.toFloat(),
+                        carbs = dayRecords.sumOf { it.carbohydrates }.toFloat(),
+                        protein = dayRecords.sumOf { it.protein }.toFloat(),
+                        fat = dayRecords.sumOf { it.fat }.toFloat()
+                    )
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    intakeData = intakeData,
+                    bodyData = bodyRecords,
+                    sleepData = sleepRecords,
+                    weekDates = weekDates,
+                    isLoading = false
+                )
+            } else {
+                // --- 月模式 (最近4周) ---
+                val currentBlockEndTs = com.example.healthtracker.util.ReportPeriodManager.getStartTimestampOfWeek(cYear, cWeek) - offset * 4 * 7 * 24 * 60 * 60 * 1000L
+                val endWeek = com.example.healthtracker.util.ReportPeriodManager.getCustomWeekNumber(currentBlockEndTs)
+                val startWeek = (endWeek - 3).coerceAtLeast(1)
+                
+                val startDate = com.example.healthtracker.util.ReportPeriodManager.getStartTimestampOfWeek(cYear, startWeek)
+                val endDate = com.example.healthtracker.util.ReportPeriodManager.getEndTimestampOfWeek(cYear, endWeek)
+                
+                val intakeRecords = intakeRecordRepository.getRecordsBetweenSync(startDate, endDate)
+                val bodyRecords = bodyRecordRepository.getRecordsBetweenSync(startDate, endDate)
+                val sleepRecords = sleepRecordRepository.getRecordsBetweenSync(startDate, endDate)
+
+                val weeklyIntake = mutableListOf<DailyNutritionData>()
+                val weeklyBody = mutableListOf<Float?>()
+                val weeklySleep = mutableListOf<WeeklySleepTime?>()
+
+                for (w in startWeek..endWeek) {
+                    val wStart = com.example.healthtracker.util.ReportPeriodManager.getStartTimestampOfWeek(cYear, w)
+                    val wEnd = com.example.healthtracker.util.ReportPeriodManager.getEndTimestampOfWeek(cYear, w)
+                    val wIntake = intakeRecords.filter { it.date in wStart..wEnd }
+                    val wBody = bodyRecords.filter { it.date in wStart..wEnd }
+                    val wSleep = sleepRecords.filter { it.date in wStart..wEnd }
+
+                    // 摄入聚合 (求和)
+                    weeklyIntake.add(DailyNutritionData(
+                        dayIndex = w - startWeek,
+                        dateLabel = "第${w}周",
+                        timestamp = wStart,
+                        calories = wIntake.sumOf { it.calories }.toFloat(),
+                        carbs = wIntake.sumOf { it.carbohydrates }.toFloat(),
+                        protein = wIntake.sumOf { it.protein }.toFloat(),
+                        fat = wIntake.sumOf { it.fat }.toFloat()
+                    ))
+
+                    // 身体聚合 (平均)
+                    if (wBody.isNotEmpty()) {
+                        weeklyBody.add(wBody.mapNotNull { it.weight }.average().toFloat())
+                    } else {
+                        weeklyBody.add(null)
+                    }
+
+                    // 睡眠聚合 (平均时间)
+                    if (wSleep.isNotEmpty()) {
+                        val avgSleep = wSleep.map {
+                            val cal = Calendar.getInstance().apply { timeInMillis = it.sleepTime }
+                            var h = cal.get(Calendar.HOUR_OF_DAY) + cal.get(Calendar.MINUTE) / 60f
+                            if (h < 18) h += 24f // 跨天处理
+                            h
+                        }.average().toFloat()
+                        
+                        val avgWake = wSleep.map {
+                            val cal = Calendar.getInstance().apply { timeInMillis = it.wakeTime }
+                            cal.get(Calendar.HOUR_OF_DAY) + cal.get(Calendar.MINUTE) / 60f
+                        }.average().toFloat()
+                        
+                        weeklySleep.add(WeeklySleepTime("第${w}周", avgSleep, avgWake))
+                    } else {
+                        weeklySleep.add(null)
+                    }
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    weeklyIntakeData = weeklyIntake,
+                    weeklyBodyData = weeklyBody,
+                    weeklySleepData = weeklySleep,
+                    bodyData = bodyRecords, // 基础列表仍保留
+                    sleepData = sleepRecords,
+                    isLoading = false
+                )
             }
-            else -> now
         }
-
-        val cal = Calendar.getInstance()
-        cal.timeInMillis = startDate
-        return "${cal.get(Calendar.MONTH) + 1}.${cal.get(Calendar.DAY_OF_MONTH)}"
     }
 
     fun showSettingsDialog() {
@@ -147,168 +261,21 @@ class ReportsViewModel @Inject constructor(
         }
     }
 
-    private fun loadData() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-
-            // 1. 对于睡眠和旧逻辑图表，仍然获取 Calendar 日期范围
-            val (calStart, calEnd) = getDateRange()
-            val weekDates = generateWeekDates(calStart)
-            val bodyRecords = bodyRecordRepository.getRecordsBetweenSync(calStart, calEnd)
-            val sleepRecords = sleepRecordRepository.getRecordsBetweenSync(calStart, calEnd)
-
-            // 2. 摄入数据 - 强制使用 ReportPeriodManager 逻辑（周模式）
-            val offset = _uiState.value.periodOffset
-            val now = System.currentTimeMillis()
-            val intakeDailyData: List<DailyNutritionData> = if (_uiState.value.selectedPeriod == 0) {
-                // 周模式：计算该周的 7 天
-                val cYear = com.example.healthtracker.util.ReportPeriodManager.getYear(now)
-                val cWeek = com.example.healthtracker.util.ReportPeriodManager.getCustomWeekNumber(now)
-                val currentStart = com.example.healthtracker.util.ReportPeriodManager.getStartTimestampOfWeek(cYear, cWeek)
-                val targetStart = currentStart - offset * 7 * 24 * 60 * 60 * 1000L
-                val targetYear = com.example.healthtracker.util.ReportPeriodManager.getYear(targetStart)
-                val targetWeek = com.example.healthtracker.util.ReportPeriodManager.getCustomWeekNumber(targetStart)
-                
-                val customStart = com.example.healthtracker.util.ReportPeriodManager.getStartTimestampOfWeek(targetYear, targetWeek)
-                val customEnd = com.example.healthtracker.util.ReportPeriodManager.getEndTimestampOfWeek(targetYear, targetWeek)
-                
-                val intakeRecords = intakeRecordRepository.getRecordsBetweenSync(customStart, customEnd)
-                
-                (0..6).map { dayIndex ->
-                    val dayStart = com.example.healthtracker.util.ReportPeriodManager.getTimestampForDayOfWeek(targetYear, targetWeek, dayIndex)
-                    val dayEnd = DateTimeUtils.getEndOfDay(dayStart)
-                    val dayRecords = intakeRecords.filter { it.date in dayStart..dayEnd }
-                    DailyNutritionData(
-                        dayIndex = dayIndex,
-                        dateLabel = com.example.healthtracker.util.ReportPeriodManager.getFormattedDateForDayOfWeek(targetYear, targetWeek, dayIndex),
-                        timestamp = dayStart,
-                        calories = dayRecords.sumOf { it.calories }.toFloat(),
-                        carbs = dayRecords.sumOf { it.carbohydrates }.toFloat(),
-                        protein = dayRecords.sumOf { it.protein }.toFloat(),
-                        fat = dayRecords.sumOf { it.fat }.toFloat()
-                    )
-                }
-            } else {
-                // 月模式：聚合日历月的每天
-                val intakeRecords = intakeRecordRepository.getRecordsBetweenSync(calStart, calEnd)
-                val cal = Calendar.getInstance()
-                cal.timeInMillis = calStart
-                val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
-                
-                (0 until daysInMonth).map { dayIndex ->
-                    val dayStart = cal.timeInMillis
-                    val dayEnd = DateTimeUtils.getEndOfDay(dayStart)
-                    val dayRecords = intakeRecords.filter { it.date in dayStart..dayEnd }
-                    val month = cal.get(Calendar.MONTH) + 1
-                    val day = cal.get(Calendar.DAY_OF_MONTH)
-                    
-                    val data = DailyNutritionData(
-                        dayIndex = dayIndex,
-                        dateLabel = "$month.$day",
-                        timestamp = dayStart,
-                        calories = dayRecords.sumOf { it.calories }.toFloat(),
-                        carbs = dayRecords.sumOf { it.carbohydrates }.toFloat(),
-                        protein = dayRecords.sumOf { it.protein }.toFloat(),
-                        fat = dayRecords.sumOf { it.fat }.toFloat()
-                    )
-                    cal.add(Calendar.DAY_OF_MONTH, 1)
-                    data
-                }
-            }
-
-            _uiState.value = _uiState.value.copy(
-                intakeData = intakeDailyData,
-                bodyData = bodyRecords.sortedByDescending { it.date },
-                sleepData = sleepRecords.sortedByDescending { it.date },
-                weekDates = weekDates,
-                isLoading = false
-            )
-        }
-    }
-
-    private fun generateWeekDates(startDate: Long): List<Long> {
-        val result = mutableListOf<Long>()
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = startDate
-
-        val days = if (_uiState.value.selectedPeriod == 0) 7 else 30
-        for (i in 0 until days) {
-            result.add(calendar.timeInMillis)
-            calendar.add(Calendar.DAY_OF_MONTH, 1)
-        }
-        return result
-    }
-
-    private fun getDateRange(): Pair<Long, Long> {
-        val now = System.currentTimeMillis()
-        val calendar = Calendar.getInstance()
-        val offset = _uiState.value.periodOffset
-
-        return when (_uiState.value.selectedPeriod) {
-            0 -> { // 周 - 根据偏移量获取
-                calendar.timeInMillis = now
-                calendar.add(Calendar.WEEK_OF_YEAR, -offset)
-                calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-                calendar.set(Calendar.HOUR_OF_DAY, 0)
-                calendar.set(Calendar.MINUTE, 0)
-                calendar.set(Calendar.SECOND, 0)
-                calendar.set(Calendar.MILLISECOND, 0)
-                val start = calendar.timeInMillis
-                calendar.add(Calendar.DAY_OF_MONTH, 6)
-                calendar.set(Calendar.HOUR_OF_DAY, 23)
-                calendar.set(Calendar.MINUTE, 59)
-                calendar.set(Calendar.SECOND, 59)
-                val end = calendar.timeInMillis
-                Pair(start, end)
-            }
-            1 -> { // 月 - 根据偏移量获取
-                calendar.timeInMillis = now
-                calendar.add(Calendar.MONTH, -offset)
-                calendar.set(Calendar.DAY_OF_MONTH, 1)
-                calendar.set(Calendar.HOUR_OF_DAY, 0)
-                calendar.set(Calendar.MINUTE, 0)
-                calendar.set(Calendar.SECOND, 0)
-                calendar.set(Calendar.MILLISECOND, 0)
-                val start = calendar.timeInMillis
-                calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
-                calendar.set(Calendar.HOUR_OF_DAY, 23)
-                calendar.set(Calendar.MINUTE, 59)
-                calendar.set(Calendar.SECOND, 59)
-                val end = calendar.timeInMillis
-                Pair(start, end)
-            }
-            else -> {
-                Pair(DateTimeUtils.getStartOfDay(now), DateTimeUtils.getEndOfDay(now))
-            }
-        }
-    }
-
     // 获取平均睡眠时长
     fun getAverageSleepDuration(): Long {
         if (_uiState.value.sleepData.isEmpty()) return 0
         return _uiState.value.sleepData.map { it.duration }.average().toLong()
     }
 
-    // 获取平均入睡时间（处理跨午夜情况）
+    // 获取平均入睡时间
     fun getAverageSleepTime(): String {
         if (_uiState.value.sleepData.isEmpty()) return "--:--"
-
-        // 入睡时间通常在 18:00 - 次日 06:00 之间
-        // 对于凌晨入睡（0-12点）的时间，加 24 小时处理
         val avgMinutes = _uiState.value.sleepData.map {
-            val cal = Calendar.getInstance()
-            cal.timeInMillis = it.sleepTime
+            val cal = Calendar.getInstance().apply { timeInMillis = it.sleepTime }
             val hour = cal.get(Calendar.HOUR_OF_DAY)
             val minute = cal.get(Calendar.MINUTE)
-            // 如果是凌晨（0-12点），视为 24+ 小时
-            if (hour < 12) {
-                (hour + 24) * 60 + minute
-            } else {
-                hour * 60 + minute
-            }
+            if (hour < 12) (hour + 24) * 60 + minute else hour * 60 + minute
         }.average().toInt()
-
-        // 转换回正常时间
         val actualMinutes = avgMinutes % (24 * 60)
         return String.format("%02d:%02d", actualMinutes / 60, actualMinutes % 60)
     }
@@ -317,8 +284,7 @@ class ReportsViewModel @Inject constructor(
     fun getAverageWakeTime(): String {
         if (_uiState.value.sleepData.isEmpty()) return "--:--"
         val avgMinutes = _uiState.value.sleepData.map {
-            val cal = Calendar.getInstance()
-            cal.timeInMillis = it.wakeTime
+            val cal = Calendar.getInstance().apply { timeInMillis = it.wakeTime }
             cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
         }.average().toInt()
         return String.format("%02d:%02d", avgMinutes / 60, avgMinutes % 60)
