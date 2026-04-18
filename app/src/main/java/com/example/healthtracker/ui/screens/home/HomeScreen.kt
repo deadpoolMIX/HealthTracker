@@ -548,14 +548,32 @@ fun EditIntakeDialog(
     }
     
     var amountText by remember { mutableStateOf(initialAmountText) }
+
+    // 响应式纠偏逻辑：当食物库数据加载完成后，如果发现单位重量是默认值 1.0，则尝试根据库中数据进行修正
+    LaunchedEffect(foodData) {
+        foodData?.let { food ->
+            // 如果记录里的单位与库中单位匹配，但单位重量还是 1.0（可能是旧数据或误存），则执行修正
+            if (selectedUnit == food.unit && gramsPerUnit == 1.0 && food.gramsPerUnit != null && food.gramsPerUnit!! > 0) {
+                gramsPerUnit = food.gramsPerUnit!!
+                // 如果当前显示的数值正好等于总克数，说明之前是以克数形式显示的，现在换算回份数
+                if (amountText == record.amount.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }) {
+                    val correctedAmount = record.amount / gramsPerUnit
+                    amountText = if (correctedAmount % 1.0 == 0.0) correctedAmount.toInt().toString() else String.format("%.1f", correctedAmount)
+                }
+            }
+        }
+    }
+    
     var expandedUnit by remember { mutableStateOf(false) }
     val mealTypes = listOf("早餐", "午餐", "晚餐", "加餐")
-    val units = listOf("克", "毫升", "个", "杯", "勺", "份", "块", "片", "包", "碗")
+    val units = listOf("克", "毫升", "个", "杯", "勺", "份", "块", "片", "包", "碗", "袋")
     
     // 默认单位克数映射
     val defaultUnitGrams = mapOf(
         "克" to 1.0, "毫升" to 1.0, "杯" to 200.0, "勺" to 15.0, 
-        "块" to 50.0, "片" to 20.0, "包" to 100.0, "碗" to 200.0
+        "块" to 50.0, "片" to 20.0, "包" to 100.0, "碗" to 200.0, "袋" to 100.0,
+        "个" to (foodData?.gramsPerUnit ?: 100.0),
+        "份" to (foodData?.gramsPerUnit ?: 100.0)
     )
 
     val inputAmount = amountText.toDoubleOrNull() ?: 0.0
