@@ -17,7 +17,7 @@ object FoodEmojiUtils {
             "🧇" to "华夫饼"
         ),
         "肉类" to listOf(
-            "🥩" to "牛排", "🍖" to "烤肉", "🍗" to "鸡肉", "🥓" to "培根",
+            "🥩" to "牛排", "🍖" to "烤肉", "🍗" to "鸡肉", "培根" to "🥓",
             "🌭" to "热狗", "🍔" to "汉堡", "🍗" to "炸鸡", "🍖" to "排骨"
         ),
         "海鲜" to listOf(
@@ -26,16 +26,16 @@ object FoodEmojiUtils {
             "🐡" to "河豚", "🦐" to "小龙虾"
         ),
         "蔬菜" to listOf(
-            "🥬" to "蔬菜", "西兰花" to "🥦", "🥒" to "黄瓜", "🍆" to "茄子",
+            "🥬" to "蔬菜", "🥦" to "西兰花", "🥒" to "黄瓜", "🍆" to "茄子",
             "🥕" to "胡萝卜", "🌽" to "玉米", "🌶️" to "辣椒", "🧅" to "洋葱",
             "🥔" to "土豆", "🍠" to "红薯", "🧄" to "大蒜", "🍅" to "番茄",
             "🍄" to "蘑菇", "🥑" to "牛油果", "🥗" to "沙拉", "🫑" to "甜椒"
         ),
         "水果" to listOf(
             "🍎" to "苹果", "🍊" to "橙子", "🍋" to "柠檬", "🍇" to "葡萄",
-            "🍉" to "西瓜", " strawberry" to "🍓", "🍑" to "桃子", " cherries" to "🍒",
-            "🍌" to "香蕉", "猕猴桃" to "🥝", "芒果" to "🥭", "菠萝" to "🍍",
-            "椰子" to "🥥", "🍈" to "哈密瓜", "梨" to "🍐", "蓝莓" to "🫐",
+            "🍉" to "西瓜", "🍓" to "草莓", "🍑" to "桃子", "🍒" to "樱桃",
+            "🍌" to "香蕉", "🥝" to "猕猴桃", "🥭" to "芒果", "🍍" to "菠萝",
+            "🥥" to "椰子", "🍈" to "哈密瓜", "🍐" to "梨", "🫐" to "蓝莓",
             "🍏" to "青苹果"
         ),
         "蛋奶" to listOf(
@@ -49,14 +49,14 @@ object FoodEmojiUtils {
             "🥜" to "花生", "🌰" to "坚果", "🫒" to "橄榄"
         ),
         "饮品" to listOf(
-            "☕" to "咖啡", "茶" to "🍵", "🥤" -> "饮料", "🧃" to "果汁",
-            "🧋" to "珍珠奶茶", "葡萄酒" to "🍷", "啤酒" to "🍺",
+            "☕" to "咖啡", "🍵" to "茶", "🥤" to "饮料", "🧃" to "果汁",
+            "🧋" to "珍珠奶茶", "🍷" to "葡萄酒", "🍺" to "啤酒",
             "🥂" to "香槟", "🍹" to "鸡尾酒", "🥃" to "威士忌", "🫖" to "茶壶",
             "🍼" to "奶瓶", "🍶" to "清酒"
         ),
         "甜点" to listOf(
             "🍰" to "蛋糕", "🧁" to "杯子蛋糕", "🍩" to "甜甜圈", "🍪" to "饼干",
-            "🍫" to "巧克力", "糖果" to "🍬", "🍭" to "棒棒糖", "🍮" to "布丁",
+            "🍫" to "巧克力", "🍬" to "糖果", "🍭" to "棒棒糖", "🍮" to "布丁",
             "🍦" to "冰淇淋", "🍨" to "雪糕", "🍧" to "刨冰", "🍡" to "麻薯", 
             "🧇" to "华夫饼", "🍯" to "蜂蜜"
         ),
@@ -65,7 +65,7 @@ object FoodEmojiUtils {
         ),
         "其他" to listOf(
             "🍽️" to "食物", "🥗" to "沙拉", "🥘" to "炖菜", "🍜" to "汤面",
-            "🫕" to "火锅", "🍱" to "便当", "🍘" to "零食", "🧂" to "调料"
+            "🫕" to "火锅", " Bento" to "🍱", "🍘" to "零食", "🧂" to "调料"
         )
     )
 
@@ -190,11 +190,11 @@ object FoodEmojiUtils {
             // 其他
             name.contains("油") && !name.contains("橄榄油") -> "🫒"
             name.contains("汤") -> "🥣"
-            name.contains("沙拉") || name.contains("沙拉") -> "🥗"
+            name.contains("沙拉") -> "🥗"
             name.contains("火锅") -> "🫕"
             name.contains("寿司") -> "🍣"
             name.contains("便当") -> "🍱"
-            name.contains("水") && !name.contains("水果") && !name.contains("水果") -> "💧"
+            name.contains("水") && !name.contains("水果") -> "💧"
 
             else -> "🍽️"
         }
