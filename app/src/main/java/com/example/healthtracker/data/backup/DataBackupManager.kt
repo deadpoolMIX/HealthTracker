@@ -2,6 +2,8 @@ package com.example.healthtracker.data.backup
 
 import android.content.Context
 import android.net.Uri
+import androidx.sqlite.db.SimpleSQLiteQuery
+import com.example.healthtracker.data.local.database.HealthTrackerDatabase
 import com.example.healthtracker.data.local.dao.*
 import com.example.healthtracker.data.local.entity.*
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +18,7 @@ import java.io.OutputStreamWriter
  */
 class DataBackupManager(
     private val context: Context,
+    private val database: HealthTrackerDatabase,
     private val foodDao: FoodDao,
     private val intakeRecordDao: IntakeRecordDao,
     private val bodyRecordDao: BodyRecordDao,
@@ -91,43 +94,51 @@ class DataBackupManager(
      */
     private suspend fun importData(backupData: BackupData): ImportResult {
         try {
-            // 导入自定义食物
-            if (backupData.customFoods.isNotEmpty()) {
-                foodDao.insertFoods(backupData.customFoods)
-            }
+            // 临时关闭外键约束
+            database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys = OFF")
 
-            // 导入摄入记录
-            backupData.intakeRecords.forEach { record ->
-                intakeRecordDao.insertRecord(record)
-            }
+            try {
+                // 导入自定义食物
+                if (backupData.customFoods.isNotEmpty()) {
+                    foodDao.insertFoods(backupData.customFoods)
+                }
 
-            // 导入身体数据
-            backupData.bodyRecords.forEach { record ->
-                bodyRecordDao.insertRecord(record)
-            }
+                // 导入摄入记录
+                backupData.intakeRecords.forEach { record ->
+                    intakeRecordDao.insertRecord(record)
+                }
 
-            // 导入睡眠记录
-            backupData.sleepRecords.forEach { record ->
-                sleepRecordDao.insertRecord(record)
-            }
+                // 导入身体数据
+                backupData.bodyRecords.forEach { record ->
+                    bodyRecordDao.insertRecord(record)
+                }
 
-            // 导入饮食计划
-            val planIdMap = mutableMapOf<Long, Long>()
-            backupData.mealPlans.forEach { plan ->
-                val oldId = plan.id
-                val newId = mealPlanDao.insertPlan(plan.copy(id = 0))
-                planIdMap[oldId] = newId
-            }
+                // 导入睡眠记录
+                backupData.sleepRecords.forEach { record ->
+                    sleepRecordDao.insertRecord(record)
+                }
 
-            // 导入饮食计划项目（更新planId）
-            backupData.mealPlanItems.forEach { item ->
-                val newPlanId = planIdMap[item.planId] ?: item.planId
-                mealPlanItemDao.insertItem(item.copy(planId = newPlanId, id = 0))
-            }
+                // 导入饮食计划
+                val planIdMap = mutableMapOf<Long, Long>()
+                backupData.mealPlans.forEach { plan ->
+                    val oldId = plan.id
+                    val newId = mealPlanDao.insertPlan(plan.copy(id = 0))
+                    planIdMap[oldId] = newId
+                }
 
-            // 导入用户设置
-            backupData.userSettings?.let { settings ->
-                userSettingsDao.insertSettings(settings)
+                // 导入饮食计划项目（更新planId）
+                backupData.mealPlanItems.forEach { item ->
+                    val newPlanId = planIdMap[item.planId] ?: item.planId
+                    mealPlanItemDao.insertItem(item.copy(planId = newPlanId, id = 0))
+                }
+
+                // 导入用户设置
+                backupData.userSettings?.let { settings ->
+                    userSettingsDao.insertSettings(settings)
+                }
+            } finally {
+                // 恢复外键约束
+                database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys = ON")
             }
 
             return ImportResult.Success(

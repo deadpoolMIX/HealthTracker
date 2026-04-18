@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.healthtracker.data.backup.DataBackupManager
 import com.example.healthtracker.data.backup.ImportResult
 import com.example.healthtracker.data.local.dao.*
+import com.example.healthtracker.data.local.database.HealthTrackerDatabase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +32,7 @@ data class RecordCounts(
 @HiltViewModel
 class DataExportViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val database: HealthTrackerDatabase,
     private val foodDao: FoodDao,
     private val intakeRecordDao: IntakeRecordDao,
     private val bodyRecordDao: BodyRecordDao,
@@ -48,6 +50,7 @@ class DataExportViewModel @Inject constructor(
     init {
         backupManager = DataBackupManager(
             context = context,
+            database = database,
             foodDao = foodDao,
             intakeRecordDao = intakeRecordDao,
             bodyRecordDao = bodyRecordDao,
