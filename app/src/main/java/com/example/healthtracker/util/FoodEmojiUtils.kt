@@ -57,8 +57,8 @@ object FoodEmojiUtils {
         "甜点" to listOf(
             "🍰" to "蛋糕", "🧁" to "杯子蛋糕", "🍩" to "甜甜圈", "🍪" to "饼干",
             "🍫" to "巧克力", "糖果" to "🍬", "🍭" to "棒棒糖", "🍮" to "布丁",
-            "🍦" to "冰淇淋", "🍧" to "刨冰", "🍡" to "麻薯", "🧇" to "华夫饼",
-            "🍯" to "蜂蜜"
+            "🍦" to "冰淇淋", "🍨" to "雪糕", "🍧" to "刨冰", "🍡" to "麻薯", 
+            "🧇" to "华夫饼", "🍯" to "蜂蜜"
         ),
         "油脂" to listOf(
             "🫒" to "橄榄油", "🧈" to "黄油"
@@ -181,7 +181,7 @@ object FoodEmojiUtils {
             name.contains("饼干") -> "🍪"
             name.contains("巧克力") -> "🍫"
             name.contains("糖果") -> "🍬"
-            name.contains("冰淇淋") -> "🍦"
+            name.contains("冰淇淋") || name.contains("雪糕") -> "🍦"
             name.contains("布丁") -> "🍮"
             name.contains("麻薯") -> "🍡"
             name.contains("零食") -> "🍪"
