@@ -412,17 +412,30 @@ fun FabOption(icon: ImageVector, label: String, onClick: () -> Unit) {
 @Composable
 fun EditIntakeDialog(record: IntakeRecordEntity, onDismiss: () -> Unit, onConfirm: (IntakeRecordEntity) -> Unit) {
     var selectedMealType by remember { mutableIntStateOf(record.mealType) }
-    var amountText by remember { mutableStateOf(record.amount.toInt().toString()) }
+    
+    // 初始化数值：如果是特殊单位且有记录单价，则显示份数
+    val initialAmountText = if (record.gramsPerUnit != null && record.gramsPerUnit!! > 0 && record.unit != "克" && record.unit != "毫升") {
+        (record.amount / record.gramsPerUnit!!).let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }
+    } else {
+        record.amount.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }
+    }
+    
+    var amountText by remember { mutableStateOf(initialAmountText) }
     var selectedUnit by remember { mutableStateOf(record.unit?.replace(Regex("^[0-9.]*"), "") ?: "克") }
     var expandedUnit by remember { mutableStateOf(false) }
     val mealTypes = listOf("早餐", "午餐", "晚餐", "加餐")
     val units = listOf("克", "毫升", "个", "杯", "勺", "份", "块", "片", "包", "碗")
-    val amount = amountText.toDoubleOrNull() ?: 0.0
-    val ratio = if (record.amount > 0) amount / record.amount else 1.0
-    val calories = record.calories * ratio
-    val carbs = record.carbohydrates * ratio
-    val protein = record.protein * ratio
-    val fat = record.fat * ratio
+    
+    val inputAmount = amountText.toDoubleOrNull() ?: 0.0
+    val gramsPerUnit = record.gramsPerUnit ?: 1.0
+    val currentGrams = if (selectedUnit == "克" || selectedUnit == "毫升") inputAmount else inputAmount * gramsPerUnit
+    
+    // 使用存储的每百克数据计算
+    val ratio = currentGrams / 100.0
+    val calories = record.caloriesPer100g * ratio
+    val carbs = record.carbsPer100g * ratio
+    val protein = record.proteinPer100g * ratio
+    val fat = record.fatPer100g * ratio
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -435,7 +448,13 @@ fun EditIntakeDialog(record: IntakeRecordEntity, onDismiss: () -> Unit, onConfir
                     }
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = amountText, onValueChange = { amountText = it.filter { c -> c.isDigit() } }, label = { Text("数值") }, modifier = Modifier.weight(1f))
+                    OutlinedTextField(
+                        value = amountText, 
+                        onValueChange = { if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) amountText = it }, 
+                        label = { Text("数值") }, 
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    )
                     ExposedDropdownMenuBox(expanded = expandedUnit, onExpandedChange = { expandedUnit = it }, modifier = Modifier.weight(1f)) {
                         OutlinedTextField(value = selectedUnit, onValueChange = {}, label = { Text("单位") }, modifier = Modifier.menuAnchor(), readOnly = true, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedUnit) })
                         ExposedDropdownMenu(expanded = expandedUnit, onDismissRequest = { expandedUnit = false }) {
@@ -443,16 +462,36 @@ fun EditIntakeDialog(record: IntakeRecordEntity, onDismiss: () -> Unit, onConfir
                         }
                     }
                 }
-                if (amount > 0) {
+                if (inputAmount > 0) {
                     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f))) {
-                        Row(modifier = Modifier.padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            DataItem("热量", "${calories.roundToInt()}"); DataItem("碳水", "${carbs.roundToInt()}g"); DataItem("蛋白", "${protein.roundToInt()}g"); DataItem("脂肪", "${fat.roundToInt()}g")
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(text = "预览 (${currentGrams.toInt()}克)", style = MaterialTheme.typography.labelMedium)
+                            Spacer(Modifier.height(8.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                DataItem("热量", "${calories.roundToInt()}"); DataItem("碳水", "${carbs.roundToInt()}g"); DataItem("蛋白", "${protein.roundToInt()}g"); DataItem("脂肪", "${fat.roundToInt()}g")
+                            }
                         }
                     }
                 }
             }
         },
-        confirmButton = { Button(onClick = { onConfirm(record.copy(mealType = selectedMealType, amount = amount, calories = calories, carbohydrates = carbs, protein = protein, fat = fat, unit = selectedUnit)) }, enabled = amount > 0) { Text("保存") } },
+        confirmButton = { 
+            Button(
+                onClick = { 
+                    onConfirm(record.copy(
+                        mealType = selectedMealType, 
+                        amount = currentGrams, 
+                        amountInUnit = inputAmount,
+                        unit = selectedUnit,
+                        calories = calories, 
+                        carbohydrates = carbs, 
+                        protein = protein, 
+                        fat = fat
+                    )) 
+                }, 
+                enabled = inputAmount > 0
+            ) { Text("保存") } 
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
     )
 }

@@ -21,8 +21,10 @@ import javax.inject.Inject
  */
 data class PendingFoodItem(
     val food: FoodEntity,
-    val amount: Double,  // 克数
-    val unit: String,
+    val amount: Double,               // 总克数/毫升
+    val unit: String,                 // 单位名称
+    val amountInUnit: Double = 0.0,   // 按单位计的数量
+    val gramsPerUnit: Double = 1.0,   // 每单位对应多少克
     val calories: Double,
     val carbohydrates: Double,
     val protein: Double,
@@ -76,17 +78,22 @@ class AddIntakeViewModel @Inject constructor(
     /**
      * 添加待保存的食物项
      */
-    fun addPendingItem(food: FoodEntity, amount: Double, unit: String) {
+    fun addPendingItem(food: FoodEntity, amountInUnit: Double, unit: String, gramsPerUnit: Double) {
+        // 计算实际重量
+        val grams = amountInUnit * gramsPerUnit
+        
         // 计算营养值
-        val calories = (amount / 100.0) * food.calories
-        val carbs = (amount / 100.0) * food.carbohydrates
-        val protein = (amount / 100.0) * food.protein
-        val fat = (amount / 100.0) * food.fat
+        val calories = (grams / 100.0) * food.calories
+        val carbs = (grams / 100.0) * food.carbohydrates
+        val protein = (grams / 100.0) * food.protein
+        val fat = (grams / 100.0) * food.fat
 
         val item = PendingFoodItem(
             food = food,
-            amount = amount,
+            amount = grams,
             unit = unit,
+            amountInUnit = amountInUnit,
+            gramsPerUnit = gramsPerUnit,
             calories = calories,
             carbohydrates = carbs,
             protein = protein,
@@ -149,96 +156,27 @@ class AddIntakeViewModel @Inject constructor(
                     proteinPer100g = item.food.protein,
                     fatPer100g = item.food.fat,
                     unit = item.unit,
-                    amountInUnit = null,
-                    gramsPerUnit = null,
+                    amountInUnit = item.amountInUnit,
+                    gramsPerUnit = item.gramsPerUnit,
                     note = null,
-                    foodId = item.food.id
+                    foodId = item.food.id,
+                    createdAt = currentTime
                 )
             }
 
             intakeRecordRepository.insertRecords(records)
-
-            // 更新所有使用的食物的最近使用时间
-            val foodIds = _pendingItems.value.mapNotNull { it.food.id.takeIf { id -> id > 0 } }
-            if (foodIds.isNotEmpty()) {
-                foodRepository.updateLastUsedTimeBatch(foodIds, currentTime)
+            
+            // 更新食物的最近使用时间
+            _pendingItems.value.forEach { item ->
+                foodRepository.updateLastUsedTime(item.food.id, currentTime)
             }
 
-            _pendingItems.value = emptyList()
             _isSaving.value = false
             _saveCompleted.value = true
         }
     }
 
-    // 兼容旧的方法（自定义食物输入页面使用）
-    fun saveRecord(
-        foodName: String,
-        amount: Double,
-        caloriesPer100g: Double,
-        carbsPer100g: Double,
-        proteinPer100g: Double,
-        fatPer100g: Double,
-        mealType: Int,
-        unit: String?,
-        amountInUnit: Double?,
-        gramsPerUnit: Double?,
-        note: String?,
-        saveAsCustomFood: Boolean = false,
-        icon: String = "🍽️"
-    ) {
-        viewModelScope.launch {
-            _isSaving.value = true
-
-            val actualCalories = (amount / 100.0) * caloriesPer100g
-            val actualCarbs = (amount / 100.0) * carbsPer100g
-            val actualProtein = (amount / 100.0) * proteinPer100g
-            val actualFat = (amount / 100.0) * fatPer100g
-
-            // 确保图标有效，空或"custom"时根据名称推断
-            val foodIcon = if (icon.isNotEmpty() && icon != "custom") {
-                icon
-            } else {
-                FoodEmojiUtils.getDefaultEmojiForFood(foodName)
-            }
-
-            val record = IntakeRecordEntity(
-                foodName = foodName,
-                foodIcon = foodIcon,
-                date = DateTimeUtils.getStartOfDay(),
-                amount = amount,
-                calories = actualCalories,
-                carbohydrates = actualCarbs,
-                protein = actualProtein,
-                fat = actualFat,
-                mealType = mealType,
-                caloriesPer100g = caloriesPer100g,
-                carbsPer100g = carbsPer100g,
-                proteinPer100g = proteinPer100g,
-                fatPer100g = fatPer100g,
-                unit = unit,
-                amountInUnit = amountInUnit,
-                gramsPerUnit = gramsPerUnit,
-                note = note
-            )
-
-            intakeRecordRepository.insertRecord(record)
-
-            if (saveAsCustomFood) {
-                val customFood = FoodEntity(
-                    name = foodName,
-                    category = "自定义",
-                    calories = caloriesPer100g,
-                    carbohydrates = carbsPer100g,
-                    protein = proteinPer100g,
-                    fat = fatPer100g,
-                    icon = icon,
-                    isCustom = true
-                )
-                foodRepository.insertFood(customFood)
-            }
-
-            _isSaving.value = false
-            _saveCompleted.value = true
-        }
+    fun resetSaveStatus() {
+        _saveCompleted.value = false
     }
 }

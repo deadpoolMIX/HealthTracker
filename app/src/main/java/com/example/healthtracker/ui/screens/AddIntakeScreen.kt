@@ -325,8 +325,8 @@ fun AddIntakeScreen(
                 searchFocusRequester.freeFocus()
                 showAddDialog = null
             },
-            onConfirm = { amount, unit ->
-                viewModel.addPendingItem(food, amount, unit)
+            onConfirm = { amount, unit, gramsPerUnit ->
+                viewModel.addPendingItem(food, amount, unit, gramsPerUnit)
                 searchFocusRequester.freeFocus()
                 showAddDialog = null
             }
@@ -461,8 +461,9 @@ private fun FoodSearchResultItem(
 private fun AddFoodDialog(
     food: FoodEntity,
     onDismiss: () -> Unit,
-    onConfirm: (amount: Double, unit: String) -> Unit
+    onConfirm: (Double, String, Double) -> Unit
 ) {
+
     var amountText by remember { mutableStateOf("") }
     var selectedUnitIndex by remember { mutableIntStateOf(0) }
     var amountError by remember { mutableStateOf<String?>(null) }
@@ -650,8 +651,8 @@ private fun AddFoodDialog(
                             if (amount <= 0) {
                                 amountError = "请输入有效数值"
                             } else {
-                                // 返回实际克数
-                                onConfirm(grams, currentUnit)
+                                // 返回 数值、单位名、单位重量
+                                onConfirm(amount, currentUnit, gramsPerUnit)
                             }
                         },
                         modifier = Modifier.weight(1f)
