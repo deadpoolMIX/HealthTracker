@@ -5,8 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -14,12 +15,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,12 +38,11 @@ fun NutritionDetailScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val periods = listOf("周", "月")
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("营养素摄入详情", fontWeight = FontWeight.Medium) },
+                title = { Text("摄入详细数据", fontWeight = FontWeight.Medium) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -50,361 +52,126 @@ fun NutritionDetailScreen(
         }
     ) { paddingValues ->
         if (uiState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else {
-            LazyColumn(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 周期选择
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        periods.forEachIndexed { index, period ->
-                            FilterChip(
-                                selected = uiState.period == index,
-                                onClick = { viewModel.setPeriod(index) },
-                                label = { Text(period) }
-                            )
-                        }
-                        Spacer(modifier = Modifier.weight(1f))
-                        // 周期切换按钮
-                        IconButton(
-                            onClick = { viewModel.setPeriodOffset(uiState.periodOffset + 1) },
-                            enabled = uiState.periodOffset < 12,
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "上一周期")
-                        }
-                        Text(
-                            text = viewModel.getPeriodLabel(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                        IconButton(
-                            onClick = { viewModel.setPeriodOffset(uiState.periodOffset - 1) },
-                            enabled = uiState.periodOffset > 0,
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "下一周期")
-                        }
-                    }
-                }
-
-                // 柱状图区块
-                item {
-                    if (uiState.period == 0) {
-                        NutritionChartCard(
-                            title = "每日摄入",
-                            data = uiState.dailyData,
-                            period = uiState.period
-                        )
-                    } else {
-                        NutritionWeeklyChartCard(
-                            title = "每周摄入",
-                            data = uiState.weeklyData
-                        )
-                    }
-                }
-
-                // 平均摄入量区块
-                item {
-                    AverageIntakeCard(
-                        avgCalories = uiState.avgCalories,
-                        avgCarbs = uiState.avgCarbs,
-                        avgProtein = uiState.avgProtein,
-                        avgFat = uiState.avgFat,
-                        period = uiState.period
-                    )
-                }
-
-                // 摄入总量区块
-                item {
-                    TotalIntakeCard(
-                        totalCalories = uiState.totalCalories,
-                        totalCarbs = uiState.totalCarbs,
-                        totalProtein = uiState.totalProtein,
-                        totalFat = uiState.totalFat,
-                        period = uiState.period
-                    )
-                }
-
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun NutritionChartCard(
-    title: String,
-    data: List<DailyNutrition>,
-    period: Int
-) {
-    // 使用统一的营养素颜色
-    val carbsColor = NutrientColors.Carbs
-    val proteinColor = NutrientColors.Protein
-    val fatColor = NutrientColors.Fat
-
-    // 点击的柱状图索引
-    var selectedIndex by remember { mutableStateOf(-1) }
-
-    // 详情弹窗
-    if (selectedIndex >= 0 && selectedIndex < data.size) {
-        val selectedDay = data[selectedIndex]
-        val cal = Calendar.getInstance()
-        cal.timeInMillis = selectedDay.date
-        val dayStr = "${cal.get(Calendar.MONTH) + 1}月${cal.get(Calendar.DAY_OF_MONTH)}日"
-
-        AlertDialog(
-            onDismissRequest = { selectedIndex = -1 },
-            title = { Text(dayStr, fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    NutritionDetailRow("热量", String.format(Locale.getDefault(), "%.0f", selectedDay.calories), "kcal", MaterialTheme.colorScheme.error)
-                    NutritionDetailRow("碳水", String.format(Locale.getDefault(), "%.1f", selectedDay.carbs), "g", carbsColor)
-                    NutritionDetailRow("蛋白质", String.format(Locale.getDefault(), "%.1f", selectedDay.protein), "g", proteinColor)
-                    NutritionDetailRow("脂肪", String.format(Locale.getDefault(), "%.1f", selectedDay.fat), "g", fatColor)
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { selectedIndex = -1 }) {
-                    Text("关闭")
-                }
-            }
-        )
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 图例
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                LegendItem("碳水", carbsColor)
-                LegendItem("蛋白质", proteinColor)
-                LegendItem("脂肪", fatColor)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 柱状图 - 柱子和标签都使用Compose布局，确保精确对齐
-            if (data.isNotEmpty()) {
-                // 找出所有数据的最大总量，用于等比例缩放
-                val maxValue = data.maxOf { it.carbs + it.protein + it.fat }.toFloat().coerceAtLeast(1f)
-
-                // 使用Box来模拟Canvas布局，柱子和标签都用Compose组件
-                Box(
-                    modifier = Modifier.fillMaxWidth()
+                // Header (Week Navigator)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 绘制区域
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        // 柱状图区域
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp),
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            // 固定7格布局
-                            repeat(7) { slotIndex ->
-                                // 查找这个位置是否有数据
-                                val dataIndex = slotIndex.coerceAtMost(data.size - 1)
-                                val hasData = slotIndex < data.size
-                                val day = data.getOrNull(slotIndex)
+                    var showWeekPicker by remember { mutableStateOf(false) }
 
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight()
-                                        .clickable(enabled = hasData && day != null) {
-                                            selectedIndex = slotIndex
-                                        },
-                                    contentAlignment = Alignment.BottomCenter
-                                ) {
-                                    if (hasData && day != null) {
-                                        val dayTotal = day.carbs + day.protein + day.fat
-                                        val maxHeight = 200.dp
-                                        val totalHeight = (dayTotal / maxValue * maxHeight.value).dp.coerceAtMost(maxHeight)
-                                        val carbsHeight = if (dayTotal > 0) (day.carbs / dayTotal * totalHeight.value).dp else 0.dp
-                                        val proteinHeight = if (dayTotal > 0) (day.protein / dayTotal * totalHeight.value).dp else 0.dp
-                                        val fatHeight = if (dayTotal > 0) (day.fat / dayTotal * totalHeight.value).dp else 0.dp
-
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth(0.7f)
-                                                .height(totalHeight),
-                                            verticalArrangement = Arrangement.Bottom
-                                        ) {
-                                            // 碳水（顶部）
-                                            if (carbsHeight.value > 0) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .height(carbsHeight)
-                                                        .background(carbsColor)
-                                                )
-                                            }
-                                            // 蛋白质（中间）
-                                            if (proteinHeight.value > 0) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .height(proteinHeight)
-                                                        .background(proteinColor)
-                                                )
-                                            }
-                                            // 脂肪（底部）
-                                            if (fatHeight.value > 0) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .height(fatHeight)
-                                                        .background(fatColor)
-                                                )
-                                            }
-                                        }
+                    if (showWeekPicker) {
+                        var targetWeekStr by remember { mutableStateOf(uiState.weekNumber.toString()) }
+                        AlertDialog(
+                            onDismissRequest = { showWeekPicker = false },
+                            title = { Text("跳转到指定周", fontWeight = FontWeight.Bold) },
+                            text = {
+                                OutlinedTextField(
+                                    value = targetWeekStr,
+                                    onValueChange = { targetWeekStr = it },
+                                    label = { Text("输入周数 (当前年)") },
+                                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                                    ),
+                                    singleLine = true
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { 
+                                    val targetWeek = targetWeekStr.toIntOrNull()
+                                    if (targetWeek != null && targetWeek > 0) {
+                                        viewModel.jumpToWeek(targetWeek)
                                     }
-                                }
+                                    showWeekPicker = false 
+                                }) { Text("确定") }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showWeekPicker = false }) { Text("取消") }
                             }
-                        }
+                        )
+                    }
 
-                        // X轴标签 - 与柱子相同的布局
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            repeat(7) { slotIndex ->
-                                val day = data.getOrNull(slotIndex)
-
-                                Box(
-                                    modifier = Modifier.weight(1f),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (day != null) {
-                                        val cal = Calendar.getInstance()
-                                        cal.timeInMillis = day.date
-                                        val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
-                                        val dayLabel = when (dayOfWeek) {
-                                            Calendar.MONDAY -> "一"
-                                            Calendar.TUESDAY -> "二"
-                                            Calendar.WEDNESDAY -> "三"
-                                            Calendar.THURSDAY -> "四"
-                                            Calendar.FRIDAY -> "五"
-                                            Calendar.SATURDAY -> "六"
-                                            Calendar.SUNDAY -> "日"
-                                            else -> ""
-                                        }
-                                        Text(
-                                            text = dayLabel,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                    IconButton(onClick = { viewModel.previousWeek() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "上一周")
+                    }
+                    Text(
+                        text = "第 ${uiState.weekNumber} 周",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clickable { showWeekPicker = true }
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                    IconButton(onClick = { viewModel.nextWeek() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "下一周")
                     }
                 }
+
+                // Chart
+                IntakeChartCard(uiState)
+
+                // Stats Section 1: Avg per day
+                NutritionStatCard(
+                    title = "日均摄入 (基于实际记录)",
+                    calories = uiState.avgDailyCalories,
+                    carbs = uiState.avgDailyCarbs,
+                    protein = uiState.avgDailyProtein,
+                    fat = uiState.avgDailyFat
+                )
+
+                // Stats Section 2: Avg per meal
+                NutritionStatCard(
+                    title = "餐均摄入 (基于实际记录)",
+                    calories = uiState.avgMealCalories,
+                    carbs = uiState.avgMealCarbs,
+                    protein = uiState.avgMealProtein,
+                    fat = uiState.avgMealFat
+                )
+                
+                Spacer(Modifier.height(16.dp))
             }
         }
     }
 }
 
 @Composable
-private fun NutritionDetailRow(
-    label: String,
-    value: String,
-    unit: String,
-    color: Color
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = unit,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun NutritionWeeklyChartCard(
-    title: String,
-    data: List<WeeklyNutrition>
-) {
-    // 使用统一的营养素颜色
-    val carbsColor = NutrientColors.Carbs
-    val proteinColor = NutrientColors.Protein
-    val fatColor = NutrientColors.Fat
-
-    // 点击的柱状图索引
-    var selectedIndex by remember { mutableStateOf(-1) }
-
-    // 详情弹窗
-    if (selectedIndex >= 0 && selectedIndex < data.size) {
-        val selectedWeek = data[selectedIndex]
-
+private fun IntakeChartCard(uiState: NutritionDetailUiState) {
+    var selectedItem by remember { mutableStateOf<DailyNutritionData?>(null) }
+    
+    // Popup
+    selectedItem?.let { dayData ->
         AlertDialog(
-            onDismissRequest = { selectedIndex = -1 },
-            title = { Text(selectedWeek.weekLabel, fontWeight = FontWeight.Bold) },
+            onDismissRequest = { selectedItem = null },
+            title = {
+                val cal = Calendar.getInstance().apply { timeInMillis = dayData.timestamp }
+                val year = cal.get(Calendar.YEAR)
+                val month = cal.get(Calendar.MONTH) + 1
+                val day = cal.get(Calendar.DAY_OF_MONTH)
+                Text("${year}年${month}月${day}日", fontWeight = FontWeight.Bold)
+            },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    NutritionDetailRow("热量", String.format(Locale.getDefault(), "%.0f", selectedWeek.calories), "kcal", MaterialTheme.colorScheme.error)
-                    NutritionDetailRow("碳水", String.format(Locale.getDefault(), "%.1f", selectedWeek.carbs), "g", carbsColor)
-                    NutritionDetailRow("蛋白质", String.format(Locale.getDefault(), "%.1f", selectedWeek.protein), "g", proteinColor)
-                    NutritionDetailRow("脂肪", String.format(Locale.getDefault(), "%.1f", selectedWeek.fat), "g", fatColor)
+                    Text("热量: ${dayData.calories.toInt()} kcal", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                    Text("碳水: ${String.format(Locale.getDefault(), "%.1f", dayData.carbs)} g", color = NutrientColors.Carbs)
+                    Text("蛋白质: ${String.format(Locale.getDefault(), "%.1f", dayData.protein)} g", color = NutrientColors.Protein)
+                    Text("脂肪: ${String.format(Locale.getDefault(), "%.1f", dayData.fat)} g", color = NutrientColors.Fat)
                 }
             },
             confirmButton = {
-                TextButton(onClick = { selectedIndex = -1 }) {
+                TextButton(onClick = { selectedItem = null }) {
                     Text("关闭")
                 }
             }
@@ -413,291 +180,232 @@ private fun NutritionWeeklyChartCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 图例
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                LegendItem("碳水", carbsColor)
-                LegendItem("蛋白质", proteinColor)
-                LegendItem("脂肪", fatColor)
-            }
-
+            Text("热量及营养素柱状图", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 柱状图
-            if (data.isNotEmpty()) {
-                // 找出所有数据的最大总量，用于等比例缩放
-                val maxValue = data.maxOf { it.carbs + it.protein + it.fat }.toFloat().coerceAtLeast(1f)
+            val carbsColor = NutrientColors.Carbs
+            val proteinColor = NutrientColors.Protein
+            val fatColor = NutrientColors.Fat
+            val targetColor = Color.Red
+            val axisColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            val textColor = MaterialTheme.colorScheme.onSurface
 
-                // 修复对齐问题：使用与标签相同的布局方式
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Canvas(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .pointerInput(data) {
-                                detectTapGestures { offset ->
-                                    val barCount = data.size
-                                    val totalSpacing = size.width * 0.4f
-                                    val totalBarWidth = size.width - totalSpacing
-                                    val barWidth = totalBarWidth / barCount
-                                    val spacing = totalSpacing / (barCount + 1)
+            val textMeasurer = rememberTextMeasurer()
 
-                                    data.forEachIndexed { index, _ ->
-                                        val barStart = spacing + index * (barWidth + spacing)
-                                        val barEnd = barStart + barWidth
-                                        if (offset.x in barStart..barEnd) {
-                                            selectedIndex = index
-                                            return@detectTapGestures
-                                        }
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(250.dp)
+                    .pointerInput(uiState.dailyData) {
+                        detectTapGestures { offset ->
+                            val width = size.width
+                            val yAxisWidth = 40.dp.toPx()
+                            val chartWidth = width - yAxisWidth
+                            val barWidth = chartWidth / 14f
+                            val spacing = chartWidth / 7f
+
+                            val x = offset.x
+                            if (x > yAxisWidth) {
+                                val index = ((x - yAxisWidth) / spacing).toInt()
+                                if (index in 0..6) {
+                                    val barCenterX = yAxisWidth + index * spacing + spacing / 2f
+                                    if (kotlin.math.abs(x - barCenterX) <= barWidth) {
+                                        selectedItem = uiState.dailyData[index]
                                     }
                                 }
                             }
-                    ) {
-                        val barCount = data.size
-                        val totalSpacing = size.width * 0.4f // 总间距占40%
-                        val totalBarWidth = size.width - totalSpacing // 柱状图总宽度占60%
-                        val barWidth = totalBarWidth / barCount
-                        val spacing = totalSpacing / (barCount + 1) // 每个间隔
+                        }
+                    }
+            ) {
+                val maxCals = maxOf(
+                    uiState.targetCalories,
+                    uiState.dailyData.maxOfOrNull { it.calories } ?: 0f
+                ) * 1.2f
+                
+                val maxAxisValue = if (maxCals > 0) maxCals else 2000f
 
-                        data.forEachIndexed { index, week ->
-                            val x = spacing + index * (barWidth + spacing)
+                val yAxisWidth = 40.dp.toPx()
+                val xAxisHeight = 24.dp.toPx()
+                val chartHeight = size.height - xAxisHeight
+                val chartWidth = size.width - yAxisWidth
 
-                            // 堆叠柱状图 - 按实际数值等比例缩放
-                            val weekTotal = week.carbs + week.protein + week.fat
-                            val totalHeight = (weekTotal / maxValue * size.height).toFloat()
-                            val carbsHeight: Float = if (weekTotal > 0) (week.carbs / weekTotal * totalHeight).toFloat() else 0f
-                            val proteinHeight: Float = if (weekTotal > 0) (week.protein / weekTotal * totalHeight).toFloat() else 0f
-                            val fatHeight: Float = if (weekTotal > 0) (week.fat / weekTotal * totalHeight).toFloat() else 0f
+                // Draw Y Axis and horizontal lines
+                val ySteps = 4
+                for (i in 0..ySteps) {
+                    val yVal = maxAxisValue * i / ySteps
+                    val yPos = chartHeight - (chartHeight * i / ySteps)
+                    
+                    if (yVal > 0) {
+                        drawLine(
+                            color = axisColor.copy(alpha = 0.2f),
+                            start = Offset(yAxisWidth, yPos),
+                            end = Offset(size.width, yPos),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                    }
 
-                            // 绘制脂肪（底部）
-                            drawRect(
-                                color = fatColor,
-                                topLeft = Offset(x, size.height - fatHeight),
-                                size = Size(barWidth, fatHeight)
-                            )
+                    drawText(
+                        textMeasurer = textMeasurer,
+                        text = yVal.toInt().toString(),
+                        topLeft = Offset(0f, yPos - 8.dp.toPx()),
+                        style = TextStyle(color = axisColor, fontSize = 10.sp, textAlign = TextAlign.End)
+                    )
+                }
 
-                            // 绘制蛋白质（中间）
-                            drawRect(
-                                color = proteinColor,
-                                topLeft = Offset(x, size.height - fatHeight - proteinHeight),
-                                size = Size(barWidth, proteinHeight)
-                            )
+                // Draw target red line
+                if (uiState.targetCalories > 0) {
+                    val targetY = chartHeight - (chartHeight * uiState.targetCalories / maxAxisValue)
+                    drawLine(
+                        color = targetColor,
+                        start = Offset(yAxisWidth, targetY),
+                        end = Offset(size.width, targetY),
+                        strokeWidth = 2.dp.toPx()
+                    )
+                }
 
-                            // 绘制碳水（顶部）
+                // Draw bars and X labels
+                val spacing = chartWidth / 7f
+                val barWidth = chartWidth / 14f
+
+                uiState.dailyData.forEachIndexed { index, day ->
+                    val xCenter = yAxisWidth + index * spacing + spacing / 2f
+                    val barLeft = xCenter - barWidth / 2f
+
+                    // Draw X Label
+                    val labelResult = textMeasurer.measure(
+                        day.dateLabel,
+                        style = TextStyle(color = textColor, fontSize = 12.sp)
+                    )
+                    drawText(
+                        textLayoutResult = labelResult,
+                        topLeft = Offset(xCenter - labelResult.size.width / 2f, chartHeight + 8.dp.toPx())
+                    )
+
+                    if (day.calories > 0) {
+                        val totalMacros = day.carbs + day.protein + day.fat
+                        val barTotalHeight = chartHeight * (day.calories / maxAxisValue)
+                        val barTop = chartHeight - barTotalHeight
+
+                        if (totalMacros > 0) {
+                            val carbsHeight = barTotalHeight * (day.carbs / totalMacros)
+                            val proteinHeight = barTotalHeight * (day.protein / totalMacros)
+                            val fatHeight = barTotalHeight * (day.fat / totalMacros)
+
+                            var currentY = chartHeight
+                            // Draw Carbs (bottom)
                             drawRect(
                                 color = carbsColor,
-                                topLeft = Offset(x, size.height - fatHeight - proteinHeight - carbsHeight),
+                                topLeft = Offset(barLeft, currentY - carbsHeight),
                                 size = Size(barWidth, carbsHeight)
                             )
-                        }
-                    }
+                            currentY -= carbsHeight
 
-                    // X轴标签 - 显示"第一周、第二周"等
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        data.forEach { week ->
-                            Text(
-                                text = week.weekLabel,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.weight(1f),
-                                textAlign = TextAlign.Center,
-                                maxLines = 1
+                            // Draw Protein (middle)
+                            drawRect(
+                                color = proteinColor,
+                                topLeft = Offset(barLeft, currentY - proteinHeight),
+                                size = Size(barWidth, proteinHeight)
+                            )
+                            currentY -= proteinHeight
+
+                            // Draw Fat (top)
+                            drawRect(
+                                color = fatColor,
+                                topLeft = Offset(barLeft, currentY - fatHeight),
+                                size = Size(barWidth, fatHeight)
+                            )
+                        } else {
+                            // Only calories
+                            drawRect(
+                                color = Color.Gray,
+                                topLeft = Offset(barLeft, barTop),
+                                size = Size(barWidth, barTotalHeight)
                             )
                         }
+
+                        // Top calories text
+                        val calResult = textMeasurer.measure(
+                            day.calories.toInt().toString(),
+                            style = TextStyle(color = textColor, fontSize = 10.sp)
+                        )
+                        drawText(
+                            textLayoutResult = calResult,
+                            topLeft = Offset(xCenter - calResult.size.width / 2f, barTop - calResult.size.height - 2.dp.toPx())
+                        )
                     }
                 }
             }
+            
+            // Legend
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                NutritionLegendItem("碳水", carbsColor)
+                Spacer(Modifier.width(16.dp))
+                NutritionLegendItem("蛋白质", proteinColor)
+                Spacer(Modifier.width(16.dp))
+                NutritionLegendItem("脂肪", fatColor)
+                Spacer(Modifier.width(16.dp))
+                NutritionLegendItem("目标热量", targetColor, isLine = true)
+            }
         }
     }
 }
 
 @Composable
-private fun LegendItem(label: String, color: Color) {
+private fun NutritionLegendItem(label: String, color: Color, isLine: Boolean = false) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(12.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(color)
-        )
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        if (isLine) {
+            Box(Modifier.width(16.dp).height(2.dp).background(color))
+        } else {
+            Box(Modifier.size(12.dp).background(color, RoundedCornerShape(2.dp)))
+        }
+        Spacer(Modifier.width(4.dp))
+        Text(label, style = MaterialTheme.typography.bodySmall)
     }
 }
 
 @Composable
-private fun AverageIntakeCard(
-    avgCalories: Double,
-    avgCarbs: Double,
-    avgProtein: Double,
-    avgFat: Double,
-    period: Int
+private fun NutritionStatCard(
+    title: String,
+    calories: Float,
+    carbs: Float,
+    protein: Float,
+    fat: Float
 ) {
-    val periodLabel = if (period == 0) "每日" else "每周"
-
-    // 使用统一的营养素颜色
-    val carbsColor = NutrientColors.Carbs
-    val proteinColor = NutrientColors.Protein
-    val fatColor = NutrientColors.Fat
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "平均${periodLabel}摄入量",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                StatItem(
-                    label = "热量",
-                    value = String.format(Locale.getDefault(), "%.0f", avgCalories),
-                    unit = "kcal",
-                    color = MaterialTheme.colorScheme.error
-                )
-                StatItem(
-                    label = "碳水",
-                    value = String.format(Locale.getDefault(), "%.0f", avgCarbs),
-                    unit = "g",
-                    color = carbsColor
-                )
-                StatItem(
-                    label = "蛋白质",
-                    value = String.format(Locale.getDefault(), "%.0f", avgProtein),
-                    unit = "g",
-                    color = proteinColor
-                )
-                StatItem(
-                    label = "脂肪",
-                    value = String.format(Locale.getDefault(), "%.0f", avgFat),
-                    unit = "g",
-                    color = fatColor
-                )
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(16.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                NutritionStatItem("热量", calories, "kcal", MaterialTheme.colorScheme.error)
+                NutritionStatItem("碳水", carbs, "g", NutrientColors.Carbs)
+                NutritionStatItem("蛋白质", protein, "g", NutrientColors.Protein)
+                NutritionStatItem("脂肪", fat, "g", NutrientColors.Fat)
             }
         }
     }
 }
 
 @Composable
-private fun TotalIntakeCard(
-    totalCalories: Double,
-    totalCarbs: Double,
-    totalProtein: Double,
-    totalFat: Double,
-    period: Int
-) {
-    val periodLabel = if (period == 0) "7天" else "4周"
-
-    // 使用统一的营养素颜色
-    val carbsColor = NutrientColors.Carbs
-    val proteinColor = NutrientColors.Protein
-    val fatColor = NutrientColors.Fat
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "${periodLabel}摄入总量",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                StatItem(
-                    label = "热量",
-                    value = String.format(Locale.getDefault(), "%.0f", totalCalories),
-                    unit = "kcal",
-                    color = MaterialTheme.colorScheme.error
-                )
-                StatItem(
-                    label = "碳水",
-                    value = String.format(Locale.getDefault(), "%.0f", totalCarbs),
-                    unit = "g",
-                    color = carbsColor
-                )
-                StatItem(
-                    label = "蛋白质",
-                    value = String.format(Locale.getDefault(), "%.0f", totalProtein),
-                    unit = "g",
-                    color = proteinColor
-                )
-                StatItem(
-                    label = "脂肪",
-                    value = String.format(Locale.getDefault(), "%.0f", totalFat),
-                    unit = "g",
-                    color = fatColor
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun StatItem(
-    label: String,
-    value: String,
-    unit: String,
-    color: Color = MaterialTheme.colorScheme.primary
-) {
+private fun NutritionStatItem(label: String, value: Float, unit: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
-            Spacer(modifier = Modifier.width(2.dp))
-            Text(
-                text = unit,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Text(label, style = MaterialTheme.typography.bodyMedium)
         Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            String.format(Locale.getDefault(), "%.1f", value), 
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = color
         )
+        Text(unit, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

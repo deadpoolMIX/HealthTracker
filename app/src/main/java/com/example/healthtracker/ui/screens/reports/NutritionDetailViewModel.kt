@@ -4,281 +4,155 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.healthtracker.data.local.entity.IntakeRecordEntity
 import com.example.healthtracker.data.repository.IntakeRecordRepository
+import com.example.healthtracker.data.repository.UserSettingsRepository
 import com.example.healthtracker.util.DateTimeUtils
+import com.example.healthtracker.util.ReportPeriodManager
+import com.example.healthtracker.util.ReportStatUtils.averageByRealDays
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.Calendar
 import javax.inject.Inject
+import java.util.Calendar
 
 data class NutritionDetailUiState(
-    val period: Int = 0, // 0=周, 1=月
-    val periodOffset: Int = 0, // 0=本周/本月, 1=上周/上月, 2=上上周等
-    val dailyData: List<DailyNutrition> = emptyList(),
-    val weeklyData: List<WeeklyNutrition> = emptyList(),
-    val avgCalories: Double = 0.0,
-    val avgCarbs: Double = 0.0,
-    val avgProtein: Double = 0.0,
-    val avgFat: Double = 0.0,
-    val totalCalories: Double = 0.0,
-    val totalCarbs: Double = 0.0,
-    val totalProtein: Double = 0.0,
-    val totalFat: Double = 0.0,
+    val year: Int,
+    val weekNumber: Int,
+    val targetCalories: Float = 2000f,
+    val dailyData: List<DailyNutritionData> = emptyList(),
+    val avgDailyCalories: Float = 0f,
+    val avgDailyCarbs: Float = 0f,
+    val avgDailyProtein: Float = 0f,
+    val avgDailyFat: Float = 0f,
+    val avgMealCalories: Float = 0f,
+    val avgMealCarbs: Float = 0f,
+    val avgMealProtein: Float = 0f,
+    val avgMealFat: Float = 0f,
     val isLoading: Boolean = true
 )
 
-data class WeeklyNutrition(
-    val weekStart: Long,
-    val weekEnd: Long,
-    val weekLabel: String,
-    val calories: Double,
-    val carbs: Double,
-    val protein: Double,
-    val fat: Double
+data class DailyNutritionData(
+    val dayIndex: Int, 
+    val dateLabel: String, 
+    val timestamp: Long, 
+    val calories: Float,
+    val carbs: Float,
+    val protein: Float,
+    val fat: Float
 )
 
 @HiltViewModel
 class NutritionDetailViewModel @Inject constructor(
-    private val intakeRecordRepository: IntakeRecordRepository
+    private val intakeRecordRepository: IntakeRecordRepository,
+    private val userSettingsRepository: UserSettingsRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(NutritionDetailUiState())
+    private val _uiState = MutableStateFlow(
+        NutritionDetailUiState(
+            year = ReportPeriodManager.getYear(System.currentTimeMillis()),
+            weekNumber = ReportPeriodManager.getCustomWeekNumber(System.currentTimeMillis())
+        )
+    )
     val uiState = _uiState.asStateFlow()
 
     init {
         loadData()
     }
 
-    fun setPeriod(period: Int) {
-        _uiState.value = _uiState.value.copy(period = period, periodOffset = 0)
+    fun previousWeek() {
+        val currentStart = ReportPeriodManager.getStartTimestampOfWeek(_uiState.value.year, _uiState.value.weekNumber)
+        val prevWeekTime = currentStart - 7 * 24 * 60 * 60 * 1000L
+        _uiState.value = _uiState.value.copy(
+            year = ReportPeriodManager.getYear(prevWeekTime),
+            weekNumber = ReportPeriodManager.getCustomWeekNumber(prevWeekTime)
+        )
         loadData()
     }
 
-    fun setPeriodOffset(offset: Int) {
-        _uiState.value = _uiState.value.copy(periodOffset = offset.coerceAtLeast(0))
+    fun nextWeek() {
+        val currentStart = ReportPeriodManager.getStartTimestampOfWeek(_uiState.value.year, _uiState.value.weekNumber)
+        val nextWeekTime = currentStart + 7 * 24 * 60 * 60 * 1000L
+        
+        // Prevent navigating to future weeks
+        if (nextWeekTime > System.currentTimeMillis()) return
+        
+        _uiState.value = _uiState.value.copy(
+            year = ReportPeriodManager.getYear(nextWeekTime),
+            weekNumber = ReportPeriodManager.getCustomWeekNumber(nextWeekTime)
+        )
         loadData()
     }
 
-    fun getPeriodLabel(): String {
-        // 显示图表第一天的日期，如"3.9"
-        val calendar = Calendar.getInstance()
+    fun jumpToWeek(targetWeekNumber: Int) {
         val now = System.currentTimeMillis()
-        val offset = _uiState.value.periodOffset
-
-        val startDate = when (_uiState.value.period) {
-            0 -> { // 周
-                calendar.timeInMillis = now
-                calendar.add(Calendar.WEEK_OF_YEAR, -offset)
-                calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-                calendar.set(Calendar.HOUR_OF_DAY, 0)
-                calendar.set(Calendar.MINUTE, 0)
-                calendar.set(Calendar.SECOND, 0)
-                calendar.set(Calendar.MILLISECOND, 0)
-                calendar.timeInMillis
-            }
-            1 -> { // 月
-                calendar.timeInMillis = now
-                calendar.add(Calendar.MONTH, -offset)
-                calendar.set(Calendar.DAY_OF_MONTH, 1)
-                calendar.set(Calendar.HOUR_OF_DAY, 0)
-                calendar.set(Calendar.MINUTE, 0)
-                calendar.set(Calendar.SECOND, 0)
-                calendar.set(Calendar.MILLISECOND, 0)
-                calendar.timeInMillis
-            }
-            else -> now
-        }
-
-        val cal = Calendar.getInstance()
-        cal.timeInMillis = startDate
-        return "${cal.get(Calendar.MONTH) + 1}.${cal.get(Calendar.DAY_OF_MONTH)}"
+        val currentYear = ReportPeriodManager.getYear(now)
+        val maxWeek = ReportPeriodManager.getCustomWeekNumber(now)
+        val safeWeek = targetWeekNumber.coerceIn(1, maxWeek)
+        
+        _uiState.value = _uiState.value.copy(
+            year = currentYear,
+            weekNumber = safeWeek
+        )
+        loadData()
     }
 
     private fun loadData() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
-            val calendar = Calendar.getInstance()
-            val now = System.currentTimeMillis()
-            val offset = _uiState.value.periodOffset
+            val settings = userSettingsRepository.getSettings()
+            val targetCals = settings?.targetCalories?.toFloat() ?: 2000f
 
-            val (startDate, endDate) = when (_uiState.value.period) {
-                0 -> { // 周 - 根据偏移量获取
-                    calendar.timeInMillis = now
-                    calendar.add(Calendar.WEEK_OF_YEAR, -offset)
-                    calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-                    calendar.set(Calendar.HOUR_OF_DAY, 0)
-                    calendar.set(Calendar.MINUTE, 0)
-                    calendar.set(Calendar.SECOND, 0)
-                    calendar.set(Calendar.MILLISECOND, 0)
-                    val start = calendar.timeInMillis
-                    calendar.add(Calendar.DAY_OF_MONTH, 6)
-                    calendar.set(Calendar.HOUR_OF_DAY, 23)
-                    calendar.set(Calendar.MINUTE, 59)
-                    calendar.set(Calendar.SECOND, 59)
-                    val end = calendar.timeInMillis
-                    Pair(start, end)
-                }
-                1 -> { // 月 - 根据偏移量获取
-                    calendar.timeInMillis = now
-                    calendar.add(Calendar.MONTH, -offset)
-                    calendar.set(Calendar.DAY_OF_MONTH, 1)
-                    calendar.set(Calendar.HOUR_OF_DAY, 0)
-                    calendar.set(Calendar.MINUTE, 0)
-                    calendar.set(Calendar.SECOND, 0)
-                    calendar.set(Calendar.MILLISECOND, 0)
-                    val start = calendar.timeInMillis
-                    calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
-                    calendar.set(Calendar.HOUR_OF_DAY, 23)
-                    calendar.set(Calendar.MINUTE, 59)
-                    calendar.set(Calendar.SECOND, 59)
-                    val end = calendar.timeInMillis
-                    Pair(start, end)
-                }
-                else -> Pair(DateTimeUtils.getStartOfDay(now), DateTimeUtils.getEndOfDay(now))
-            }
+            val year = _uiState.value.year
+            val weekNumber = _uiState.value.weekNumber
+
+            val startDate = ReportPeriodManager.getStartTimestampOfWeek(year, weekNumber)
+            val endDate = ReportPeriodManager.getEndTimestampOfWeek(year, weekNumber)
 
             val records = intakeRecordRepository.getRecordsBetweenSync(startDate, endDate)
 
-            when (_uiState.value.period) {
-                0 -> {
-                    // 按天聚合
-                    val dailyData = aggregateByDay(records, startDate, endDate)
-                    val stats = calculateStats(dailyData)
-                    _uiState.value = _uiState.value.copy(
-                        dailyData = dailyData,
-                        weeklyData = emptyList(),
-                        avgCalories = stats.first,
-                        avgCarbs = stats.second,
-                        avgProtein = stats.third,
-                        avgFat = stats.fourth,
-                        totalCalories = dailyData.sumOf { it.calories },
-                        totalCarbs = dailyData.sumOf { it.carbs },
-                        totalProtein = dailyData.sumOf { it.protein },
-                        totalFat = dailyData.sumOf { it.fat },
-                        isLoading = false
-                    )
-                }
-                1 -> {
-                    // 按周聚合
-                    val weeklyData = aggregateByWeek(records, startDate)
-                    val stats = calculateWeeklyStats(weeklyData)
-                    _uiState.value = _uiState.value.copy(
-                        dailyData = emptyList(),
-                        weeklyData = weeklyData,
-                        avgCalories = stats.first,
-                        avgCarbs = stats.second,
-                        avgProtein = stats.third,
-                        avgFat = stats.fourth,
-                        totalCalories = weeklyData.sumOf { it.calories },
-                        totalCarbs = weeklyData.sumOf { it.carbs },
-                        totalProtein = weeklyData.sumOf { it.protein },
-                        totalFat = weeklyData.sumOf { it.fat },
-                        isLoading = false
-                    )
-                }
+            // Generate daily data
+            val dailyData = (0..6).map { dayIndex ->
+                val dayStart = ReportPeriodManager.getTimestampForDayOfWeek(year, weekNumber, dayIndex)
+                val dayEnd = DateTimeUtils.getEndOfDay(dayStart)
+                val dayRecords = records.filter { it.date in dayStart..dayEnd }
+                DailyNutritionData(
+                    dayIndex = dayIndex,
+                    dateLabel = ReportPeriodManager.getFormattedDateForDayOfWeek(year, weekNumber, dayIndex),
+                    timestamp = dayStart,
+                    calories = dayRecords.sumOf { it.calories }.toFloat(),
+                    carbs = dayRecords.sumOf { it.carbohydrates }.toFloat(),
+                    protein = dayRecords.sumOf { it.protein }.toFloat(),
+                    fat = dayRecords.sumOf { it.fat }.toFloat()
+                )
             }
+
+            // Calculate stats using ReportStatUtils
+            // 每天均值（基于实际有记录的天数）
+            val avgDailyCalories = records.averageByRealDays({ DateTimeUtils.getStartOfDay(it.date) }, { it.calories.toFloat() })
+            val avgDailyCarbs = records.averageByRealDays({ DateTimeUtils.getStartOfDay(it.date) }, { it.carbohydrates.toFloat() })
+            val avgDailyProtein = records.averageByRealDays({ DateTimeUtils.getStartOfDay(it.date) }, { it.protein.toFloat() })
+            val avgDailyFat = records.averageByRealDays({ DateTimeUtils.getStartOfDay(it.date) }, { it.fat.toFloat() })
+
+            // 每餐均值（基于实际有记录的餐次：天 + 餐次）
+            val avgMealCalories = records.averageByRealDays({ "${DateTimeUtils.getStartOfDay(it.date)}_${it.mealType}" }, { it.calories.toFloat() })
+            val avgMealCarbs = records.averageByRealDays({ "${DateTimeUtils.getStartOfDay(it.date)}_${it.mealType}" }, { it.carbohydrates.toFloat() })
+            val avgMealProtein = records.averageByRealDays({ "${DateTimeUtils.getStartOfDay(it.date)}_${it.mealType}" }, { it.protein.toFloat() })
+            val avgMealFat = records.averageByRealDays({ "${DateTimeUtils.getStartOfDay(it.date)}_${it.mealType}" }, { it.fat.toFloat() })
+
+            _uiState.value = _uiState.value.copy(
+                targetCalories = targetCals,
+                dailyData = dailyData,
+                avgDailyCalories = avgDailyCalories,
+                avgDailyCarbs = avgDailyCarbs,
+                avgDailyProtein = avgDailyProtein,
+                avgDailyFat = avgDailyFat,
+                avgMealCalories = avgMealCalories,
+                avgMealCarbs = avgMealCarbs,
+                avgMealProtein = avgMealProtein,
+                avgMealFat = avgMealFat,
+                isLoading = false
+            )
         }
-    }
-
-    private fun aggregateByDay(
-        records: List<IntakeRecordEntity>,
-        startDate: Long,
-        endDate: Long
-    ): List<DailyNutrition> {
-        val result = mutableListOf<DailyNutrition>()
-        val calendar = Calendar.getInstance()
-
-        // 生成7天的日期
-        calendar.timeInMillis = startDate
-        for (i in 0 until 7) {
-            val dayStart = calendar.timeInMillis
-            val dayEnd = DateTimeUtils.getEndOfDay(dayStart)
-
-            val dayRecords = records.filter { it.date in dayStart..dayEnd }
-
-            result.add(DailyNutrition(
-                date = dayStart,
-                calories = dayRecords.sumOf { it.calories },
-                carbs = dayRecords.sumOf { it.carbohydrates },
-                protein = dayRecords.sumOf { it.protein },
-                fat = dayRecords.sumOf { it.fat }
-            ))
-
-            calendar.add(Calendar.DAY_OF_MONTH, 1)
-        }
-
-        return result
-    }
-
-    private fun aggregateByWeek(
-        records: List<IntakeRecordEntity>,
-        startDate: Long
-    ): List<WeeklyNutrition> {
-        val result = mutableListOf<WeeklyNutrition>()
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = startDate
-
-        for (i in 0 until 4) {
-            val weekStart = calendar.timeInMillis
-            calendar.add(Calendar.DAY_OF_MONTH, 6)
-            calendar.set(Calendar.HOUR_OF_DAY, 23)
-            calendar.set(Calendar.MINUTE, 59)
-            calendar.set(Calendar.SECOND, 59)
-            val weekEnd = calendar.timeInMillis
-
-            val weekRecords = records.filter { it.date in weekStart..weekEnd }
-
-            val weekLabel = "第${i + 1}周"
-
-            result.add(WeeklyNutrition(
-                weekStart = weekStart,
-                weekEnd = weekEnd,
-                weekLabel = weekLabel,
-                calories = weekRecords.sumOf { it.calories },
-                carbs = weekRecords.sumOf { it.carbohydrates },
-                protein = weekRecords.sumOf { it.protein },
-                fat = weekRecords.sumOf { it.fat }
-            ))
-
-            calendar.add(Calendar.DAY_OF_MONTH, 1)
-            calendar.set(Calendar.HOUR_OF_DAY, 0)
-            calendar.set(Calendar.MINUTE, 0)
-            calendar.set(Calendar.SECOND, 0)
-        }
-
-        return result
-    }
-
-    private fun calculateStats(data: List<DailyNutrition>): Tuple4<Double, Double, Double, Double> {
-        // 只计算有记录的天数（任意营养素 > 0）
-        val daysWithRecords = data.filter { it.calories > 0 || it.carbs > 0 || it.protein > 0 || it.fat > 0 }
-        if (daysWithRecords.isEmpty()) return Tuple4(0.0, 0.0, 0.0, 0.0)
-        return Tuple4(
-            daysWithRecords.sumOf { it.calories } / daysWithRecords.size,
-            daysWithRecords.sumOf { it.carbs } / daysWithRecords.size,
-            daysWithRecords.sumOf { it.protein } / daysWithRecords.size,
-            daysWithRecords.sumOf { it.fat } / daysWithRecords.size
-        )
-    }
-
-    private fun calculateWeeklyStats(data: List<WeeklyNutrition>): Tuple4<Double, Double, Double, Double> {
-        // 只计算有记录的周数（任意营养素 > 0）
-        val weeksWithRecords = data.filter { it.calories > 0 || it.carbs > 0 || it.protein > 0 || it.fat > 0 }
-        if (weeksWithRecords.isEmpty()) return Tuple4(0.0, 0.0, 0.0, 0.0)
-        return Tuple4(
-            weeksWithRecords.sumOf { it.calories } / weeksWithRecords.size,
-            weeksWithRecords.sumOf { it.carbs } / weeksWithRecords.size,
-            weeksWithRecords.sumOf { it.protein } / weeksWithRecords.size,
-            weeksWithRecords.sumOf { it.fat } / weeksWithRecords.size
-        )
     }
 }
-
-private data class Tuple4<A, B, C, D>(
-    val first: A,
-    val second: B,
-    val third: C,
-    val fourth: D
-)
