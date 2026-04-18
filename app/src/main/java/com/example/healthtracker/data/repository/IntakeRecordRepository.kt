@@ -74,17 +74,15 @@ class IntakeRecordRepository @Inject constructor(
     /**
      * 同步更新所有使用该食物的历史记录
      * @param food 更新后的食物数据
-     * @param byName 是否按名称匹配（用于没有 foodId 的旧记录）
+     * @param oldName 旧的食物名称，用于匹配尚未关联 foodId 的旧记录
      * @return 更新的记录数量
      */
-    suspend fun syncRecordsWithFood(food: FoodEntity, byName: Boolean = true): Int {
-        val records = if (byName) {
-            // 按名称匹配（兼容旧记录）
-            intakeRecordDao.getRecordsByFoodName(food.name)
-        } else {
-            // 按 foodId 匹配
-            intakeRecordDao.getRecordsByFoodId(food.id)
-        }
+    suspend fun syncRecordsWithFood(food: FoodEntity, oldName: String): Int {
+        val recordsById = intakeRecordDao.getRecordsByFoodId(food.id)
+        val recordsByName = intakeRecordDao.getRecordsByFoodName(oldName)
+        
+        // 合并去重
+        val records = (recordsById + recordsByName).distinctBy { it.id }
 
         if (records.isEmpty()) return 0
 
@@ -99,6 +97,7 @@ class IntakeRecordRepository @Inject constructor(
 
             record.copy(
                 foodId = food.id,
+                foodName = food.name, // 同步更新名称
                 foodIcon = food.icon,
                 calories = newCalories,
                 carbohydrates = newCarbs,

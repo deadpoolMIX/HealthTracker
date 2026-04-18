@@ -1457,3 +1457,9 @@ Token 使用量：15.7m（模型：glm-5）
   3. 搜索页面筛选弹窗（`SearchFilterDialog`）：移除餐次选项的 `weight(1f)` 并改为 `Arrangement.SpaceEvenly` 分布，解决内容拥挤导致的换行问题。
 - 结果：BUILD SUCCESSFUL
 
+【2026-04-18】修复修改自定义食物相关Bug
+- 修复内容：
+  1. `IntakeRecordRepository.kt` 与 `EditFoodViewModel.kt`：修复食物数据修改后历史记录不同步的问题。同步机制现优先通过 `foodId` 和旧的 `food.name` 匹配，并同步更新关联记录中的 `foodName` 字段。
+  2. `EditFoodScreen.kt`：修复点击“保存修改”后无反应的问题。移除死胡同状态 UI（showSaveResult），保存成功后自动 Toast 提示并执行 `onNavigateBack()` 退出页面。
+- 结果：BUILD SUCCESSFUL
+

@@ -68,7 +68,7 @@ class EditFoodViewModel @Inject constructor(
         foodRepository.updateFood(updatedFood)
 
         // 自动同步更新历史记录
-        val syncedCount = intakeRecordRepository.syncRecordsWithFood(updatedFood, byName = true)
+        val syncedCount = intakeRecordRepository.syncRecordsWithFood(updatedFood, oldName = currentFood.name)
         _uiState.value = _uiState.value.copy(
             food = updatedFood,
             syncedRecordCount = syncedCount

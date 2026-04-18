@@ -389,6 +389,7 @@ fun EditFoodScreen(
                 Spacer(modifier = Modifier.weight(1f))
 
                 // 保存按钮
+                val context = androidx.compose.ui.platform.LocalContext.current
                 Button(
                     onClick = {
                         scope.launch {
@@ -403,7 +404,8 @@ fun EditFoodScreen(
                                     unit = if (hasUnit) unit else null,
                                     gramsPerUnit = if (hasUnit) gramsPerUnitValue else null
                                 )) {
-                                showSaveResult = true
+                                android.widget.Toast.makeText(context, "修改已保存", android.widget.Toast.LENGTH_SHORT).show()
+                                onNavigateBack()
                             }
                         }
                     },
@@ -411,42 +413,6 @@ fun EditFoodScreen(
                     enabled = isValid
                 ) {
                     Text("保存修改")
-                }
-
-                // 显示同步结果提示
-                if (showSaveResult && uiState.syncedRecordCount > 0) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "已保存，同步更新了 ${uiState.syncedRecordCount} 条历史记录",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(
-                        onClick = onNavigateBack,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("返回")
-                    }
                 }
 
                 // 删除按钮（仅自定义食物可删除）
