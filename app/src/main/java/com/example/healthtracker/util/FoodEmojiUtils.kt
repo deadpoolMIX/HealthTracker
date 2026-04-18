@@ -210,4 +210,12 @@ object FoodEmojiUtils {
             else -> "🍽️"
         }
     }
+
+    // 根据名称推断分类
+    fun inferCategoryByName(name: String): String {
+        val emoji = getDefaultEmojiForFood(name)
+        return foodEmojisByCategory.entries.find { (_, emojis) -> 
+            emojis.any { it.first == emoji } 
+        }?.key ?: "其他"
+    }
 }

@@ -176,6 +176,76 @@ class AddIntakeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 保存单条自定义食物记录
+     */
+    fun saveRecord(
+        foodName: String,
+        amount: Double,
+        caloriesPer100g: Double,
+        carbsPer100g: Double,
+        proteinPer100g: Double,
+        fatPer100g: Double,
+        mealType: Int,
+        unit: String? = null,
+        amountInUnit: Double? = null,
+        gramsPerUnit: Double? = null,
+        note: String? = null,
+        saveAsCustomFood: Boolean = false,
+        icon: String? = null
+    ) {
+        viewModelScope.launch {
+            _isSaving.value = true
+            val currentTime = System.currentTimeMillis()
+            val date = DateTimeUtils.getStartOfDay(currentTime)
+
+            // 计算营养值 (基于总克数)
+            val ratio = amount / 100.0
+            val record = IntakeRecordEntity(
+                foodName = foodName,
+                foodIcon = icon ?: FoodEmojiUtils.getDefaultEmojiForFood(foodName),
+                date = date,
+                amount = amount,
+                calories = caloriesPer100g * ratio,
+                carbohydrates = carbsPer100g * ratio,
+                protein = proteinPer100g * ratio,
+                fat = fatPer100g * ratio,
+                mealType = mealType,
+                caloriesPer100g = caloriesPer100g,
+                carbsPer100g = carbsPer100g,
+                proteinPer100g = proteinPer100g,
+                fatPer100g = fatPer100g,
+                unit = unit ?: "克",
+                amountInUnit = amountInUnit ?: amount,
+                gramsPerUnit = gramsPerUnit ?: 1.0,
+                note = note,
+                createdAt = currentTime
+            )
+
+            intakeRecordRepository.insertRecords(listOf(record))
+
+            if (saveAsCustomFood) {
+                val food = FoodEntity(
+                    name = foodName,
+                    category = FoodEmojiUtils.inferCategoryByName(foodName),
+                    calories = caloriesPer100g,
+                    carbohydrates = carbsPer100g,
+                    protein = proteinPer100g,
+                    fat = fatPer100g,
+                    icon = icon ?: "🍴",
+                    unit = unit ?: "克",
+                    gramsPerUnit = gramsPerUnit ?: 1.0,
+                    isCustom = true,
+                    lastUsedTime = currentTime
+                )
+                foodRepository.insertFood(food)
+            }
+
+            _isSaving.value = false
+            _saveCompleted.value = true
+        }
+    }
+
     fun resetSaveStatus() {
         _saveCompleted.value = false
     }

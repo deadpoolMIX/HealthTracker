@@ -24,8 +24,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -38,22 +40,89 @@ import com.example.healthtracker.ui.components.getMealTypeName
 import com.example.healthtracker.util.DateTimeUtils
 import kotlin.math.roundToInt
 
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.healthtracker.ui.theme.HealthTrackerTheme
+
+@Preview(showBackground = true)
+@Composable
+fun HomeScreenPreview() {
+    HealthTrackerTheme {
+        HomeScreenContent(
+            uiState = HomeUiState(
+                totalCalories = 1250.0,
+                targetCalories = 2000.0,
+                bmr = 1650.0,
+                caloriePercentage = 62,
+                totalCarbs = 150.0,
+                totalProtein = 80.0,
+                totalFat = 45.0,
+                targetCarbs = 250.0,
+                targetProtein = 120.0,
+                targetFat = 65.0,
+                todayIntake = listOf(
+                    IntakeRecordEntity(
+                        id = 1,
+                        foodName = "燕麦片",
+                        foodIcon = "🥣",
+                        amount = 50.0,
+                        calories = 190.0,
+                        carbohydrates = 33.0,
+                        protein = 6.0,
+                        fat = 3.5,
+                        mealType = 0,
+                        date = System.currentTimeMillis()
+                    )
+                )
+            ),
+            onNavigateToAddIntake = {},
+            onNavigateToAddBodyData = {},
+            onNavigateToAddSleep = {},
+            onNavigateToSettings = {},
+            onNavigateToUserProfile = {},
+            onNavigateToCalendar = {},
+            onNavigateToSearch = {},
+            onNavigateToEditIntake = {},
+            onNavigateToAddCycleFood = {},
+            onNavigateToEditCycleFood = {},
+            onPreviousDay = {},
+            onNextDay = {},
+            onToday = {},
+            onDeleteRecord = {},
+            onDeleteRecords = {},
+            onUpdateRecord = {},
+            onEatCycleFood = {},
+            onFinishCycleFood = {},
+            onDeleteCycleFood = {},
+            onUpdateTarget = { _, _, _, _, _, _, _, _ -> }
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun HomeScreen(
-    viewModel: HomeViewModel = hiltViewModel(),
+fun HomeScreenContent(
+    uiState: HomeUiState,
     onNavigateToAddIntake: () -> Unit,
     onNavigateToAddBodyData: () -> Unit,
     onNavigateToAddSleep: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToUserProfile: () -> Unit,
-    onNavigateToCalendar: () -> Unit = {},
-    onNavigateToEditIntake: (Long) -> Unit = {},
-    onNavigateToAddCycleFood: () -> Unit = {},
-    onNavigateToEditCycleFood: (Long) -> Unit = {},
-    onNavigateToSearch: () -> Unit = {}
+    onNavigateToCalendar: () -> Unit,
+    onNavigateToSearch: () -> Unit,
+    onNavigateToEditIntake: (Long) -> Unit,
+    onNavigateToAddCycleFood: () -> Unit,
+    onNavigateToEditCycleFood: (Long) -> Unit,
+    onPreviousDay: () -> Unit,
+    onNextDay: () -> Unit,
+    onToday: () -> Unit,
+    onDeleteRecord: (IntakeRecordEntity) -> Unit,
+    onDeleteRecords: (List<Long>) -> Unit,
+    onUpdateRecord: (IntakeRecordEntity) -> Unit,
+    onEatCycleFood: (CycleFoodEntity) -> Unit,
+    onFinishCycleFood: (CycleFoodEntity) -> Unit,
+    onDeleteCycleFood: (CycleFoodEntity) -> Unit,
+    onUpdateTarget: (Double, Int, Double, Double, Double, Double?, Double?, Double?) -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
     var fabExpanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf<IntakeRecordEntity?>(null) }
     var showContextMenu by remember { mutableStateOf<IntakeRecordEntity?>(null) }
@@ -63,11 +132,6 @@ fun HomeScreen(
     var showEditIntakeDialog by remember { mutableStateOf<IntakeRecordEntity?>(null) }
     var showCycleFoodMenu by remember { mutableStateOf<CycleFoodEntity?>(null) }
     var showDeleteCycleFoodDialog by remember { mutableStateOf<CycleFoodEntity?>(null) }
-
-    DisposableEffect(Unit) {
-        fabExpanded = false
-        onDispose { }
-    }
 
     Scaffold(
         topBar = {
@@ -88,13 +152,13 @@ fun HomeScreen(
                                 Icon(Icons.Default.ExpandMore, contentDescription = "日历", modifier = Modifier.size(20.dp))
                             }
                             Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(onClick = { viewModel.goToPreviousDay() }, modifier = Modifier.size(32.dp)) {
+                            IconButton(onClick = onPreviousDay, modifier = Modifier.size(32.dp)) {
                                 Icon(Icons.Default.ChevronLeft, contentDescription = "前一天", modifier = Modifier.size(20.dp))
                             }
-                            IconButton(onClick = { viewModel.goToToday() }, modifier = Modifier.size(32.dp)) {
+                            IconButton(onClick = onToday, modifier = Modifier.size(32.dp)) {
                                 Icon(Icons.Default.Circle, contentDescription = "今天", modifier = Modifier.size(12.dp))
                             }
-                            IconButton(onClick = { viewModel.goToNextDay() }, modifier = Modifier.size(32.dp)) {
+                            IconButton(onClick = onNextDay, modifier = Modifier.size(32.dp)) {
                                 Icon(Icons.Default.ChevronRight, contentDescription = "后一天", modifier = Modifier.size(20.dp))
                             }
                         }
@@ -121,7 +185,7 @@ fun HomeScreen(
                         IconButton(
                             onClick = {
                                 if (selectedIds.isNotEmpty()) {
-                                    viewModel.deleteRecordsByIds(selectedIds.toList())
+                                    onDeleteRecords(selectedIds.toList())
                                     selectionMode = false; selectedIds = emptySet()
                                 }
                             },
@@ -178,8 +242,8 @@ fun HomeScreen(
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(onClick = { viewModel.eatCycleFoodPortion(cycleFood) }, modifier = Modifier.weight(1f)) { Text("吃一份") }
-                                Button(onClick = { viewModel.finishCycleFood(cycleFood) }, modifier = Modifier.weight(1f)) { Text("吃完剩余") }
+                                OutlinedButton(onClick = { onEatCycleFood(cycleFood) }, modifier = Modifier.weight(1f)) { Text("吃一份") }
+                                Button(onClick = { onFinishCycleFood(cycleFood) }, modifier = Modifier.weight(1f)) { Text("吃完剩余") }
                             }
                         }
                     }
@@ -234,7 +298,7 @@ fun HomeScreen(
             onDismissRequest = { showDeleteDialog = null },
             title = { Text("删除记录") },
             text = { Text("确定要删除吗？") },
-            confirmButton = { Button(onClick = { viewModel.deleteRecord(showDeleteDialog!!); showDeleteDialog = null }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("删除") } },
+            confirmButton = { Button(onClick = { onDeleteRecord(showDeleteDialog!!); showDeleteDialog = null }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("删除") } },
             dismissButton = { TextButton(onClick = { showDeleteDialog = null }) { Text("取消") } }
         )
     }
@@ -267,8 +331,7 @@ fun HomeScreen(
             targetFat = uiState.targetFat,
             onDismiss = { showTargetCaloriesDialog = false },
             onConfirm = { newTarget, nutrientMode, carbsRatio, proteinRatio, fatRatio, targetCarbs, targetProtein, targetFat ->
-                viewModel.updateTargetCalories(newTarget)
-                viewModel.updateNutrientSettings(nutrientMode, carbsRatio, proteinRatio, fatRatio, targetCarbs, targetProtein, targetFat)
+                onUpdateTarget(newTarget, nutrientMode, carbsRatio, proteinRatio, fatRatio, targetCarbs, targetProtein, targetFat)
                 showTargetCaloriesDialog = false
             }
         )
@@ -278,7 +341,7 @@ fun HomeScreen(
         EditIntakeDialog(
             record = showEditIntakeDialog!!,
             onDismiss = { showEditIntakeDialog = null },
-            onConfirm = { updatedRecord -> viewModel.updateRecord(updatedRecord); showEditIntakeDialog = null }
+            onConfirm = { updatedRecord -> onUpdateRecord(updatedRecord); showEditIntakeDialog = null }
         )
     }
 
@@ -303,10 +366,54 @@ fun HomeScreen(
             onDismissRequest = { showDeleteCycleFoodDialog = null },
             title = { Text("删除周期食物") },
             text = { Text("确定要删除 \"${cycleFood.name}\" 吗？") },
-            confirmButton = { Button(onClick = { viewModel.deleteCycleFood(cycleFood); showDeleteCycleFoodDialog = null }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("删除") } },
+            confirmButton = { Button(onClick = { onDeleteCycleFood(cycleFood); showDeleteCycleFoodDialog = null }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("删除") } },
             dismissButton = { TextButton(onClick = { showDeleteCycleFoodDialog = null }) { Text("取消") } }
         )
     }
+}
+
+@Composable
+fun HomeScreen(
+    viewModel: HomeViewModel = hiltViewModel(),
+    onNavigateToAddIntake: () -> Unit,
+    onNavigateToAddBodyData: () -> Unit,
+    onNavigateToAddSleep: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToUserProfile: () -> Unit,
+    onNavigateToCalendar: () -> Unit = {},
+    onNavigateToEditIntake: (Long) -> Unit = {},
+    onNavigateToAddCycleFood: () -> Unit = {},
+    onNavigateToEditCycleFood: (Long) -> Unit = {},
+    onNavigateToSearch: () -> Unit = {}
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    
+    HomeScreenContent(
+        uiState = uiState,
+        onNavigateToAddIntake = onNavigateToAddIntake,
+        onNavigateToAddBodyData = onNavigateToAddBodyData,
+        onNavigateToAddSleep = onNavigateToAddSleep,
+        onNavigateToSettings = onNavigateToSettings,
+        onNavigateToUserProfile = onNavigateToUserProfile,
+        onNavigateToCalendar = onNavigateToCalendar,
+        onNavigateToSearch = onNavigateToSearch,
+        onNavigateToEditIntake = onNavigateToEditIntake,
+        onNavigateToAddCycleFood = onNavigateToAddCycleFood,
+        onNavigateToEditCycleFood = onNavigateToEditCycleFood,
+        onPreviousDay = { viewModel.goToPreviousDay() },
+        onNextDay = { viewModel.goToNextDay() },
+        onToday = { viewModel.goToToday() },
+        onDeleteRecord = { viewModel.deleteRecord(it) },
+        onDeleteRecords = { viewModel.deleteRecordsByIds(it) },
+        onUpdateRecord = { viewModel.updateRecord(it) },
+        onEatCycleFood = { viewModel.eatCycleFoodPortion(it) },
+        onFinishCycleFood = { viewModel.finishCycleFood(it) },
+        onDeleteCycleFood = { viewModel.deleteCycleFood(it) },
+        onUpdateTarget = { newTarget, nutrientMode, carbsRatio, proteinRatio, fatRatio, targetCarbs, targetProtein, targetFat ->
+            viewModel.updateTargetCalories(newTarget)
+            viewModel.updateNutrientSettings(nutrientMode, carbsRatio, proteinRatio, fatRatio, targetCarbs, targetProtein, targetFat)
+        }
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)

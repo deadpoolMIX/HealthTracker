@@ -23,40 +23,75 @@ import com.example.healthtracker.ui.components.getMealTypeName
 import com.example.healthtracker.util.DateTimeUtils
 import kotlin.math.roundToInt
 
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.healthtracker.ui.theme.HealthTrackerTheme
+import com.example.healthtracker.data.local.entity.IntakeRecordEntity
+
+@Preview(showBackground = true)
+@Composable
+fun SearchScreenPreview() {
+    HealthTrackerTheme {
+        SearchScreenContent(
+            searchQuery = "牛肉",
+            searchResults = listOf(
+                IntakeRecordEntity(
+                    id = 1,
+                    foodName = "牛肉",
+                    foodIcon = "🥩",
+                    amount = 100.0,
+                    calories = 250.0,
+                    carbohydrates = 0.0,
+                    protein = 26.0,
+                    fat = 15.0,
+                    mealType = 1,
+                    date = 1713369600000L // 2024-04-18
+                ),
+                IntakeRecordEntity(
+                    id = 2,
+                    foodName = "牛肉面",
+                    foodIcon = "🍜",
+                    amount = 400.0,
+                    calories = 450.0,
+                    carbohydrates = 60.0,
+                    protein = 20.0,
+                    fat = 12.0,
+                    mealType = 1,
+                    date = 1713283200000L // 2024-04-17
+                )
+            ),
+            selectedMealTypes = emptySet(),
+            startDate = null,
+            endDate = null,
+            onSearchQueryChange = {},
+            onNavigateBack = {},
+            onNavigateToEditIntake = {},
+            onFilterApply = { _, _, _ -> },
+            onClearSearch = {}
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchScreen(
-    viewModel: SearchViewModel = hiltViewModel(),
+fun SearchScreenContent(
+    searchQuery: String,
+    searchResults: List<IntakeRecordEntity>,
+    selectedMealTypes: Set<Int>,
+    startDate: Long?,
+    endDate: Long?,
+    onSearchQueryChange: (String) -> Unit,
     onNavigateBack: () -> Unit,
-    onNavigateToEditIntake: (Long) -> Unit
+    onNavigateToEditIntake: (Long) -> Unit,
+    onFilterApply: (Set<Int>, Long?, Long?) -> Unit,
+    onClearSearch: () -> Unit
 ) {
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val searchResults by viewModel.searchResults.collectAsState()
-    val selectedMealTypes by viewModel.selectedMealTypes.collectAsState()
-    val startDate by viewModel.startDate.collectAsState()
-    val endDate by viewModel.endDate.collectAsState()
-
     var showFilterDialog by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
-    if (showFilterDialog) {
-        SearchFilterDialog(
-            selectedMealTypes = selectedMealTypes,
-            startDate = startDate,
-            endDate = endDate,
-            onDismiss = { showFilterDialog = false },
-            onApply = { mealTypes, start, end ->
-                viewModel.setDateRange(start, end)
-                // ViewModel toggleMealType is already handled if we use it directly, 
-                // but for a dialog it's better to pass the whole set
-                showFilterDialog = false
-            },
-            viewModel = viewModel
-        )
+        if (searchQuery.isEmpty()) {
+            focusRequester.requestFocus()
+        }
     }
 
     Scaffold(
@@ -65,7 +100,7 @@ fun SearchScreen(
                 title = {
                     TextField(
                         value = searchQuery,
-                        onValueChange = { viewModel.onSearchQueryChange(it) },
+                        onValueChange = onSearchQueryChange,
                         placeholder = { Text("搜索食物名称") },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -80,7 +115,7 @@ fun SearchScreen(
                         singleLine = true,
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
+                                IconButton(onClick = onClearSearch) {
                                     Icon(Icons.Default.Clear, contentDescription = "清除")
                                 }
                             }
@@ -126,7 +161,6 @@ fun SearchScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // 按日期分组显示
                     val groupedByDate = searchResults.groupBy { it.date }
                     groupedByDate.forEach { (date, dateRecords) ->
                         item {
@@ -139,7 +173,6 @@ fun SearchScreen(
                             )
                         }
                         
-                        // 再按餐次分组
                         val groupedByMeal = dateRecords.groupBy { it.mealType }
                         groupedByMeal.keys.sorted().forEach { mealType ->
                             val records = groupedByMeal[mealType] ?: emptyList()
@@ -180,12 +213,38 @@ fun SearchScreen(
                             }
                         }
                     }
-                    
                     item { Spacer(modifier = Modifier.height(16.dp)) }
                 }
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SearchScreen(
+    viewModel: SearchViewModel = hiltViewModel(),
+    onNavigateBack: () -> Unit,
+    onNavigateToEditIntake: (Long) -> Unit
+) {
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val selectedMealTypes by viewModel.selectedMealTypes.collectAsState()
+    val startDate by viewModel.startDate.collectAsState()
+    val endDate by viewModel.endDate.collectAsState()
+
+    SearchScreenContent(
+        searchQuery = searchQuery,
+        searchResults = searchResults,
+        selectedMealTypes = selectedMealTypes,
+        startDate = startDate,
+        endDate = endDate,
+        onSearchQueryChange = { viewModel.onSearchQueryChange(it) },
+        onNavigateBack = onNavigateBack,
+        onNavigateToEditIntake = onNavigateToEditIntake,
+        onFilterApply = { _, start, end -> viewModel.setDateRange(start, end) },
+        onClearSearch = { viewModel.onSearchQueryChange("") }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

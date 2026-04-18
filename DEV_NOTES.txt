@@ -348,6 +348,40 @@ name,category,calories,carbohydrates,protein,fat,emoji
                                  修复记录
 ================================================================================
 
+【2026-04-18】修复带有单位重量食物的录入联动逻辑
+- 需求：修复带有单位重量的食物（如雪糕 75g/个）在录入和编辑时逻辑混乱的问题。实现数值框显示份数，单位框联动，并正确保存单位重量及按单位计的数值。
+- 解决：
+  1. 修改 `AddIntakeViewModel.kt`：在保存记录时新增持久化 `gramsPerUnit` 和 `amountInUnit` 字段。
+  2. 修改 `AddIntakeScreen.kt`：更新 `AddFoodDialog` 及其确认回调，确保数值（份数）与单位数据分离传递。
+  3. 重构 `HomeScreen.kt` 中的 `EditIntakeDialog`：
+     - 增加逆向换算逻辑：进入编辑时，若单位为非“克/毫升”，数值框自动根据 `amount / gramsPerUnit` 计算并显示份数。
+     - 修正实时计算：预览营养素时统一基于“每百克”数据与“实时换算总克数”的比例进行计算，确保绝对精确。
+     - 保存时同步更新所有相关字段（`amount`, `amountInUnit`, `calories` 等）。
+- 修改文件：
+  - `AddIntakeViewModel.kt`
+  - `AddIntakeScreen.kt`
+  - `HomeScreen.kt`
+- 结果：功能逻辑修复，Git 已提交。
+
+【2026-04-18】搜索页面体验优化与Bug修复
+- 需求：进入搜索页面自动弹出键盘；消除搜索结果中重复显示的碳蛋脂数据。
+- 解决：
+  1. 在 SearchScreen.kt 中引入 FocusRequester，并利用 LaunchedEffect 在页面加载时触发键盘弹出。
+  2. 将 IntakeRecordItem 的 showMacros 参数设为 false，避免与餐次卡片头部的统计数据重复，保持与首页视觉一致。
+- 修改文件：
+  - SearchScreen.kt
+- 结果：Git 已提交。
+
+【2026-04-18】搜索结果样式对齐首页
+- 需求：将搜索结果展示逻辑改为按日期和餐次分组，并照搬首页餐次区块的 Card 样式和汇总逻辑。
+- 解决：
+  1. 修改 SearchScreen.kt 的数据分组逻辑，实现日期内嵌套餐次分组。
+  2. 迁移 HomeScreen.kt 的餐次卡片颜色、边距及宏量营养素汇总统计代码。
+  3. 在搜索结果项中隐藏冗余的餐次标签，确保视觉高度一致。
+- 修改文件：
+  - SearchScreen.kt
+- 结果：功能实现完成，Git 已提交。
+
 【2026-04-17】修复 HomeScreen 编译报错
 - 需求：修复由于使用实验性 API `combinedClickable` 导致的编译错误。
 - 解决：在 `CalorieArcCard` 组合函数上添加了 `@OptIn(ExperimentalFoundationApi::class)` 注解。
@@ -506,12 +540,12 @@ name,category,calories,carbohydrates,protein,fat,emoji
      - X 轴智能显示标签（数据量大时选择性显示）
      - 周模式：7个数据点，箭头切换周组
      - 数据变化卡片显示选中类型的变化
-  3. ReportsScreen - BodyDataChartCard 閲嶅啓
-     - 鍗曢€夋暟鎹被鍨嬪垏鎹?
-     - 涓庤鎯呴〉淇濇寔涓€鑷寸殑鍥捐〃鏍峰紡
-     - Y 杞村埢搴?+ 铏氱嚎鍙傝€冪嚎
-     - 鏅鸿兘X杞存爣绛?
-  4. BodyRecordDao/Repository - 娣诲姞 getAllRecordsSync() 鏂规硶
+  3. ReportsScreen - BodyDataChartCard 重写
+     - 单选数据类型切换
+     - 与详情页保持一致的图表样式
+     - Y 轴刻度 + 虚线参考线
+     - 智能X轴标签
+  4. BodyRecordDao/Repository - 添加 getAllRecordsSync() 方法
 - 结果：代码修改完成，待编译验证
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -526,12 +560,12 @@ name,category,calories,carbohydrates,protein,fat,emoji
   2. AddCustomFoodViewModel - 新建 ViewModel
      - 保存自定义食物到食物库
      - 自动根据食物名称推断分类
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL，97 个任务执行完成
 - APK 输出位置：app/build/outputs/apk/debug/app-debug.apk
 
@@ -547,12 +581,12 @@ name,category,calories,carbohydrates,protein,fat,emoji
   2. AddCustomFoodViewModel - 新建 ViewModel
      - 保存自定义食物到食物库
      - 自动根据食物名称推断分类
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -567,12 +601,12 @@ name,category,calories,carbohydrates,protein,fat,emoji
   2. AddCustomFoodViewModel - 新建 ViewModel
      - 保存自定义食物到食物库
      - 自动根据食物名称推断分类
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL，APK 大小 17.8 MB
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -587,12 +621,12 @@ name,category,calories,carbohydrates,protein,fat,emoji
   2. AddCustomFoodViewModel - 新建 ViewModel
      - 保存自定义食物到食物库
      - 自动根据食物名称推断分类
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL，首页和报表页现在同级切换
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -607,12 +641,12 @@ name,category,calories,carbohydrates,protein,fat,emoji
   2. AddCustomFoodViewModel - 新建 ViewModel
      - 保存自定义食物到食物库
      - 自动根据食物名称推断分类
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -627,12 +661,12 @@ name,category,calories,carbohydrates,protein,fat,emoji
   2. AddCustomFoodViewModel - 新建 ViewModel
      - 保存自定义食物到食物库
      - 自动根据食物名称推断分类
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -647,12 +681,12 @@ name,category,calories,carbohydrates,protein,fat,emoji
   2. AddCustomFoodViewModel - 新建 ViewModel
      - 保存自定义食物到食物库
      - 自动根据食物名称推断分类
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -667,12 +701,12 @@ name,category,calories,carbohydrates,protein,fat,emoji
   2. AddCustomFoodViewModel - 新建 ViewModel
      - 保存自定义食物到食物库
      - 自动根据食物名称推断分类
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -687,12 +721,12 @@ name,category,calories,carbohydrates,protein,fat,emoji
   2. AddCustomFoodViewModel - 新建 ViewModel
      - 保存自定义食物到食物库
      - 自动根据食物名称推断分类
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -707,12 +741,12 @@ name,category,calories,carbohydrates,protein,fat,emoji
   2. AddCustomFoodViewModel - 新建 ViewModel
      - 保存自定义食物到食物库
      - 自动根据食物名称推断分类
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
 【2026-03-07】功能 #25：重写"添加自定义食物"页面
@@ -727,720 +761,750 @@ name,category,calories,carbohydrates,protein,fat,emoji
   2. AddCustomFoodViewModel - 新建 ViewModel
      - 保存自定义食物到食物库
      - 自动根据食物名称推断分类
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
 - 结果：BUILD SUCCESSFUL
 
-鏈寮€鍙戞椂闂达細3.5 14:30 - 3.6 1:30锛堢害 11 灏忔椂锛?
-Token 浣跨敤閲忥細15.7m锛堟ā鍨嬶細glm-5锛?
-浼氳瘽鏁帮細8 | 鏈€闀夸細璇濓細10h 12m 20s
+本次开发时间：3.5 14:30 - 3.6 1:30（约 11 小时）
+Token 使用量：15.7m（模型：glm-5）
+会话数：8 | 最长会话：10h 12m 20s
 
-銆?026-03-07銆戝姛鑳?#25锛氶噸鍐?娣诲姞鑷畾涔夐鐗?椤甸潰
-- 闇€姹傦細鍒涘缓鐙珛鐨勬坊鍔犺嚜瀹氫箟椋熺墿椤甸潰锛屼笓闂ㄧ敤浜庢坊鍔椋熺墿鍒伴鐗╁簱
-- 淇敼鍐呭锛?
-  1. AddCustomFoodScreen - 鏂板缓椤甸潰锛屽寘鍚細
-     - 椋熺墿鍚嶇О杈撳叆
-     - 鍥炬爣閫夋嫨鍣紙emoji锛?
-     - 姣忕櫨鍏嬭惀鍏绘暟鎹紙鐑噺銆佺⒊姘淬€佽泲鐧借川銆佽剛鑲級
-     - 鍙€夊崟浣嶈缃紙鍗曚綅鍚嶇О + 姣忓崟浣嶅厠鏁帮級
-     - 姣忓崟浣嶈惀鍏诲€奸瑙?
-  2. AddCustomFoodViewModel - 鏂板缓 ViewModel
-     - 淇濆瓨鑷畾涔夐鐗╁埌椋熺墿搴?
-     - 鑷姩鏍规嵁椋熺墿鍚嶇О鎺ㄦ柇鍒嗙被
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
-- 缁撴灉锛欱UILD SUCCESSFUL锛屽惎鍔ㄦ椂涓嶅啀鏈変富棰橀棯鐑?
+【2026-03-07】功能 #25：重写"添加自定义食物"页面
+- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
+- 修改内容：
+  1. AddCustomFoodScreen - 新建页面，包含：
+     - 食物名称输入
+     - 图标选择器（emoji）
+     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
+     - 可选单位设置（单位名称 + 每单位克数）
+     - 每单位营养值预览
+  2. AddCustomFoodViewModel - 新建 ViewModel
+     - 保存自定义食物到食物库
+     - 自动根据食物名称推断分类
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
+- 结果：BUILD SUCCESSFUL，启动时不再有主题闪烁
 
-銆?026-03-07銆戝姛鑳?#25锛氶噸鍐?娣诲姞鑷畾涔夐鐗?椤甸潰
-- 闇€姹傦細鍒涘缓鐙珛鐨勬坊鍔犺嚜瀹氫箟椋熺墿椤甸潰锛屼笓闂ㄧ敤浜庢坊鍔椋熺墿鍒伴鐗╁簱
-- 淇敼鍐呭锛?
-  1. AddCustomFoodScreen - 鏂板缓椤甸潰锛屽寘鍚細
-     - 椋熺墿鍚嶇О杈撳叆
-     - 鍥炬爣閫夋嫨鍣紙emoji锛?
-     - 姣忕櫨鍏嬭惀鍏绘暟鎹紙鐑噺銆佺⒊姘淬€佽泲鐧借川銆佽剛鑲級
-     - 鍙€夊崟浣嶈缃紙鍗曚綅鍚嶇О + 姣忓崟浣嶅厠鏁帮級
-     - 姣忓崟浣嶈惀鍏诲€奸瑙?
-  2. AddCustomFoodViewModel - 鏂板缓 ViewModel
-     - 淇濆瓨鑷畾涔夐鐗╁埌椋熺墿搴?
-     - 鑷姩鏍规嵁椋熺墿鍚嶇О鎺ㄦ柇鍒嗙被
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #25：重写"添加自定义食物"页面
+- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
+- 修改内容：
+  1. AddCustomFoodScreen - 新建页面，包含：
+     - 食物名称输入
+     - 图标选择器（emoji）
+     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
+     - 可选单位设置（单位名称 + 每单位克数）
+     - 每单位营养值预览
+  2. AddCustomFoodViewModel - 新建 ViewModel
+     - 保存自定义食物到食物库
+     - 自动根据食物名称推断分类
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-07銆戝姛鑳?#25锛氶噸鍐?娣诲姞鑷畾涔夐鐗?椤甸潰
-- 闇€姹傦細鍒涘缓鐙珛鐨勬坊鍔犺嚜瀹氫箟椋熺墿椤甸潰锛屼笓闂ㄧ敤浜庢坊鍔椋熺墿鍒伴鐗╁簱
-- 淇敼鍐呭锛?
-  1. AddCustomFoodScreen - 鏂板缓椤甸潰锛屽寘鍚細
-     - 椋熺墿鍚嶇О杈撳叆
-     - 鍥炬爣閫夋嫨鍣紙emoji锛?
-     - 姣忕櫨鍏嬭惀鍏绘暟鎹紙鐑噺銆佺⒊姘淬€佽泲鐧借川銆佽剛鑲級
-     - 鍙€夊崟浣嶈缃紙鍗曚綅鍚嶇О + 姣忓崟浣嶅厠鏁帮級
-     - 姣忓崟浣嶈惀鍏诲€奸瑙?
-  2. AddCustomFoodViewModel - 鏂板缓 ViewModel
-     - 淇濆瓨鑷畾涔夐鐗╁埌椋熺墿搴?
-     - 鑷姩鏍规嵁椋熺墿鍚嶇О鎺ㄦ柇鍒嗙被
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #25：重写"添加自定义食物"页面
+- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
+- 修改内容：
+  1. AddCustomFoodScreen - 新建页面，包含：
+     - 食物名称输入
+     - 图标选择器（emoji）
+     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
+     - 可选单位设置（单位名称 + 每单位克数）
+     - 每单位营养值预览
+  2. AddCustomFoodViewModel - 新建 ViewModel
+     - 保存自定义食物到食物库
+     - 自动根据食物名称推断分类
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-07銆戝姛鑳?#25锛氶噸鍐?娣诲姞鑷畾涔夐鐗?椤甸潰
-- 闇€姹傦細鍒涘缓鐙珛鐨勬坊鍔犺嚜瀹氫箟椋熺墿椤甸潰锛屼笓闂ㄧ敤浜庢坊鍔椋熺墿鍒伴鐗╁簱
-- 淇敼鍐呭锛?
-  1. AddCustomFoodScreen - 鏂板缓椤甸潰锛屽寘鍚細
-     - 椋熺墿鍚嶇О杈撳叆
-     - 鍥炬爣閫夋嫨鍣紙emoji锛?
-     - 姣忕櫨鍏嬭惀鍏绘暟鎹紙鐑噺銆佺⒊姘淬€佽泲鐧借川銆佽剛鑲級
-     - 鍙€夊崟浣嶈缃紙鍗曚綅鍚嶇О + 姣忓崟浣嶅厠鏁帮級
-     - 姣忓崟浣嶈惀鍏诲€奸瑙?
-  2. AddCustomFoodViewModel - 鏂板缓 ViewModel
-     - 淇濆瓨鑷畾涔夐鐗╁埌椋熺墿搴?
-     - 鑷姩鏍规嵁椋熺墿鍚嶇О鎺ㄦ柇鍒嗙被
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
-- 缁撴灉锛欱UILD SUCCESSFUL锛屾渶杩戞憚鍏ラ〉闈㈢幇鍦ㄦ樉绀烘墍鏈夐鐗╁苟鎸夋渶杩戣褰曟椂闂存帓搴?
+【2026-03-07】功能 #25：重写"添加自定义食物"页面
+- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
+- 修改内容：
+  1. AddCustomFoodScreen - 新建页面，包含：
+     - 食物名称输入
+     - 图标选择器（emoji）
+     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
+     - 可选单位设置（单位名称 + 每单位克数）
+     - 每单位营养值预览
+  2. AddCustomFoodViewModel - 新建 ViewModel
+     - 保存自定义食物到食物库
+     - 自动根据食物名称推断分类
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
+- 结果：BUILD SUCCESSFUL，最近摄入页面现在显示所有食物并按最近记录时间排序
 
-銆?026-03-07銆戝姛鑳?#25锛氶噸鍐?娣诲姞鑷畾涔夐鐗?椤甸潰
-- 闇€姹傦細鍒涘缓鐙珛鐨勬坊鍔犺嚜瀹氫箟椋熺墿椤甸潰锛屼笓闂ㄧ敤浜庢坊鍔椋熺墿鍒伴鐗╁簱
-- 淇敼鍐呭锛?
-  1. AddCustomFoodScreen - 鏂板缓椤甸潰锛屽寘鍚細
-     - 椋熺墿鍚嶇О杈撳叆
-     - 鍥炬爣閫夋嫨鍣紙emoji锛?
-     - 姣忕櫨鍏嬭惀鍏绘暟鎹紙鐑噺銆佺⒊姘淬€佽泲鐧借川銆佽剛鑲級
-     - 鍙€夊崟浣嶈缃紙鍗曚綅鍚嶇О + 姣忓崟浣嶅厠鏁帮級
-     - 姣忓崟浣嶈惀鍏诲€奸瑙?
-  2. AddCustomFoodViewModel - 鏂板缓 ViewModel
-     - 淇濆瓨鑷畾涔夐鐗╁埌椋熺墿搴?
-     - 鑷姩鏍规嵁椋熺墿鍚嶇О鎺ㄦ柇鍒嗙被
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #25：重写"添加自定义食物"页面
+- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
+- 修改内容：
+  1. AddCustomFoodScreen - 新建页面，包含：
+     - 食物名称输入
+     - 图标选择器（emoji）
+     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
+     - 可选单位设置（单位名称 + 每单位克数）
+     - 每单位营养值预览
+  2. AddCustomFoodViewModel - 新建 ViewModel
+     - 保存自定义食物到食物库
+     - 自动根据食物名称推断分类
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-07銆戝姛鑳?#25锛氶噸鍐?娣诲姞鑷畾涔夐鐗?椤甸潰
-- 闇€姹傦細鍒涘缓鐙珛鐨勬坊鍔犺嚜瀹氫箟椋熺墿椤甸潰锛屼笓闂ㄧ敤浜庢坊鍔椋熺墿鍒伴鐗╁簱
--淇敼鍐呭锛?
-  1. AddCustomFoodScreen - 鏂板缓椤甸潰锛屽寘鍚細
-     - 椋熺墿鍚嶇О杈撳叆
-     - 鍥炬爣閫夋嫨鍣紙emoji锛?
-     - 姣忕櫨鍏嬭惀鍏绘暟鎹紙鐑噺銆佺⒊姘淬€佽泲鐧借川銆佽剛鑲級
-     - 鍙€夊崟浣嶈缃紙鍗曚綅鍚嶇О + 姣忓崟浣嶅厠鏁帮級
-     - 姣忓崟浣嶈惀鍏诲€奸瑙?
-  2. AddCustomFoodViewModel - 鏂板缓 ViewModel
-     - 淇濆瓨鑷畾涔夐鐗╁埌椋熺墿搴?
-     - 鑷姩鏍规嵁椋熺墿鍚嶇О鎺ㄦ柇鍒嗙被
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #25：重写"添加自定义食物"页面
+- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
+- 修改内容：
+  1. AddCustomFoodScreen - 新建页面，包含：
+     - 食物名称输入
+     - 图标选择器（emoji）
+     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
+     - 可选单位设置（单位名称 + 每单位克数）
+     - 每单位营养值预览
+  2. AddCustomFoodViewModel - 新建 ViewModel
+     - 保存自定义食物到食物库
+     - 自动根据食物名称推断分类
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-07銆戝姛鑳?#25锛氶噸鍐?娣诲姞鑷畾涔夐鐗?椤甸潰
-- 闇€姹傦細鍒涘缓鐙珛鐨勬坊鍔犺嚜瀹氫箟椋熺墿椤甸潰锛屼笓闂ㄧ敤浜庢坊鍔椋熺墿鍒伴鐗╁簱
-- 淇敼鍐呭锛?
-  1. AddCustomFoodScreen - 鏂板缓椤甸潰锛屽寘鍚細
-     - 椋熺墿鍚嶇О杈撳叆
-     - 鍥炬爣閫夋嫨鍣紙emoji锛?
-     - 姣忕櫨鍏嬭惀鍏绘暟鎹紙鐑噺銆佺⒊姘淬€佽泲鐧借川銆佽剛鑲級
-     - 鍙€夊崟浣嶈缃紙鍗曚綅鍚嶇О + 姣忓崟浣嶅厠鏁帮級
-     - 姣忓崟浣嶈惀鍏诲€奸瑙?
-  2. AddCustomFoodViewModel - 鏂板缓 ViewModel
-     - 淇濆瓨鑷畾涔夐鐗╁埌椋熺墿搴?
-     - 鑷姩鏍规嵁椋熺墿鍚嶇О鎺ㄦ柇鍒嗙被
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #25：重写"添加自定义食物"页面
+- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
+- 修改内容：
+  1. AddCustomFoodScreen - 新建页面，包含：
+     - 食物名称输入
+     - 图标选择器（emoji）
+     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
+     - 可选单位设置（单位名称 + 每单位克数）
+     - 每单位营养值预览
+  2. AddCustomFoodViewModel - 新建 ViewModel
+     - 保存自定义食物到食物库
+     - 自动根据食物名称推断分类
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-07銆戝姛鑳?#25锛氶噸鍐?娣诲姞鑷畾涔夐鐗?椤甸潰
-- 闇€姹傦細鍒涘缓鐙珛鐨勬坊鍔犺嚜瀹氫箟椋熺墿椤甸潰锛屼笓闂ㄧ敤浜庢坊鍔椋熺墿鍒伴鐗╁簱
-- 淇敼鍐呭锛?
-  1. AddCustomFoodScreen - 鏂板缓椤甸潰锛屽寘鍚細
-     - 椋熺墿鍚嶇О杈撳叆
-     - 鍥炬爣閫夋嫨鍣紙emoji锛?
-     - 姣忕櫨鍏嬭惀鍏绘暟鎹紙鐑噺銆佺⒊姘淬€佽泲鐧借川銆佽剛鑲級
-     - 鍙€夊崟浣嶈缃紙鍗曚綅鍚嶇О + 姣忓崟浣嶅厠鏁帮級
-     - 姣忓崟浣嶈惀鍏诲€奸瑙?
-  2. AddCustomFoodViewModel - 鏂板缓 ViewModel
-     - 淇濆瓨鑷畾涔夐鐗╁埌椋熺墿搴?
-     - 鑷姩鏍规嵁椋熺墿鍚嶇О鎺ㄦ柇鍒嗙被
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #25：重写"添加自定义食物"页面
+- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
+- 修改内容：
+  1. AddCustomFoodScreen - 新建页面，包含：
+     - 食物名称输入
+     - 图标选择器（emoji）
+     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
+     - 可选单位设置（单位名称 + 每单位克数）
+     - 每单位营养值预览
+  2. AddCustomFoodViewModel - 新建 ViewModel
+     - 保存自定义食物到食物库
+     - 自动根据食物名称推断分类
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-07銆戝姛鑳?#25锛氶噸鍐?娣诲姞鑷畾涔夐鐗?椤甸潰
-- 闇€姹傦細鍒涘缓鐙珛鐨勬坊鍔犺嚜瀹氫箟椋熺墿椤甸潰锛屼笓闂ㄧ敤浜庢坊鍔椋熺墿鍒伴鐗╁簱
-- 淇敼鍐呭锛?
-  1. AddCustomFoodScreen - 鏂板缓椤甸潰锛屽寘鍚細
-     - 椋熺墿鍚嶇О杈撳叆
-     - 鍥炬爣閫夋嫨鍣紙emoji锛?
-     - 姣忕櫨鍏嬭惀鍏绘暟鎹紙鐑噺銆佺⒊姘淬€佽泲鐧借川銆佽剛鑲級
-     - 鍙€夊崟浣嶈缃紙鍗曚綅鍚嶇О + 姣忓崟浣嶅厠鏁帮級
-     - 姣忓崟浣嶈惀鍏诲€奸瑙?
-  2. AddCustomFoodViewModel - 鏂板缓 ViewModel
-     - 淇濆瓨鑷畾涔夐鐗╁埌椋熺墿搴?
-     - 鑷姩鏍规嵁椋熺墿鍚嶇О鎺ㄦ柇鍒嗙被
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #25：重写"添加自定义食物"页面
+- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
+- 修改内容：
+  1. AddCustomFoodScreen - 新建页面，包含：
+     - 食物名称输入
+     - 图标选择器（emoji）
+     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
+     - 可选单位设置（单位名称 + 每单位克数）
+     - 每单位营养值预览
+  2. AddCustomFoodViewModel - 新建 ViewModel
+     - 保存自定义食物到食物库
+     - 自动根据食物名称推断分类
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-07銆戝姛鑳?#25锛氶噸鍐?娣诲姞鑷畾涔夐鐗?椤甸潰
-- 闇€姹傦細鍒涘缓鐙珛鐨勬坊鍔犺嚜瀹氫箟椋熺墿椤甸潰锛屼笓闂ㄧ敤浜庢坊鍔椋熺墿鍒伴鐗╁簱
-- 淇敼鍐呭锛?
-  1. AddCustomFoodScreen - 鏂板缓椤甸潰锛屽寘鍚細
-     - 椋熺墿鍚嶇О杈撳叆
-     - 鍥炬爣閫夋嫨鍣紙emoji锛?
-     - 姣忕櫨鍏嬭惀鍏绘暟鎹紙鐑噺銆佺⒊姘淬€佽泲鐧借川銆佽剛鑲級
-     - 鍙€夊崟浣嶈缃紙鍗曚綅鍚嶇О + 姣忓崟浣嶅厠鏁帮級
-     - 姣忓崟浣嶈惀鍏诲€奸瑙?
-  2. AddCustomFoodViewModel - 鏂板缓 ViewModel
-     - 淇濆瓨鑷畾涔夐鐗╁埌椋熺墿搴?
-     - 鑷姩鏍规嵁椋熺墿鍚嶇О鎺ㄦ柇鍒嗙被
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #25：重写"添加自定义食物"页面
+- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
+- 修改内容：
+  1. AddCustomFoodScreen - 新建页面，包含：
+     - 食物名称输入
+     - 图标选择器（emoji）
+     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
+     - 可选单位设置（单位名称 + 每单位克数）
+     - 每单位营养值预览
+  2. AddCustomFoodViewModel - 新建 ViewModel
+     - 保存自定义食物到食物库
+     - 自动根据食物名称推断分类
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-07銆戝姛鑳?#24锛氶噸鍐?娣诲姞鎽勫叆"椤甸潰
-- 闇€姹傦細閲嶅啓娣诲姞鎽勫叆椤甸潰锛屾敮鎸侀€夋嫨椁愭鍜屾棩鏈熴€佹悳绱㈤鐗╁簱銆佸脊鍑哄璇濇杈撳叆浠介噺銆佹壒閲忎繚瀛?
-- 淇敼鍐呭锛?
-  1. AddIntakeScreen - 瀹屽叏閲嶅啓
-     - 娣诲姞鏃ユ湡閫夋嫨鍣紙DatePickerDialog锛?
-     - 鐐瑰嚮椋熺墿寮瑰嚭 AddFoodDialog 瀵硅瘽妗?
-     - 瀵硅瘽妗嗗寘鍚細鏁板€艰緭鍏ユ銆佸崟浣嶉€夋嫨鍣紙鍏?姣崌/涓?鏉?鍕?浠斤級銆佽惀鍏婚瑙?
-     - 娣诲姞涓存椂椋熺墿鍒楄〃锛圥endingFoodItem锛夛紝鏀寔绉婚櫎
-     - 搸閮ㄤ繚瀛樻寜閽樉绀哄凡娣诲姞鏁伴噺
-  2. AddIntakeViewModel - 閲嶅啓
-     - 娣诲姞 PendingFoodItem 鏁版嵁绫?
-     - 娣诲姞 pendingItems 鐘舵€佸垪琛?
-     - 娣诲姞 addPendingItem() 鍜?removePendingItem() 鏂规硶
-     - 娣诲姞 saveAllRecords() 鎵归噺淇濆瓨鏂规硶
-  3. IntakeRecordDao - 娣诲姞 insertRecords() 鎵归噺鎻掑叆鏂规硶
-  4. IntakeRecordRepository - 娣诲姞 insertRecords() 鏂规硶
-  5. HealthTrackerNavGraph - 鏇存柊瀵艰埅锛岀Щ闄?onNavigateToFoodDetail 鍙傛暟
-- 鍔熻兘鐗圭偣锛?
-  - 鏃ユ湡閫夋嫨锛氱偣鍑绘棩鏈熷崱鐗囧脊鍑烘棩鏈熼€夋嫨鍣?
-  - 椁愭閫夋嫨锛氬揩閫熷垏鎹㈡棭椁?鍗堥/鏅氶/鍔犻
-  - 鎼滅储椋熺墿锛氭悳绱㈤鐗╁簱涓殑鎵€鏈夐鐗?
-  - 娣诲姞瀵硅瘽妗嗭細杈撳叆鏁板€笺€侀€夋嫨鍗曚綅銆佸疄鏃堕瑙堣惀鍏绘暟鎹?
-  - 涓存椂鍒楄〃锛氬凡娣诲姞鐨勯鐗╂樉绀哄湪鍒楄〃涓紝鍙Щ闄?
-  - 鎵归噺淇濆瓨锛氫竴娆℃€т繚瀛樻墍鏈夋坊鍔犵殑椋熺墿鍒版寚瀹氭棩鏈熷拰椁愭
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #25：重写"添加自定义食物"页面
+- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
+- 修改内容：
+  1. AddCustomFoodScreen - 新建页面，包含：
+     - 食物名称输入
+     - 图标选择器（emoji）
+     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
+     - 可选单位设置（单位名称 + 每单位克数）
+     - 每单位营养值预览
+  2. AddCustomFoodViewModel - 新建 ViewModel
+     - 保存自定义食物到食物库
+     - 自动根据食物名称推断分类
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-07銆戝姛鑳?#25锛氶噸鍐?娣诲姞鑷畾涔夐鐗?椤甸潰
-- 闇€姹傦細鍒涘缓鐙珛鐨勬坊鍔犺嚜瀹氫箟椋熺墿椤甸潰锛屼笓闂ㄧ敤浜庢坊鍔椋熺墿鍒伴鐗╁簱
-- 淇敼鍐呭锛?
-  1. AddCustomFoodScreen - 鏂板缓椤甸潰锛屽寘鍚細
-     - 椋熺墿鍚嶇О杈撳叆
-     - 鍥炬爣閫夋嫨鍣紙emoji锛?
-     - 姣忕櫨鍏嬭惀鍏绘暟鎹紙鐑噺銆佺⒊姘淬€佽泲鐧借川銆佽剛鑲級
-     - 鍙€夊崟浣嶈缃紙鍗曚綅鍚嶇О + 姣忓崟浣嶅厠鏁帮級
-     - 姣忓崟浣嶈惀鍏诲€奸瑙?
-  2. AddCustomFoodViewModel - 鏂板缓 ViewModel
-     - 淇濆瓨鑷畾涔夐鐗╁埌椋熺墿搴?
-     - 鑷姩鏍规嵁椋熺墿鍚嶇О鎺ㄦ柇鍒嗙被
-  3. Screen.kt - 娣诲姞 AddCustomFood 璺敱
-  4. HealthTrackerNavGraph - 娣诲姞椤甸潰瀵艰埅
-  5. 鏇存柊涓変釜鍏ュ彛鐨勫鑸細
-     - 椋熺墿搴撹嚜瀹氫箟椋熺墿椤?FAB
-     - 娣诲姞鎽勫叆椤?娣诲姞鑷畾涔夐鐗?鎸夐挳
-     - 璁剧疆椋熺墿绠＄悊椤?FAB
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #24：重写”添加摄入”页面
+- 需求：重写添加摄入页面，支持选择餐次和日期、搜索食物库、弹出对话框输入份量、批量保存
+- 修改内容：
+  1. AddIntakeScreen - 完全重写
+     - 添加日期选择器（DatePickerDialog）
+     - 点击食物弹出 AddFoodDialog 对话框
+     - 对话框包含：数值输入框、单位选择器（克/毫升/个/杯/勺/份）、营养预览
+     - 添加临时食物列表（PendingFoodItem），支持移除
+     - 底部保存按钮显示已添加数量
+  2. AddIntakeViewModel - 重写
+     - 添加 PendingFoodItem 数据类
+     - 添加 pendingItems 状态列表
+     - 添加 addPendingItem() 和 removePendingItem() 方法
+     - 添加 saveAllRecords() 批量保存方法
+  3. IntakeRecordDao - 添加 insertRecords() 批量插入方法
+  4. IntakeRecordRepository - 添加 insertRecords() 方法
+  5. HealthTrackerNavGraph - 更新导航，移除 onNavigateToFoodDetail 参数
+- 功能特点：
+  - 日期选择：点击日期卡片弹出日期选择器
+  - 餐次选择：快速切换早餐/午餐/晚餐/加餐
+  - 搜索食物：搜索食物库中的所有食物
+  - 添加对话框：输入数值、选择单位、实时预览营养数据
+  - 临时列表：已添加的食物显示在列表中，可移除
+  - 批量保存：一次性保存所有添加的食物到指定日期和餐次
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-07銆戝姛鑳?#29 #30 #31 #32锛氶鐗text缂栬緫鐩稿叧浼樺寲
-- #29锛氫慨澶嶉€夋嫨鍥炬爣寮圭獥婊氬姩闂
-  - 闂锛氭瘡涓被鍒笅鏈夊浐瀹氱殑 LazyVerticalGrid 楂樺害锛屽鑷村彧鑳藉湪绫诲埆鍐呮粴鍔?
-  - 瑙ｅ喅锛氬皢 LazyVerticalGrid 鏀逛负鏅€?Row锛屾暣涓璇濇鍐呭浣跨敤 verticalScroll 涓€璧锋粴鍔?
-- #30锛氳缃崟浣嶅竷灞€璋冩暣
-  - 闂锛氬崟浣嶈緭鍏ユ甯冨眬鏄崟浣嶅湪宸︺€佹暟鍊煎湪鍙筹紝鏍囩鏄?姣忓崟浣嶅厠/姣崌"
-  - 瑙ｅ喅锛氳皟鏁翠负鏁板€煎湪宸︺€佸崟浣嶅湪鍙筹紝鏍囩鏀逛负"鏁板€?
-- #31锛氶鐗╁簱鎵€鏈夐鐗╃偣鍑诲彲缂栬緫
-  - 闂锛氬彧鏈?鑷畾涔夐鐗?Tab 鐨勯鐗╁彲浠ョ偣鍑荤紪杈?
-  - 瑙ｅ喅锛歊ecentFoodsTab 鍜?FavoriteFoodsTab 涔熸坊鍔?onFoodClick 鍙傛暟锛岀偣鍑诲悗璺宠浆缂栬緫椤甸潰
-- #32锛氶噸鍐欑紪杈戦鐗╅〉闈?
-  - 闂锛缂栬緫椤甸潰甯冨眬涓庢坊鍔嚜瀹氫箟椋熺墿椤甸潰涓嶄竴鑷?
-  - 瑙ｅ喅锛?
-    1. FoodEntity 娣诲姞 unit 鍜?gramsPerUnit 瀛楁
-    2. 鏁版嵁搴撶増鏈崌绾?7鈫?锛屾坊鍔?MIGRATION_7_8
-    3. EditFoodScreen 瀹屽叏閲嶅啓锛屽竷灞€涓?AddCustomFoodScreen 涓€鑷?
-    4. 鏀寔鍗曚綅璁剧疆鍔熻兘
-    5. 鍔犺浇鏃舵樉绀哄綋鍓嶆暟鎹紙鍖呮嫭鍗曚綅鏁版嵁锛?
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #25：重写"添加自定义食物"页面
+- 需求：创建独立的添加自定义食物页面，专门用于添加食物到食物库
+- 修改内容：
+  1. AddCustomFoodScreen - 新建页面，包含：
+     - 食物名称输入
+     - 图标选择器（emoji）
+     - 每百克营养数据（热量、碳水、蛋白质、脂肪）
+     - 可选单位设置（单位名称 + 每单位克数）
+     - 每单位营养值预览
+  2. AddCustomFoodViewModel - 新建 ViewModel
+     - 保存自定义食物到食物库
+     - 自动根据食物名称推断分类
+  3. Screen.kt - 添加 AddCustomFood 路由
+  4. HealthTrackerNavGraph - 添加页面导航
+  5. 更新三个入口的导航：
+     - 食物库自定义食物页 FAB
+     - 添加摄入页"添加自定义食物"按钮
+     - 设置食物管理页 FAB
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-07銆戝姛鑳?#33 #34 #35锛氭憚鍏ヨ褰曞拰椋熺墿绠＄悊浼樺寲
-- #33锛氶噸鍐欐坊鍔憚鍏ュ璇濇
-  - 闂锛氬璇濇甯冨眬涓嶅悎鐞嗭紝璁＄畻閫昏緫涓庨鐗╁簱鏁版嵁涓嶅尮閰?
-  - 瑙ｅ喅锛?
-    1. 鏀逛负宸﹁竟杈撳叆妗嗐€佸彸杈逛笅鎷夐€夋嫨妗嗙殑甯冨眬
-    2. 鍗曚綅涓嬫媺妗嗘敮鎸佹粴鍔ㄩ€夋嫨
-    3. 浣跨敤椋熺墿搴撲腑姣忕櫨鍏嬬殑钀ュ吇鏁版嵁璁＄畻
-    4. 濡傛灉椋熺墿鏈夎嚜瀹氫箟鍗曚綅锛屼紭鍏堟樉绀哄苟浣跨敤瀵瑰簲鐨勫厠鏁?
-- #34锛氫慨澶嶉鐗╃鐞嗛瀛楁瘝鎺掑簭
-  - 闂锛氫腑鏂囬鐗╁湪鍙充晶瀛楁瘝瀵艰埅鏍忔樉绀轰负姹夊瓧鏈韩
-  - 瑙ｅ喅锛?
-    1. 鎵╁睍 getFirstLetter 鍑芥暟锛屾坊鍔犳洿澶氭眽瀛楃殑鎷奸煶棣栧瓧姣嶆槧灏?
-    2. 娣诲姞 getPinyinLetter 鍑芥暟锛屼娇鐢?GB2312 姹夊瓧鎷奸煶棣栧瓧姣嶅尯闂?
-    3. 鏈尮閰嶇殑姹夊瓧杩斿洖 "#" 鑰岄潪姹夊瓧鏈韩
-- #35锛氶椤电偣鍑婚鐗╁脊鍑轰慨鏀规
-  - 闂锛氱偣鍑婚鐗╄烦杞埌缂栬緫椤甸潰锛屼笉澶熶究鎹?
-  - 瑙ｅ喅锛?
-    1. 鍦?HomeScreen 娣诲姞 EditIntakeDialog 缁勪欢
-    2. 鐐瑰嚮椋熺墿寮瑰嚭瀵硅瘽妗嗭紝鏄剧ず褰撳墠椁愭銆佹暟鍊笺€佸崟浣?
-    3. 鍙慨鏀归娆★紙鏃╅/鍗堥/鏅氶/鍔犻锛?
-    4. 鍙慨鏀规暟鍊煎拰鍗曚綅
-    5. 瀹炴椂棰勮钀ュ吇鏁版嵁锛屼繚瀛樺悗鍚屾鏇存柊
-- 缁撴灉锛欱UILD SUCCESSFUL
-    4. 淇敼鍚庡疄鏃惰绠楄惀鍏诲€奸瑙?
-    5. 淇濆瓨鍚庡悓姝ュ埌鏁版嵁搴?
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #29 #30 #31 #32：食物编辑相关优化
+- #29：修复选择图标弹窗滚动问题
+  - 问题：每个类别下有固定的 LazyVerticalGrid 高度，导致只能在类别内滚动
+  - 解决：将 LazyVerticalGrid 改为普通 Row，整个对话框内容使用 verticalScroll 一起滚动
+- #30：设置单位布局调整
+  - 问题：单位输入框布局是单位在左、数值在右，标签是"每单位克/毫升"
+  - 解决：调整为数值在左、单位在右，标签改为"数值"
+- #31：食物库所有食物点击可编辑
+  - 问题：只有"自定义食物"Tab 的食物可以点击编辑
+  - 解决：RecentFoodsTab 和 FavoriteFoodsTab 也添加 onFoodClick 参数，点击后跳转编辑页面
+- #32：重写编辑食物页面
+  - 问题：编辑页面布局与添加自定义食物页面不一致
+  - 解决：
+    1. FoodEntity 添加 unit 和 gramsPerUnit 字段
+    2. 数据库版本升级 7→8，添加 MIGRATION_7_8
+    3. EditFoodScreen 完全重写，布局与 AddCustomFoodScreen 一致
+    4. 支持单位设置功能
+    5. 加载时显示当前数据（包括单位数据）
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-07銆戝姛鑳?#36 #37 #38锛氬浘鏍囦竴鑷存€у拰瀵艰埅淇
-- #36锛氶椤甸鐗╁浘鏍囦娇鐢ㄩ鐗╁簱鍥炬爣
-  - 闂锛氶椤垫樉绀虹殑椋熺墿鍥炬爣鏄牴鎹悕绉版帹鏂殑锛屼笌椋熺墿搴撲腑瀹為檯鍥炬爣涓嶄竴鑷?
-  - 瑙ｅ喅锛?
-    1. IntakeRecordEntity 娣诲姞 foodIcon 瀛楁瀛樺偍椋熺墿鍥炬爣
-    2. 鏁版嵁搴撶増鏈崌绾?8鈫?锛屾坊鍔?MIGRATION_8_9
-    3. AddIntakeViewModel 淇濆瓨鏃惰褰曢鐗╁浘鏍?
-    4. HomeScreen 鏄剧ず鏃朵紭鍏堜娇鐢ㄥ瓨鍌ㄧ殑鍥炬爣
-- #37锛氫慨澶嶉鐗╃鐞嗗瓧姣嶅鑸爮婊氬姩
-  - 闂锛氱偣鍑诲彸渚у瓧姣嶅鑸爮锛堝 Y銆乑锛夛紝鍒楄〃涓嶈兘姝ｇ‘婊氬姩鍒板搴斾綅缃?
-  - 瑙ｅ喅锛氶噸鏂拌绠楁粴鍔ㄤ綅缃紝绱鍓嶉潰鎵€鏈夌粍鐨?item 鏁伴噺
-- #38锛氶噸鍐欐祴璇曟暟鎹敓鎴愬櫒
-  - 闂锛氬師鏉ョ敓鎴?0澶╂暟鎹紝鍑芥暟绛惧悕澶嶆潅
-  - 瑙ｅ喅锛?
-    1. 閲嶅啓 TestDataGenerator锛岀敓鎴愭渶杩戜竴鍛紙7澶╋級鐨勬暟鎹?
-    2. 姣忓ぉ涓夐 + 闅忔満鍔犻锛屽寘鍚鐗╁浘鏍?
-    3. 韬綋鏁版嵁鍜岀潯鐪犳暟鎹浠ヤ粖澶╁線鍓嶆帹7澶?
-    4. 鏇存柊 TestDataViewModel 鍜?SettingsScreen 璋冪敤
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #33 #34 #35：摄入记录和食物管理优化
+- #33：重写添加摄入对话框
+  - 问题：对话框布局不合理，计算逻辑与食物库数据不匹配
+  - 解决：
+    1. 改为左边输入框、右边下拉选择框的布局
+    2. 单位下拉框支持滚动选择
+    3. 使用食物库中每百克的营养数据计算
+    4. 如果食物有自定义单位，优先显示并使用对应的克数
+- #34：修复食物管理首字母排序
+  - 问题：中文食物在右侧字母导航栏显示为汉字本身
+  - 解决：
+    1. 扩展 getFirstLetter 函数，添加更多汉字的拼音首字母映射
+    2. 添加 getPinyinLetter 函数，使用 GB2312 汉字拼音首字母区间
+    3. 未匹配的汉字返回 "#" 而非汉字本身
+- #35：首页点击食物弹出修改框
+  - 问题：点击食物跳转到编辑页面，不够便捷
+  - 解决：
+    1. 在 HomeScreen 添加 EditIntakeDialog 组件
+    2. 点击食物弹出对话框，显示当前餐次、数值、单位
+    3. 可修改餐次（早餐/午餐/晚餐/加餐）
+    4. 可修改数值和单位
+    5. 实时预览营养数据，保存后同步更新
+- 结果：BUILD SUCCESSFUL
+    4. 修改后实时计算营养值预览
+    5. 保存后同步到数据库
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-07銆戝姛鑳?#39 #40 #41 #42锛氶鐗╁簱缁熶竴鎬у拰瀵艰埅浼樺寲
-- #39锛氱‘璁ら鐗╁簱浣滀负缁熶竴鏁版嵁婧?
-  - 楠岃瘉锛氶鐗╁簱锛堝唴缃鐗?鑷畾涔夐鐗╋級鏄簳灞傜粺涓€鏁版嵁婧?
-  - "椋熺墿绠＄悊"椤甸潰銆?椋熺墿搴?椤甸潰銆?娣诲姞鎽勫叆"椤甸潰鎼滅储閮戒娇鐢ㄧ浉鍚岀殑 FoodRepository
-- #40锛氭坊鍔憚鍏ラ〉闈娇鐢ㄩ鐗╁簱鏁版嵁
-  - AddIntakeScreen 鎼滅储缁撴灉浣跨敤 FoodEntity 瀹屾暣鏁版嵁
-  - 鍖呭惈鍥炬爣銆佺儹閲忋€佺⒊姘淬€佽泲鐧借川銆佽剛鑲瓑瀹屾暣淇℃伅
-- #41锛祴璇曟暟鎹敓鎴愬櫒浠庨鐗╁簱閫夋嫨
-  - TestDataGenerator.generateIntakeRecords() 鎺ユ敹 FoodEntity 鍒楄〃鍙傛暟
-  - TestDataViewModel 浠?FoodRepository.getAllFoodsOnce() 鑾峰彇鐪熷疄椋熺墿
-  - 鐢熸垚鐨勬憚鍏ヨ褰曞寘鍚?foodId銆乫oodIcon 鍜屽畬鏁磋惀鍏绘暟鎹?
-  - 娣诲姞 FoodDao.getAllFoodsOnce() 鍜?FoodRepository.getAllFoodsOnce() 鏂规硶
-- #42锛氭坊鍔憚鍏ヤ繚瀛樺悗鐩存帴杩斿洖棣栭〉
-  - 淇敼 HealthTrackerNavGraph 瀵艰埅閫昏緫
-  - 浣跨敤 popUpTo 娓呴櫎杩斿洖鏍堬紝鐩存帴杩斿洖 Main 椤甸潰
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #36 #37 #38：图标一致性和导航修复
+- #36：首页食物图标使用食物库图标
+  - 问题：首页显示的食物图标是根据名称推断的，与食物库中实际图标不一致
+  - 解决：
+    1. IntakeRecordEntity 添加 foodIcon 字段存储食物图标
+    2. 数据库版本升级 8→9，添加 MIGRATION_8_9
+    3. AddIntakeViewModel 保存时记录食物图标
+    4. HomeScreen 显示时优先使用存储的图标
+- #37：修复食物管理字母导航栏滚动
+  - 问题：点击右侧字母导航栏（如 Y、Z），列表不能正确滚动到对应位置
+  - 解决：重新计算滚动位置，累计前面所有组的 item 数量
+- #38：重写测试数据生成器
+  - 问题：原来生成10天数据，函数签名复杂
+  - 解决：
+    1. 重写 TestDataGenerator，生成最近一周（7天）的数据
+    2. 每天三餐 + 随机加餐，包含食物图标
+    3. 身体数据和睡眠数据从今天往前推7天
+    4. 更新 TestDataViewModel 和 SettingsScreen 调用
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-07銆戝姛鑳?#43 #44 #45锛氬鑸拰鏄剧ず浼樺寲
-- #43锛慨澶嶆坊鍔憚鍏ヤ繚瀛樺悗杩斿洖棣栭〉
-  - 闂锛繚瀛樺悗鍥炲埌鍒濆鐨勬坊鍔憚鍏ラ〉闈㈣€岄潪棣栭〉
-  - 瑙ｅ喅锛皢 saveCompleted 浠庢櫘閫氬睘鎬ф敼涓?StateFlow锛岀‘淇?Compose 姝ｇ‘鍝嶅簲鐘舵€佸彉鍖?
-  - 淇敼 AddIntakeViewModel 浣跨敤 _saveCompleted MutableStateFlow
-  - 淇敼 AddIntakeScreen 浣跨敤 collectAsState() 瑙傚療鐘舵€?
-- #44锛慨澶嶉鐗╁浘鏍囨樉绀鸿嫳鏂囬棶棰?
-  - 闂锛椤靛拰娣诲姞鎽勫叆椤甸潰鐨勯鐗ₐ樉绀鸿嫳鏂囷紙濡?"rice"锛夎€岄潪 emoji
-  - 瑙ｅ喅锛湪 getFoodEmoji 鍑芥暟涓坊鍔?isEmoji 妫€鏌?
-  - 鍙湁褰?icon 鏄湁鏁堢殑 emoji 鏃舵墠浣跨敤锛屽惁鍒欐牴鎹悕绉版帹鏂?
-- #45锛慨澶嶄慨鏀圭獥鍙ｉ娆￠€夋嫨澶у皬涓嶄竴鑷达細浣跨敤weight(1f)纭繚绛夊鏄剧ず
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #39 #40 #41 #42：食物库统一性和导航优化
+- #39：确认食物库作为统一数据源
+  - 验证：食物库（内置食物+自定义食物）是底层统一数据源
+  - "食物管理"页面、"食物库"页面、"添加摄入"页面搜索都使用相同的 FoodRepository
+- #40：添加摄入页面使用食物库数据
+  - AddIntakeScreen 搜索结果使用 FoodEntity 完整数据
+  - 包含图标、热量、碳水、蛋白质、脂肪等完整信息
+- #41：测试数据生成器从食物库选择
+  - TestDataGenerator.generateIntakeRecords() 接收 FoodEntity 列表参数
+  - TestDataViewModel 从 FoodRepository.getAllFoodsOnce() 获取真实食物
+  - 生成的摄入记录包含 foodId、foodIcon 和完整营养数据
+  - 添加 FoodDao.getAllFoodsOnce() 和 FoodRepository.getAllFoodsOnce() 方法
+- #42：添加摄入保存后直接返回首页
+  - 修改 HealthTrackerNavGraph 导航逻辑
+  - 使用 popUpTo 清除返回栈，直接返回 Main 页面
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-07銆戝姛鑳?#46 #47 #48 #49锛氳惀鍏昏緭鍏ュ拰鏄剧ず浼樺寲
-- #46锛氭坊鍔嚜瀹氫箟椋熺墿椤甸潰钀ュ吇鏁版嵁鏀逛负姣弉鍏?
-  - 闂锛浐瀹?姣忕櫨鍏?涓嶅鐏垫椿锛岀己灏戞鍗囧崟浣?
-  - 瑙ｅ喅锛?
-    1. 娣诲姞"姣弉鍏?姣崌"杈撳叆琛岋紝鏀寔璁剧疆鏁板€煎拰鍗曚綅锛堝厠/姣崌锛?
-    2. 钀ュ吇鏁版嵁鏍规嵁杈撳叆鐨刵鍊艰嚜鍔ㄨ绠楁瘡鐧惧厠鐨勫€?
-    3. "璁剧疆鍗曚綅"涓嬬殑鏍囩鏀逛负"鍏?姣崌"
-- #47锛慨鏀圭獥鍙ｉ娆￠€夋嫨鍦ㄥ悓涓€琛屾樉绀?
-  - 闂锛娆￠€夐」澶锛屽鑷翠袱瀛楀垎琛屾樉绀?
-  - 瑙ｅ喅锛负 FilterChip 娣诲姞 maxLines = 1锛岃皟鏁撮棿璺濅负6dp
-- #48锛椤甸鐗╁浘鏍囨樉绀轰慨澶?
-  - 闂锛oodIcon 瀛樺偍鐨勮嫳鏂囧瓧绗︿覆鐩存帴鏄剧ず锛岃€岄潪鎺ㄦ柇emoji
-  - 瑙ｅ喅锛湪 getFoodEmoji 鍑芥暟涓坊鍔?isEmoji 妫€鏌ワ紝闈瀍moji鍒欐牴鎹悕绉版帹鏂?
-- #49锛氭坊鍔憚鍏ラ〉闈╂悳绱㈤鐗╁垪琛ㄩ檺鍒堕珮搴?
-  - 闂锛悳绱㈢粨鏋滃垪琛崰鎹暣涓〉闈紝涓嶄究鎿嶄綔
-  - 瑙ｅ喅锛皢鍒楄〃鏀惧叆鍥哄畾楂樺害鐨?Card 涓紙280dp锛岀害4琛岄鐗╋級锛屽唴閮ㄦ粴鍔?
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #43 #44 #45：导航和显示优化
+- #43：修复添加摄入保存后返回首页
+  - 问题：保存后回到初始的添加摄入页面而非首页
+  - 解决：将 saveCompleted 从普通属性改为 StateFlow，确保 Compose 正确响应状态变化
+  - 修改 AddIntakeViewModel 使用 _saveCompleted MutableStateFlow
+  - 修改 AddIntakeScreen 使用 collectAsState() 观察状态
+- #44：修复食物图标显示英文问题
+  - 问题：首页和添加摄入页面的食物显示英文（如 "rice"）而非 emoji
+  - 解决：在 getFoodEmoji 函数中添加 isEmoji 检查
+  - 只有当 icon 是有效的 emoji 时才使用，否则根据名称推断
+- #45：修复修改窗口餐次选择大小不一致
+  - 问题：EditIntakeDialog 中"加餐"选项大小与其他餐次不一致
+  - 解决：为每个 FilterChip 添加 weight(1f) 修饰符，确保等宽显示
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-07銆戝姛鑳?#50 #51 #52 #53锛氱晫闈㈠拰鏄剧ず浼樺寲
-- #50锛氭坊鍔憚鍏ラ〉闈?娣诲姞鑷畾涔椋熺墿"鎸夐挳绉诲埌妗嗗
-  - 闂锛寜閽湪鎼滅储缁撴灉鍒楄〃鍐呬竴璧锋粴鍔紝涓嶄究鎿嶄綔
-  - 瑙ｅ喅锛皢鎸夐挳绉诲嚭 Card锛屾斁鍦ㄦ悳绱㈡涓嬫柟鍗曠嫭鏄剧ず
-- #51锛椤甸鐗╁浘鏍囦椋熺墿搴撲繚鎸佷竴鑷?
-  - 闂锛efaultFoods 涓?icon 瀛樺偍鐨勬槸鑻辨枃鍗曡瘝锛坮ice, bread绛夛級锛岃€岄潪emoji
-  - 瑙ｅ喅锛?
-    1. 淇敼 DefaultFoods 涓墍鏈椋熺墿鐨?icon 涓哄搴?emoji
-    2. AddIntakeViewModel 淇濆瓨璁板綍鏃舵鏌?icon 鏄惁涓?emoji锛岄潪 emoji 鍒欐牴鎹悕绉版帹鏂?
-- #52锛慨鏀圭獥鍙ｉ娆￠€夋嫨鏄剧ず闂
-  - 闂锛崍椁愩€佹櫄椁愩€佸姞椁愬彧鏄剧ず绗竴涓瓧
-  - 瑙ｅ喅锛皟鏁?FilterChip 浣跨敤 labelMedium 瀛椾綋鏍峰紡锛屽噺灏忛棿璺濅负 4dp
-- #53锛缂栬緫椋熺墿椤甸潰鍚屾"姣弉鍏?鍔熻兘
-  - 闂锛ditFoodScreen 鏈悓姝?AddCustomFoodScreen 鐨?姣弉鍏?甯冨眬
-  - 瑙ｅ喅锛畬鍏ㄩ噸鍐?EditFoodScreen锛屼 AddCustomFoodScreen 甯冨眬涓€鑷?
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #46 #47 #48 #49：营养输入和显示优化
+- #46：添加自定义食物页面营养数据改为每n克
+  - 问题：固定"每百克"不够灵活，缺少毫升单位
+  - 解决：
+    1. 添加"每n克/毫升"输入行，支持设置数值和单位（克/毫升）
+    2. 营养数据根据输入的n值自动计算每百克的值
+    3. "设置单位"下的标签改为"克/毫升"
+- #47：修改窗口餐次选择在同一行显示
+  - 问题：餐次选项太宽，导致两字分行显示
+  - 解决：为 FilterChip 添加 maxLines = 1，调整间距为6dp
+- #48：首页食物图标显示修复
+  - 问题：foodIcon 存储的英文字符串直接显示，而非推断emoji
+  - 解决：在 getFoodEmoji 函数中添加 isEmoji 检查，非emoji则根据名称推断
+- #49：添加摄入页面搜索食物列表限制高度
+  - 问题：搜索结果列表占据整个页面，不便操作
+  - 解决：将列表放入固定高度的 Card 中（280dp，约4行食物），内部滚动
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-06銆戝姛鑳?#9锛氫富棰樺垏鎹澶滈棿妯″紡
-- 闇€姹傦璁剧疆涓坊鍔犱富棰橀鑹插垏鎹㈠拰澶滈棿妯″紡锛屾敮鎸佽窡闅忕郴缁?
-- 淇敼鍐呭锛?
-  1. UserSettingsEntity - 娣诲姞 themeMode, themeColor 瀛楁
-  2. HealthTrackerDatabase - 鐗堟湰鍗囩骇 4鈫?锛屾坊鍔?MIGRATION_4_5
-  3. UserSettingsDao - 娣诲姞 updateThemeMode(), updateThemeColor(), upsertThemeMode(), upsertThemeColor() 鏂规硶
-  4. UserSettingsRepository - 娣诲姞涓婚鐩稿叧鏂规硶
-  5. Color.kt - 娣诲姞5绉嶄富棰橀鑹诧紙缁?钃?绱?姗?绾級
-  6. Theme.kt - 瀹屽叏閲嶅啓锛屾敮鎸佸涓婚鍜屽妯″紡
-  7. MainActivity - 瑙傚療涓婚璁剧疆骞跺疄鏃跺簲鐢?
-  8. ThemeSettingsScreen - 鏂板缓涓婚璁剧疆鐣岄潰
-  9. ThemeSettingsViewModel - 鏂板缓涓婚璁剧疆 ViewModel
-  10. SettingsScreen - 娣诲姞涓婚璁剧疆鍏ュ彛
-- 鍔熻兘鐗圭偣锛?
-  - 涓婚妯″紡锛窡闅忕郴缁熴€佹祬鑹层€佹繁鑹蹭笁绉?
-  - 涓婚棰滆壊锛豢鑹层€佽摑鑹层€佺传鑹层€佹鑹层€佺孩鑹蹭簲绉?
-  - 璁剧疆椤甸潰鏈夊疄鏃堕瑙堟晥鏋?
-  - 瀹屽叏閬靛惊 Material Design 3
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-07】功能 #50 #51 #52 #53：界面和显示优化
+- #50：添加摄入页面"添加自定义食物"按钮移到框外
+  - 问题：按钮在搜索结果列表内一起滚动，不便操作
+  - 解决：将按钮移出 Card，放在搜索框下方单独显示
+- #51：首页食物图标与食物库保持一致
+  - 问题：DefaultFoods 中 icon 存储的是英文单词（rice, bread等），而非emoji
+  - 解决：
+    1. 修改 DefaultFoods 中所有食物的 icon 为对应 emoji
+    2. AddIntakeViewModel 保存记录时检查 icon 是否为 emoji，非 emoji 则根据名称推断
+- #52：修改窗口餐次选择显示问题
+  - 问题：午餐、晚餐、加餐只显示第一个字
+  - 解决：调整 FilterChip 使用 labelMedium 字体样式，减小间距为 4dp
+- #53：编辑食物页面同步"每n克"功能
+  - 问题：EditFoodScreen 未同步 AddCustomFoodScreen 的"每n克"布局
+  - 解决：完全重写 EditFoodScreen，与 AddCustomFoodScreen 布局一致
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-06銆戝姛鑳?#8 浼樺寲锛媶鍒嗘憚鍏ヨ褰曢〉闈?
-- 闇€姹傦棣栭〉鍔犲彿杩涘叆鐨勯〉闈㈠彧鏄剧ず鎼滅储锛岀偣鍑婚鐗╂垨"娣诲姞鑷畾涔夐鐗?鍚庡啀杩涘叆璇︾粏褰曞叆椤甸潰
-- 淇敼鍐呭锛?
-  1. AddIntakeScreen - 閲嶅啓涓烘悳绱㈤〉闈紙椁愭閫夋嫨 + 鎼滅储妗?+ 鎼滅储缁撴灉 + 鎸夐挳锛?
-  2. CustomFoodInputScreen - 鏂板缓璇︾粏褰曞叆椤甸潰
-  3. HealthTrackerNavGraph - 娣诲姞甯﹀弬鏁板鑸?
-  4. MainScreen - 娣诲姞 onNavigateToCustomFood 鍙傛暟
-- 椤甸潰娴佺▼锛?
-  - 棣栭〉鍔犲彿 鈫?鎼滅储椋熺墿椤?鈫?鐐瑰嚮椋熺墿 鈫?璇︾粏褰曞叆椤?
-  - 棣栭〉鍔犲彿 鈫?鎼滅储椋熺墿椤?鈫?鐐瑰嚮"+鑷畾涔夐鐗? 鈫?璇︾粏褰曞叆椤?
-  - 椋熺墿搴撹嚜瀹氫箟椋熺墿tab FAB 鈫?璇︾粏褰曞叆椤?
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-06】功能 #9：主题切换与夜间模式
+- 需求：设置中添加主题颜色切换和夜间模式，支持跟随系统
+- 修改内容：
+  1. UserSettingsEntity - 添加 themeMode, themeColor 字段
+  2. HealthTrackerDatabase - 版本升级 4→5，添加 MIGRATION_4_5
+  3. UserSettingsDao - 添加 updateThemeMode(), updateThemeColor(), upsertThemeMode(), upsertThemeColor() 方法
+  4. UserSettingsRepository - 添加主题相关方法
+  5. Color.kt - 添加5种主题颜色（绿/蓝/紫/橙/红）
+  6. Theme.kt - 完全重写，支持多主题和多模式
+  7. MainActivity - 观察主题设置并实时应用
+  8. ThemeSettingsScreen - 新建主题设置界面
+  9. ThemeSettingsViewModel - 新建主题设置 ViewModel
+  10. SettingsScreen - 添加主题设置入口
+- 功能特点：
+  - 主题模式：跟随系统、浅色、深色三种
+  - 主题颜色：绿色、蓝色、紫色、橙色、红色五种
+  - 设置页面有实时预览效果
+  - 完全遵循 Material Design 3
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-06銆戝姛鑳?#10锛鐗╄褰曠紪杈戜鎵归噺鎿嶄綔
-- 闇€姹傦鐐瑰嚮淇敼椋熺墿鍐呭锛岄暱鎸夊垹闄?缂栬緫/鎵归噺閫夋嫨
-- 淇敼鍐呭锛?
-  1. IntakeRecordDao - 娣诲姞 deleteRecordsByIds() 鎵归噺鍒犻櫎
-  2. IntakeRecordRepository - 娣诲姞 deleteRecordsByIds()
-  3. HomeViewModel - 娣诲姞 deleteRecord(), deleteRecordsByIds(), updateRecord()
-  4. HomeScreen - 娣诲姞鐐瑰嚮缂栬緫銆侀暱鎸夎彍鍗曘€佹壒閲忢€夋嫨妯″紡
-  5. EditIntakeViewModel - 鏂板缓缂栬緫 ViewModel
-  6. EditIntakeScreen - 鏂板缓缂栬緫椤甸潰
-  7. Screen.kt - 娣诲姞 EditIntake 璺敱
-  8. HealthTrackerNavGraph - 娣诲姞缂栬緫椤甸潰瀵艰埅
-- 鍔熻兘鐗圭偣锛?
-  - 鐐瑰嚮椋熺墿 鈫?杩涘叆缂栬緫椤甸潰淇敼
-  - 闀挎寜椋熺墿 鈫?鏄剧ず鑿滃崟锛堢紪杈戙€佸垹闄ゃ€佹壒閲忢€夋嫨锛?
-  - 鎵归噺閫夋嫨妯″紡 鈫?鍏ㄩ€夈€佹壒閲忓垹闄?
-  - 鍒犻櫎鎿嶄綔鏈夌‘璁ゅ璇濇
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-06】功能 #8 优化：拆分摄入记录页面
+- 需求：首页加号进入的页面只显示搜索，点击食物或"添加自定义食物"后再进入详细录入页面
+- 修改内容：
+  1. AddIntakeScreen - 重写为搜索页面（餐次选择 + 搜索框 + 搜索结果 + 按钮）
+  2. CustomFoodInputScreen - 新建详细录入页面
+  3. HealthTrackerNavGraph - 添加带参数导航
+  4. MainScreen - 添加 onNavigateToCustomFood 参数
+- 页面流程：
+  - 首页加号 → 搜索食物页 → 点击食物 → 详细录入页
+  - 首页加号 → 搜索食物页 → 点击"+自定义食物" → 详细录入页
+  - 食物库自定义食物tab FAB → 详细录入页
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-06銆戝姛鑳?#11锛慨澶嶄富棰橀鑹插惎鍔ㄩ棯鐑侀棶棰?
-- 闂锛瘡娆¤繘鍏ヨ蒋浠舵椂锛屼富棰橀鑹蹭細鍏堟樉绀洪粯璁ょ豢鑹诧紝鐒跺悗鎵嶅垏鎹㈠埌鐢ㄦ埛閫夋嫨鐨勪富棰濿壊
-- 鏍规湰鍘熷洜锛?
-  1. 鐢ㄦ埛璁剧疆鏄紓姝ヤ粠鏁版嵁搴撳姞杞界殑锛團low锛?
-  2. 鍦ㄨ缃姞杞藉畬鎴愬墠锛宼hemeColorIndex 榛樿涓?0锛堢豢鑹诧級
-  3. 鍔犺浇瀹屾垚鍚庢墠鍒囨崲鍒扮敤鎴烽€夋嫨鐨勪富棰濿壊锛岄€犳垚瑙嗚闂儊
-- 瑙ｅ喅鏂规锛?
-  1. 娣诲姞 AndroidX SplashScreen 搴撲緷璧?
-  2. 鍒涘缓 Splash Screen 涓婚锛圱heme.HealthTracker.Splash锛?
-  3. 浣跨敤 installSplashScreen() API 淇濇寔鍚姩鐢婚潰鐩村埌璁剧疆鍔犺浇瀹屾垚
-  4. 璁剧疆 setKeepOnScreenCondition 绛夊緟 settings 涓嶄负 null
-- 淇敼鏂囦欢锛?
-  - app/build.gradle.kts - 娣诲姞 splashscreen 渚濊禆
-  - res/values/themes.xml - 娣诲姞 Splash Screen 涓婚
-  - AndroidManifest.xml - Activity 浣跨敤 Splash 涓婚
-  - MainActivity.kt - 浣跨敤 installSplashScreen() 绛夊緟璁剧疆鍔犺浇
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-06】功能 #10：食物记录编辑与批量操作
+- 需求：点击修改食物内容，长按删除/编辑/批量选择
+- 修改内容：
+  1. IntakeRecordDao - 添加 deleteRecordsByIds() 批量删除
+  2. IntakeRecordRepository - 添加 deleteRecordsByIds()
+  3. HomeViewModel - 添加 deleteRecord(), deleteRecordsByIds(), updateRecord()
+  4. HomeScreen - 添加点击编辑、长按菜单、批量选择模式
+  5. EditIntakeViewModel - 新建编辑 ViewModel
+  6. EditIntakeScreen - 新建编辑页面
+  7. Screen.kt - 添加 EditIntake 路由
+  8. HealthTrackerNavGraph - 添加编辑页面导航
+- 功能特点：
+  - 点击食物 → 进入编辑页面修改
+  - 长按食物 → 显示菜单（编辑、删除、批量选择）
+  - 批量选择模式 → 全选、批量删除
+  - 删除操作有确认对话框
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-06銆戝姛鑳?#12锛敤鎴疯祫鏂欓〉闈?BMR/TDEE 璁＄畻
-- 闂锛敤鎴疯祫鏂欓〉闈㈣緭鍏ユ暟鎹悗淇濆瓨锛屼絾娌℃湁鏄剧ず璁＄畻鍑虹殑 BMR 鍜?TDEE 鏁板€?
-- 规湰鍘熷洜锛?
-  1. UserProfileScreen 鏄潤鎬?UI锛屾病鏈?ViewModel
-  2. 娌℃湁瀹為檯淇濆瓨鏁版嵁鍒版暟鎹簱
-  3. 娌℃湁璋冪敤 HealthCalculator 璁＄畻 BMR/TDEE
-- 瑙ｅ喅鏂规锛?
-  1. UserSettingsEntity - 娣诲姞 age 鍜?weight 瀛楁
-  2. HealthTrackerDatabase - 鐗堟湰鍗囩骇 5鈫?锛屾坊鍔?MIGRATION_4_5
-  3. UserSettingsDao - 娣诲姞 updateUserInfo() 鏂规硶
-  4. UserSettingsRepository - 娣诲姞 updateUserInfo() 鏂规硶
-  5. UserProfileViewModel - 鏂板缓 ViewModel 澶勭悊鏁版嵁鍜岃绠?
-  6. UserProfileScreen - 閲嶅啓锛屼娇鐢?ViewModel锛屽疄鏃惰绠B鏄剧ず缁撴灉
-- 鍔熻兘鐗圭偣锛?
-  - 鍔犺浇鏃惰嚜鍔ㄥ～鍏呭凡淇濆瓨鐨勬暟鎹?
-  - 杈撳叆韬珮銆佷綋閲嶃€佸勾榫勬椂瀹炴椂璁＄畻骞堕瑙?BMR/TDEE
-  - 淇濆瓨鏃惰绠楀苟瀛樺偍 BMR/TDEE 鍒版暟鎹簱
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-06】功能 #11：修复主题颜色启动闪烁问题
+- 问题：每次进入软件时，主题颜色会先显示默认绿色，然后才切换到用户选择的主题色
+- 根本原因：
+  1. 用户设置是异步从数据库加载的（Flow）
+  2. 在设置加载完成前，themeColorIndex 默认为 0（绿色）
+  3. 加载完成后才切换到用户选择的主题色，造成视觉闪烁
+- 解决方案：
+  1. 添加 AndroidX SplashScreen 库依赖
+  2. 创建 Splash Screen 主题（Theme.HealthTracker.Splash）
+  3. 使用 installSplashScreen() API 保持启动画面直到设置加载完成
+  4. 设置 setKeepOnScreenCondition 等待 settings 不为 null
+- 修改文件：
+  - app/build.gradle.kts - 添加 splashscreen 依赖
+  - res/values/themes.xml - 添加 Splash Screen 主题
+  - AndroidManifest.xml - Activity 使用 Splash 主题
+  - MainActivity.kt - 使用 installSplashScreen() 等待设置加载
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-06銆戝姛鑳?#12锛敤鎴疯祫鏂欓〉闈?BMR/TDEE 璁＄畻
-- 闂锛敤鎴疯祫鏂欓〉闈㈣緭鍏ユ暟鎹悗淇濆瓨锛屼絾娌℃湁鏄剧ず璁＄畻鍑虹殑 BMR 鍜?TDEE 鏁板€?
-- 规湰鍘熷洜锛?
-  1. UserProfileScreen 鏄潤鎬?UI锛屾病鏈?ViewModel
-  2. 娌℃湁瀹為檯淇濆瓨鏁版嵁鍒版暟鎹簱
-  3. 娌℃湁璋冪敤 HealthCalculator 璁＄畻 BMR/TDEE
-- 瑙ｅ喅鏂规锛?
-  1. UserSettingsEntity - 娣诲姞 age 鍜?weight 瀛楁
-  2. HealthTrackerDatabase - 鐗堟湰鍗囩骇 5鈫?锛屾坊鍔?MIGRATION_5_6
-  3. UserSettingsDao - 娣诲姞 updateUserInfo() 鏂规硶
-  4. UserSettingsRepository - 娣诲姞 updateUserInfo() 鏂规硶
-  5. UserProfileViewModel - 鏂板缓 ViewModel 澶勭悊鏁版嵁鍜岃绠?
-  6. UserProfileScreen - 閲嶅啓锛屼娇鐢?ViewModel锛屽疄鏃惰绠B鏄剧ず缁撴灉
-- 鍔熻兘鐗圭偣锛?
-  - 鍔犺浇鏃惰嚜鍔ㄥ～鍏呭凡淇濆瓨鐨勬暟鎹?
-  - 杈撳叆韬珮銆佷綋閲嶃€佸勾榫勬椂瀹炴椂璁＄畻骞堕瑙?BMR/TDEE
-  - 淇濆瓨鏃惰绠楀苟瀛樺偍 BMR/TDEE 鍒版暟鎹簱
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-06】功能 #12：用户资料页面 BMR/TDEE 计算
+- 问题：用户资料页面输入数据后保存，但没有显示计算出的 BMR 和 TDEE 数值
+- 根本原因：
+  1. UserProfileScreen 是静态 UI，没有 ViewModel
+  2. 没有实际保存数据到数据库
+  3. 没有调用 HealthCalculator 计算 BMR/TDEE
+- 解决方案：
+  1. UserSettingsEntity - 添加 age 和 weight 字段
+  2. HealthTrackerDatabase - 版本升级 5→6，添加 MIGRATION_5_6
+  3. UserSettingsDao - 添加 updateUserInfo() 方法
+  4. UserSettingsRepository - 添加 updateUserInfo() 方法
+  5. UserProfileViewModel - 新建 ViewModel 处理数据和计算
+  6. UserProfileScreen - 重写，使用 ViewModel，实时计算并显示结果
+- 功能特点：
+  - 加载时自动填充已保存的数据
+  - 输入身高、体重、年龄时实时计算并预览 BMR/TDEE
+  - 保存时计算并存储 BMR/TDEE 到数据库
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-06銆戝姛鑳?#13锛鐗╁簱"鏈€杩戞憚鍏?鏄剧ず閫昏緫
-- 闂锛鐗╁簱鐨?鏈€杩戞憚鍏?椤甸潰搴旀樉绀洪鐗╁簱涓墍鏈椋熺墿锛堝唴缃+鑷畾涔夛級锛屾寜鏈€杩戣璁板綍鐨勯『搴忔帓搴?
-- 规湰鍘熷洜锛?
-  1. 鍘熷疄鐜版樉绀虹殑鏄?IntakeRecordEntity锛堟憚鍏ヨ褰曪級锛岃€屼笉鏄?FoodEntity锛堥鐗╋級
-  2. 娌℃湁鎸夌収"鏈€杩戣璁板綍鐨勯『搴?鎺掑簭
-- 瑙ｅ喅鏂规锛?
-  1. IntakeRecordDao - 娣诲姞 getFoodLastRecordTimes() 鑾峰彇姣忎釜椋熺墿鐨勬渶杩戣褰曟椂闂?
-  2. IntakeRecordRepository - 娣诲姞瀵瑰簲鏂规硶
-  3. FoodLibraryViewModel - 浣跨敤 combine 缁勫悎鎵€鏈椋熺墿鍜屾渶杩戣褰曟椂闂达紝鎸夋椂闂存帓搴?
-  4. FoodLibraryScreen - 淇敼 RecentFoodsTab 鏄剧ず FoodEntity 鍒楄〃锛屾敮鎸佹敹钘忓姛鑳?
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-06】功能 #12：用户资料页面 BMR/TDEE 计算
+- 问题：用户资料页面输入数据后保存，但没有显示计算出的 BMR 和 TDEE 数值
+- 根本原因：
+  1. UserProfileScreen 是静态 UI，没有 ViewModel
+  2. 没有实际保存数据到数据库
+  3. 没有调用 HealthCalculator 计算 BMR/TDEE
+- 解决方案：
+  1. UserSettingsEntity - 添加 age 和 weight 字段
+  2. HealthTrackerDatabase - 版本升级 5→6，添加 MIGRATION_5_6
+  3. UserSettingsDao - 添加 updateUserInfo() 方法
+  4. UserSettingsRepository - 添加 updateUserInfo() 方法
+  5. UserProfileViewModel - 新建 ViewModel 处理数据和计算
+  6. UserProfileScreen - 重写，使用 ViewModel，实时计算并显示结果
+- 功能特点：
+  - 加载时自动填充已保存的数据
+  - 输入身高、体重、年龄时实时计算并预览 BMR/TDEE
+  - 保存时计算并存储 BMR/TDEE 到数据库
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-06銆戝姛鑳?#15锛鐗╃鐞嗛〉闈㈠畬鍠?
-- 闂锛氳缃〉闈㈢殑"椋熺墿绠＄悊"搴旀樉绀烘墍鏈椋熺墿锛屾寜鍚嶇О鎺掑簭锛屽彸渚у瓧姣嶅鑸爮
-- 瑙ｅ喅鏂规锛?
-  1. FoodManagerViewModel - 鏂板缓 ViewModel 绠＄悊椋熺墿鏁版嵁锛屾敮鎸佹悳绱㈤瀛楁瘝鍒嗙缁?
-  2. FoodManagerScreen - 閲嶅啓锛屾坊鍔犲瓧姣嶅鑸爮锛屾寜棣栧瓧姣嶅垎缁勬樉绀洪鐗?
-  3. 鏀寔鎼滅储銆佹敹钘忋€佸垹闄ゃ浠呰嚜瀹氫箟椋熺墿鍙垹闄ゃ級
-  4. FAB 鐐瑰嚮璺宠浆鍒版坊鍔嚜瀹氫箟椋熺墿椤甸潰
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-06】功能 #13：食物库"最近摄入"显示逻辑
+- 问题：食物库的"最近摄入"页面应显示食物库中所有食物（内置+自定义），按最近被记录的顺序排序
+- 根本原因：
+  1. 原实现显示的是 IntakeRecordEntity（摄入记录），而不是 FoodEntity（食物）
+  2. 没有按照"最近被记录的顺序"排序
+- 解决方案：
+  1. IntakeRecordDao - 添加 getFoodLastRecordTimes() 获取每个食物的最近记录时间
+  2. IntakeRecordRepository - 添加对应方法
+  3. FoodLibraryViewModel - 使用 combine 组合所有食物和最近记录时间，按时间排序
+  4. FoodLibraryScreen - 修改 RecentFoodsTab 显示 FoodEntity 列表，支持收藏功能
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-06銆戝姛鑳?#14锛珮鍒锋柊鐜囨敮鎸?
-- 闂锛〉闈㈡粦鍔ㄦ椂甯х巼浣庯紝鏄惧緱鍗￠】
-- 瑙ｅ喅鏂规锛?
-  1. MainActivity 娣诲姞 setHighRefreshRate() 鏂规硶
-  2. 鑾峰彇璁惧鏀寔鐨勬渶楂樺埛鏂扮巼骞惰缃?
-  3. 浣挎粦鍔ㄦ洿娴佺晠
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-06】功能 #15：食物管理页面完善
+- 问题：设置页面的"食物管理"应显示所有食物，按名称排序，右侧有字母导航栏
+- 解决方案：
+  1. FoodManagerViewModel - 新建 ViewModel 管理食物数据，支持搜索和首字母分组
+  2. FoodManagerScreen - 重写，添加字母导航栏，按首字母分组显示食物
+  3. 支持搜索、收藏、删除（仅自定义食物可删除）
+  4. FAB 点击跳转到添加自定义食物页面
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-06銆戝姛鑳?#17锛棩鍘嗛〉闈㈠畬鍠?
-- 闇€姹傦鏃ュ巻闅忛〉闈竴璧锋粦鍔ㄣ€佸乏鍙虫粦鍔ㄥ垏鎹㈡湀浠姐€佺偣鍑诲勾鏈堝脊鍑洪€夋嫨绐楀彛
-- 淇敼鍐呭锛?
-  1. CalendarScreen - 鏁翠釜椤甸潰浣跨敤 verticalScroll 涓€璧锋粦鍔?
-  2. 娣诲姞 HorizontalDragGestures 妫€娴嬪乏鍙虫粦鍔?
-  3. 浣跨敤 AnimatedContent 娣诲姞鏈堜唤鍒囨崲鍔ㄧ敾
-  4. 绠€鍖?MonthYearPickerDialog 浣跨敤 ExposedDropdownMenuBox
-  5. 淇婊戝姩鏂瑰悜锛粠宸﹀悜鍙?= 涓婁釜鏈堬紝浠庡彸鍚戝乏 = 涓嬩釜鏈?
-  6. 绉婚櫎 enableEdgeToEdge() 淇椤堕儴绌虹櫧闂
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-06】功能 #14：高刷新率支持
+- 问题：页面滑动时帧率低，显得卡顿
+- 解决方案：
+  1. MainActivity 添加 setHighRefreshRate() 方法
+  2. 获取设备支持的最高刷新率并设置
+  3. 使滑动更流畅
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-06銆戝姛鑳?#18锛椤佃韩浣撴暟鎹拰鐫＄湢鍖哄潡搴曡壊
-- 闇€姹傦韬綋鏁版嵁鍜岀潯鐪犱袱涓尯鍧楁坊鍔富棰橀鑹插祬涓€鐐圭殑搴曡壊鏉ュ尯鍒嗕袱涓尯鍧椼€?
-- 淇敼鍐呭锛?
-  1. BodyDataCard - 浣跨敤 primaryContainer.copy(alpha = 0.5f) 浣滀负鑳屾櫙鑹?
-  2. SleepDataCard - 浣跨敤鐩稿悓鐨勪富棰濿壊鑳屾櫙
-  3. 娣诲姞鍦嗚 RoundedCornerShape(12.dp)
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-06】功能 #17：日历页面完善
+- 需求：日历随页面一起滑动、左右滑动切换月份、点击年月弹出选择窗口
+- 修改内容：
+  1. CalendarScreen - 整个页面使用 verticalScroll 一起滑动
+  2. 添加 HorizontalDragGestures 检测左右滑动
+  3. 使用 AnimatedContent 添加月份切换动画
+  4. 简化 MonthYearPickerDialog 使用 ExposedDropdownMenuBox
+  5. 修复滑动方向：从左向右 = 上个月，从右向左 = 下个月
+  6. 移除 enableEdgeToEdge() 修复顶部空白问题
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-06銆戝姛鑳?#21锛坊鍔楗璁″垝鎼滅储椋熺墿搴?
-- 闇€姹傦娣诲姞楗璁″垝鏃跺彲浠ユ悳绱㈤鐗╁簱涓殑椋熺墿锛屽苟鏀寔娣诲姞鑷畾涔夐鐗?
-- 淇敼鍐呭锛?
-  1. AddMealPlanScreen - 娣诲姞 onNavigateToCustomFood 鍙傛暟
-  2. HealthTrackerNavGraph - 閰嶇疆瀵艰埅鍒拌鑷畾涔夐鐗╅〉闈?
-  3. "娣诲姞鑷畾涔夐鐗?鎸夐挳鐜板湪鍙互姝ｇ‘璺宠浆鍒拌鑷畾涔夐鐗╄緭鍏ユ椤甸潰
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-06】功能 #18：首页身体数据和睡眠区块底色
+- 需求：身体数据和睡眠两个区块添加主题色浅色底色
+- 修改内容：
+  1. BodyDataCard - 使用 primaryContainer.copy(alpha = 0.5f) 作为背景色
+  2. SleepDataCard - 使用相同的主题色背景
+  3. 添加圆角 RoundedCornerShape(12.dp)
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-06銆戝姛鑳?#22锛鐗╄嚜瀹氫箟 emoji 鍥炬爣
-- 闇€姹傦淇敼/娣诲姞椋熺墿鏃跺彲浠ユ鑷畾涔夐鐗╃殑 emoji 鍥炬爣
-- 淇敼鍐呭锛?
-  1. FoodEmojiUtils - 鏂板缓宸ュ叿绫伙紝鍖呭惈椋熺墿 emoji 鍒楄〃鍜岄粯璁ゆ槧灏?
-  2. EditFoodScreen - 娣诲姞 emoji 閫夋嫨鍣ㄥ璇濇
-  3. EditFoodViewModel - 鏀寔 icon 鍙傛暟
-  4. CustomFoodInputScreen - 娣诲姞 emoji 閫夋嫨鍣浠呭湪淇濆瓨鍒伴鐗╁簱鏃舵樉绀猴級
-  5. AddIntakeViewModel - saveRecord 鏀寔 icon 鍙傛暟
-  6. 鏇存柊澶氫釜鏂囦欢鐨?getFoodEmoji 鍑芥暟浼樺厛浣跨敤椋熺墿鑷甫鐨?icon
-- 鍔熻兘鐗圭偣锛?
-  - 椋熺墿 emoji 鎸夊垎绫荤粍缁囷紙涓婚銆佽倝绫汇€佹捣洴銆佽敩鑿溿€佹按鏋滅瓑锛?
-  - 鑷姩鏍规嵁椋熺墿鍚嶇О鎺ㄦ柇榛樿 emoji
-  - 淇濆瓨鑷畾涔夐鐗ₐ椂鍙€夋嫨 emoji 鍥炬爣
-  - 缂栬緫椋熺墿鏃跺彲鏇存崲 emoji 鍥炬爣
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-06】功能 #21：添加饮食计划搜索食物库
+- 需求：添加饮食计划时可以搜索食物库中的食物，并支持添加自定义食物
+- 修改内容：
+  1. AddMealPlanScreen - 添加 onNavigateToCustomFood 参数
+  2. HealthTrackerNavGraph - 配置导航到自定义食物页面
+  3. "添加自定义食物"按钮现在可以正确跳转到自定义食物输入页面
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-06銆戝姛鑳?#23锛鑷畾涔夐鐗╃偣鍑荤紪杈?
-- 闇€姹傦鑷畾涔夐鐗╅〉闈㈢偣鍑婚鐗╁彲浠ョ紪杈戞暟鎹?
-- 鐘舵€侊鍔熻兘宸插瓨鍦?
-  - EditFoodScreen 宸插瓨鍦紝鏀寔缂栬緫椋熺墿鍚嶇О銆佸垎绫汇€佽惀鍏绘暟鎹?
-  - 瀵艰埅宸查厤缃紝FoodLibraryScreen 鐨?CustomFoodsTab 鐐瑰嚮鍙烦杞紪杈?
-  - 鐜板湪鏂板浜?emoji 鍥炬爣缂栬緫鍔熻兘
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-06】功能 #22：食物自定义 emoji 图标
+- 需求：修改/添加食物时可以自定义食物的 emoji 图标
+- 修改内容：
+  1. FoodEmojiUtils - 新建工具类，包含食物 emoji 列表和默认映射
+  2. EditFoodScreen - 添加 emoji 选择器对话框
+  3. EditFoodViewModel - 支持 icon 参数
+  4. CustomFoodInputScreen - 添加 emoji 选择器（仅在保存到食物库时显示）
+  5. AddIntakeViewModel - saveRecord 支持 icon 参数
+  6. 更新多个文件的 getFoodEmoji 函数优先使用食物自带的 icon
+- 功能特点：
+  - 食物 emoji 按分类组织（主食、肉类、海鲜、蔬菜、水果等）
+  - 自动根据食物名称推断默认 emoji
+  - 保存自定义食物时可选择 emoji 图标
+  - 编辑食物时可更换 emoji 图标
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-05銆戝垵濮嬭缃?
-- Git 浠撳簱鍒濆鍖栧畬鎴?
-- 鍒涘缓 .gitignore 鎺掗櫎缂撳瓨鏂囦欢
-- 鍒濆鎻愪氦锛?8 涓枃浠讹紝4502 琛屼唬鐮?
-- 鎻愪氦 hash锛?b0f612
+【2026-03-06】功能 #23：自定义食物点击编辑
+- 需求：自定义食物页面点击食物可以编辑数据
+- 状态：功能已存在
+  - EditFoodScreen 已存在，支持编辑食物名称、分类、营养数据
+  - 导航已配置，FoodLibraryScreen 的 CustomFoodsTab 点击可跳转编辑
+  - 现在新增了 emoji 图标编辑功能
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-05銆戞瀯寤洪棶棰樹慨澶?
-- 闂1锛AGP 9.1.0 涓?Hilt 2.52 涓嶅吋瀹?鈫?闄嶇骇 AGP 鍒?8.7.3
-- 闂2锛缂哄灏?AndroidX 閰嶇疆 鈫?娣诲姞 android.useAndroidX=true
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-05】初始设置
+- Git 仓库初始化完成
+- 创建 .gitignore 排除缓存文件
+- 初始提交：78 个文件，4502 行代码
+- 提交 hash：5b0f612
 
-銆?026-03-05銆戦棯閫€闂淇
-- 闂锛atabaseModule 涓垵濮嬪寲榛樿椋熷搧鏁版嵁鐨勯€昏緫閿欒
-  - 鍘熶唬鐮侊foodDao.getAllFoods().toString().isEmpty()
-  - 闂锛歡etAllFoods() 杩斿洖 Flow锛宼oString() 姘歌繙涓嶄负绌?
-- 瑙ｅ喅鏂规锛?
-  1. 娣诲姞 getFoodCount() 鏂规硶鍒?FoodDao
-  2. 浣跨敤 runBlocking 鍚屾妫€鏌ュ苟鍒濆鍖栨暟鎹?
-  3. 娣诲姞寮傚父澶勭悊闃叉鍒濆鍖栧け璐ュ鑷村穿婧?
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-05】构建问题修复
+- 问题1：AGP 9.1.0 与 Hilt 2.52 不兼容 → 降级 AGP 到 8.7.3
+- 问题2：缺少 AndroidX 配置 → 添加 android.useAndroidX=true
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-05銆慍lassNotFoundException 淇锛堥噸澶ч噸鏋勶級
-- 闂锛Hilt 鐢熸垚鐨勪唬鐮佹湭姝ｇ‘鎵撳寘锛屽鑷?HealthTrackerApplication 绫绘壘涓嶅埌
-- 规湰鍘熷洜锛?
-  1. 缂哄灏?kotlin-android 鎻掍欢
-  2. KSP 涓?Hilt 鐨勫吋瀹规€ч棶棰?
-  3. JVM target 鐗堟湰涓嶄竴鑷?
-- 瑙ｅ喅鏂规锛?
-  1. 鍒囨崲浠?KSP 鍒?KAPT 澶勭悊 Hilt 娉ㄨВ
-  2. 娣诲姞 kotlin-android 鍜?kotlin-kapt 鎻掍欢
-  3. 缁熶竴 JVM target 涓?17
-  4. 娣诲姞 material-icons-extended 渚濊禆
-  5. 淇缂哄け鐨勯鑹插畾涔夛紙Color.kt锛?
-  6. 淇鍥炬爣寮曠敤锛團ileDownload 鈫?Download, FileUpload 鈫?Upload锛?
-  7. 淇瀵煎叆鍜屽寘鍚嶉棶棰?
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-05】闪退问题修复
+- 问题：DatabaseModule 中初始化默认食品数据的逻辑错误
+  - 原代码：foodDao.getAllFoods().toString().isEmpty()
+  - 问题：getAllFoods() 返回 Flow，toString() 永远不为空
+- 解决方案：
+  1. 添加 getFoodCount() 方法到 FoodDao
+  2. 使用 runBlocking 同步检查并初始化数据
+  3. 添加异常处理防止初始化失败导致崩溃
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-05銆戝鑸粨鏋勯噸鏋?- 棣栭〉涓庢姤琛ㄥ悓绾?
-- 闂锛姤琛ㄩ〉鏄棣栭〉鐨勫瓄椤甸潰锛屾湁杩斿洖閿紝涓嶇鍚堣璁¤姹?
-- 瑙ｅ喅鏂规锛?
-  1. 鍒涘缓 MainScreen.kt 浣滀负涓诲鍣紝鍖呭惈搴曢儴瀵艰埅鏍?
-  2. 棣栭〉鍜屾姤琛ㄩ〉浣滀负鍚岀骇椤甸潰锛岄€氳繃搴曢儴瀵艰埅鏍忓垏鎹?
-  3. 绉婚櫎 HomeScreen 鐨勫簳閮ㄥ鑸爮鍜?onNavigateToReports 鍙傛暟
-  4. 绉婚櫎 ReportsScreen 鐨勮繑鍥紒鎸夐挳鍜?onNavigateBack 鍙傛暟
-  5. 鏇存柊 Screen.kt 娣诲姞 Main 璺敱
-  6. 鏇存柊 HealthTrackerNavGraph 浣跨敤 MainScreen
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-05】ClassNotFoundException 修复（重大重构）
+- 问题：Hilt 生成的代码未正确打包，导致 HealthTrackerApplication 类找不到
+- 根本原因：
+  1. 缺少 kotlin-android 插件
+  2. KSP 与 Hilt 的兼容性问题
+  3. JVM target 版本不一致
+- 解决方案：
+  1. 切换从 KSP 到 KAPT 处理 Hilt 注解
+  2. 添加 kotlin-android 和 kotlin-kapt 插件
+  3. 统一 JVM target 为 17
+  4. 添加 material-icons-extended 依赖
+  5. 修复缺失的颜色定义（Color.kt）
+  6. 修复图标引用（FileDownload → Download, FileUpload → Upload）
+  7. 修复导入和包名问题
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-05銆戝姛鑳?#2锛畬鍠勬憚鍏ヨ褰曢〉闈?
-- 闇€姹傦璁板綍椋熺墿閲嶉噺銆佹瘡鐧惧厠钀ュ吇鏁版嵁銆佸悕绉帮紒澶囨敞銆佸崟浣嶇瓑
-- 淇敼鍐呭锛?
-  1. IntakeRecordEntity - 娣诲姞 note, unit, amountInUnit, gramsPerUnit 瀛楁
-  2. IntakeRecordEntity - 娣诲姞姣忕櫨鍏嬭惀鍏绘暟鎹瓧娈碉紙caloriesPer100g绛夛級
-  3. IntakeRecordEntity - foodId 鏀逛负鍙┖锛屾敮鎸佽鑷畾涔夎緭鍏?
-  4. HealthTrackerDatabase - 鐗堟湰鍗囩骇 1鈫?锛屾坊鍔?Migration
-  5. DatabaseModule - 娣诲姞 Migration 鏀寔
-  6. AddIntakeScreen - 瀹屾暣閲嶅啓锛屾敮鎸佹墍鏈夎緭鍏ュ瓧娈靛拰瀹炴椂璁＄畻
-  7. AddIntakeViewModel - 鏂板缓锛屽鐞嗕繚瀛橀€昏緫
-- 岄潰鍔熻兘锛?
-  - 椁愭閫夋嫨锛堟棭椁?鍗堥/鏅氶/鍔犻锛?
-  - 椋熺墿鍚嶇О杈撳叆
-  - 閲嶉噺杈撳叆锛堟厠/姣崌锛?
-  - 鍗曚綅閫夋嫨锛堜釜/鏉?鐡剁瓑锛? 鍗曚綅鎹㈢畻
-  - 姣忕櫨鍏嬭惀鍏绘暟鎹緭鍏ワ紙鐑噺/纰虫按/铔嬬櫧璐?鑴傝偑锛?
-  - 瀹炴椂璁＄畻缁撴灉棰勮
-  - 澶囨敞杈撳叆
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-05】导航结构重构 - 首页与报表同级
+- 问题：报表页是首页的子页面，有返回键，不符合设计要求
+- 解决方案：
+  1. 创建 MainScreen.kt 作为主容器，包含底部导航栏
+  2. 首页和报表页作为同级页面，通过底部导航栏切换
+  3. 移除 HomeScreen 的底部导航栏和 onNavigateToReports 参数
+  4. 移除 ReportsScreen 的返回按钮和 onNavigateBack 参数
+  5. 更新 Screen.kt 添加 Main 路由
+  6. 更新 HealthTrackerNavGraph 使用 MainScreen
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-05銆戝姛鑳?#3锛坊鍔椋熺墿搴╅〉闈?
-- 闇€姹傦娣诲姞涓庞椤点€佹姤琛ㄥ悓灞傜骇鐨勯鐗╁簱椤甸潰锛屾樉绀烘渶杩戞憚鍏ャ€佽嚜瀹氫箟銆佹敹钘忛鐗?
-- 淇敼鍐呭锛?
-  1. FoodEntity - 娣诲姞 isFavorite 瀛楁
-  2. FoodDao - 娣诲姞 getCustomFoods(), getFavoriteFoods(), toggleFavorite(), setFavorite() 鏂规硶
-  3. IntakeRecordDao - 娣诲姞 getRecentRecords() 鏂规硶
-  4. FoodRepository - 娣诲姞瀵瑰簲鏂规硶
-  5. IntakeRecordRepository - 娣诲姞 getRecentRecords() 鏂规硶
-  6. HealthTrackerDatabase - 鐗堟湰鍗囩骇 2鈫?锛屾坊鍔?MIGRATION_2_3
-  7. DatabaseModule - 娣诲姞鏂?Migration
-  8. FoodLibraryScreen - 鏂板缓锛屽寘鍚笁涓?Tab 椤甸潰
-  9. FoodLibraryViewModel - 鏂板缓锛屽鐞嗘暟鎹拰鎿嶄綔
-  10. Screen.kt - 娣诲姞 FoodLibrary 璺敱
-  11. MainScreen.kt - 娣诲姞绗笁涓簳閮ㄥ鑸」
-- 岄潰鍔熻兘锛?
-  - 涓変釜 Tab锛渶杩戞憚鍏ャ€佽嚜瀹氫箟椋熺墿銆佹敹钘忛鐗?
-  - 鏈€杩戞憚鍏ワ鏄剧ず鏈€杩戝悆杩囩殑椋熺墿锛堝幓閲嶏級
-  - 鑷畾涔外鐗╋鏄剧ず鐢ㄦ埛娣诲姞鐨勯鐗╋紝鍙垹闄ゃ€佹敹钘?
-  - 鏀惰棌椋熺墿锛樉绀烘敹钘忕殑椋熺墿锛屽彲鍙栨秷鏀惰棌
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-05】功能 #2：完善摄入记录页面
+- 需求：记录食物重量、每百克营养数据、名称、备注、单位等
+- 修改内容：
+  1. IntakeRecordEntity - 添加 note, unit, amountInUnit, gramsPerUnit 字段
+  2. IntakeRecordEntity - 添加每百克营养数据字段（caloriesPer100g等）
+  3. IntakeRecordEntity - foodId 改为可空，支持自定义输入
+  4. HealthTrackerDatabase - 版本升级 1→2，添加 Migration
+  5. DatabaseModule - 添加 Migration 支持
+  6. AddIntakeScreen - 完整重写，支持所有输入字段和实时计算
+  7. AddIntakeViewModel - 新建，处理保存逻辑
+- 界面功能：
+  - 餐次选择（早餐/午餐/晚餐/加餐）
+  - 食物名称输入
+  - 重量输入（克/毫升）
+  - 单位选择（个/杯/瓶等）+ 单位换算
+  - 每百克营养数据输入（热量/碳水/蛋白质/脂肪）
+  - 实时计算结果预览
+  - 备注输入
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-05銆戝姛鑳?#4锛坊鍔楗璁″垝椤甸潰
-- 闇€姹傦娣诲姞绗洓涓悓绾ч〉闈紝鏄剧ず鎵€鏈夐楗璁″垝鍒楄〃锛屾敮鎸佹坊鍔崟椁?鍗鏃?鍛ㄨ鍒?
-- 淇敼鍐呭锛?
-  1. MealPlanItemEntity - 绉婚櫎 foodId 澶栭敭绾︽潫锛屾敼涓哄彲绌猴紝娣诲姞钀ュ吇鏁版嵁瀛楁
-  2. HealthTrackerDatabase - 鐗堟湰鍗囩骇 3鈫?锛屾坊鍔?MIGRATION_3_4
-  3. DatabaseModule - 娣诲姞鏂?Migration
-  4. MealPlanScreen - 鏂板缓锛屾樉绀烘墍鏈夐楗璁″垝鍒楄〃
-  5. MealPlanViewModel - 鏂板缓锛屽鐞嗚鍒掑拰鐘舵€?
-  6. AddMealPlanScreen - 鏂板缓锛屾坊鍔?缂栬緫楗璁″垝
-  7. AddMealPlanViewModel - 鏂板缓锛屽鐞嗘坊鍔犺鍒旈€昏緫
-  8. Screen.kt - 娣诲姞 MealPlan, AddMealPlan 璺敱
-  9. MainScreen.kt - 娣诲姞绗洓涓簳閮ㄥ鑸」"璁″垝"
-  10. HealthTrackerNavGraph.kt - 娣诲姞 AddMealPlan 瀵艰埅
-- 岄潰鍔熻兘锛?
-  - 楗璁″垝鍒楄〃锛屽彲灞曞紑鏌ョ湅璇︽儏
-  - 璁″垝绫诲瀷锛崟椁€佸崟鏃ワ紙涓夐锛夈€佸懆璁″垝锛堟瘡澶B涓夐锛?
-  - 姣忎釜璁″垝鍙縺娲?鍋滅敤銆佸垹闄?
-  - 娣诲姞璁″垝鏃跺彲璁剧疆鍚嶇О銆佺被鍨嬶紝閫夋嫨椁愭鍜屾槦鏈?
-  - 娣诲姞椋熺墿瀵硅瘽妗嗘敮鎸佽緭鍏ュ悕绉般€佷唤閲忋€佽惀鍏绘暟鎹?
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-05】功能 #3：添加食物库页面
+- 需求：添加与首页、报表同层级的食物库页面，显示最近摄入、自定义、收藏食物
+- 修改内容：
+  1. FoodEntity - 添加 isFavorite 字段
+  2. FoodDao - 添加 getCustomFoods(), getFavoriteFoods(), toggleFavorite(), setFavorite() 方法
+  3. IntakeRecordDao - 添加 getRecentRecords() 方法
+  4. FoodRepository - 添加对应方法
+  5. IntakeRecordRepository - 添加 getRecentRecords() 方法
+  6. HealthTrackerDatabase - 版本升级 2→3，添加 MIGRATION_2_3
+  7. DatabaseModule - 添加新 Migration
+  8. FoodLibraryScreen - 新建，包含三个 Tab 页面
+  9. FoodLibraryViewModel - 新建，处理数据和操作
+  10. Screen.kt - 添加 FoodLibrary 路由
+  11. MainScreen.kt - 添加第三个底部导航项
+- 界面功能：
+  - 三个 Tab：最近摄入、自定义食物、收藏食物
+  - 最近摄入：显示最近吃过的食物（去重）
+  - 自定义食物：显示用户添加的食物，可删除、收藏
+  - 收藏食物：显示收藏的食物，可取消收藏
+- 结果：BUILD SUCCESSFUL
 
-銆?026-03-05銆戝姛鑳?#5锛敓鎴愭祴璇曟暟鎹?
-- 闇€姹傦妯℃嫙鐢ㄦ埛濉啓鏂瑰紡鐢熸垚10澶╂祴璇曟暟鎹紝鐢ㄤ簬娴嬭瘯鎶ヨ〃
-- 淇敼鍐呭锛?
-  1. TestDataGenerator - 鏂板缓锛岀敓鎴愭ā鎷熺殑鎽勫叆銆佽韩浣撱€佺潯鐪犳暟鎹?
-  2. TestDataViewModel - 鏂板缓锛屽鐞嗘暟鎹敓鎴愰€昏緫
-  3. SettingsScreen - 娣诲姞"鐢熸垚娴嬭瘯鏁版嵁"閫夐」鍜岀‘璁ゅ璇濇
-- 鍔熻兘鐗圭偣锛?
-  - 鎽勫叆璁板綍锛瘡澶?-5椤匡紝鍖呭惈甯歌椋熺墿锛堢背楗€侀渼铔嬨€佺墰濂剁瓑15绉嶏級
-  - 韬綋鏁版嵁锛綋閲嶈交寰尝鍔ㄣ€佷綋鑴傜巼銆佽倢鑲夐噺銆佷笁鍥?
-  - 鐫＄湢璁板綍锛叆鐫℃椂闂?1:00-01:00锛岀潯鐪犳椂闀?-9灏忔椂
-  - 鎵€鏈夋暟鎹殢鏈哄寲锛屾ā鎷熺湡瀹炵敤鎴疯涓?
-- 鎿嶄綔鏂瑰紡锛氳缃?鈫?寮€鍙戣€呴€夐」 鈫?鐢熸垚娴璇曟暟鎹?
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-05】功能 #4：添加饮食计划页面
+- 需求：添加第四个同级页面，显示所有饮食计划，支持添加单餐/单日/周计划
+- 修改内容：
+  1. MealPlanItemEntity - 移除 foodId 外键约束，改为可空，添加营养数据字段
+  2. HealthTrackerDatabase - 版本升级 3→4，添加 MIGRATION_3_4
+  3. DatabaseModule - 添加新 Migration
+  4. MealPlanScreen - 新建，显示所有饮食计划列表
+  5. MealPlanViewModel - 新建，处理计划和状态
+  6. AddMealPlanScreen - 新建，添加/编辑饮食计划
+  7. AddMealPlanViewModel - 新建，处理添加计划逻辑
+  8. Screen.kt - 添加 MealPlan, AddMealPlan 路由
+  9. MainScreen.kt - 添加第四个底部导航项"计划"
+  10. HealthTrackerNavGraph.kt - 添加 AddMealPlan 导航
+- 界面功能：
+  - 饮食计划列表，可展开查看详情
+  - 计划类型：单餐、单日（三餐）、周计划（每天三餐）
+  - 每个计划可激活/停用、删除
+  - 添加计划时可设置名称、类型，选择餐次和星期
+  - 添加食物对话框支持输入名称、份量、营养数据
+- 结果：BUILD SUCCESSFUL
 
-銆?026-04-17銆慨澶嶇晫闈╂樉绀鸿繶棰?
-- 淇鍐呭锛?
-  1. 棣栭〉椋熺墿璁板綍缂栬緫寮圭獥锛坄EditIntakeDialog`锛夛娓呯悊鏃ф暟鎹殑鍗曚綅瀛楁锛屼娇鐢ㄦ鍒欒繃婊ゅ墠缃暟鍊硷紝鍙樉绀虹函鍗曚綅鍚嶃€?
-  2. 娣诲姞椋熺墿寮圭獥锛坄AddIntakeScreen` 涓?`AddMealPlanScreen`锛夛淇敼纭鍥炶皟锛岀‘淇濆彧瀛樺叆鍗曚綅鍚嶇О锛堝"鍏?锛夛紝涓嶅啀瀛樺叆鏁板€兼嫾鎺ョ殑鍗曚綅鍚嶇О銆?
-  3. 鎼滅储椤甸潰绛涢€夊脊绐楋紙`SearchFilterDialog`锛夛绉婚櫎椁愭閫夐」鐨?`weight(1f)` 骞舵敼涓?`Arrangement.SpaceEvenly` 鍒嗗竷锛岃В鍐冲唴瀹规嫢鎸ゅ鑷寸殑鎹㈣闂銆?
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-03-05】功能 #5：生成测试数据
+- 需求：模拟用户填写方式生成10天测试数据，用于测试报表
+- 修改内容：
+  1. TestDataGenerator - 新建，生成模拟的摄入、身体、睡眠数据
+  2. TestDataViewModel - 新建，处理数据生成逻辑
+  3. SettingsScreen - 添加"生成测试数据"选项和确认对话框
+- 功能特点：
+  - 摄入记录：每天3-5顿，包含常见食物（米饭、鸡蛋、牛奶等15种）
+  - 身体数据：体重轻微波动、体脂率、肌肉量、三围
+  - 睡眠记录：入睡时间21:00-01:00，睡眠时长5-9小时
+  - 所有数据随机化，模拟真实用户行为
+- 操作方式：设置 → 开发者选项 → 生成测试数据
+- 结果：BUILD SUCCESSFUL
 
-銆?026-04-18銆慨澶嶄慨鏀硅嚜瀹氫箟椋熺墿鐩稿叧Bug
-- 淇鍐呭锛?
-  1. `IntakeRecordRepository.kt` 涓?`EditFoodViewModel.kt`锛慨澶嶉鐗╂暟鎹淇敼鍚庡巻鍙茶褰曚笉鍚屾姝ョ殑闂銆傚悓姝ユ満鍒剁幇浼樺厛閫氳繃 `foodId` 鍜屾棫鐨?`food.name` 鍖归厤锛屽苟鍚屾鏇存柊鍏宠仈璁板綍涓殑 `foodName` 瀛楁銆?
-  2. `EditFoodScreen.kt`锛慨澶嶇偣鍑烩€滀繚瀛樹慨鏀光€濆悗鏃犲弽搴旂殑闂銆傜Щ闄ゆ鑳″悓鐘舵€?UI锛坰howSaveResult锛夛紝淇濆瓨鎴愬姛鍚庤嚜鍔?Toast 鎻愮ず骞舵墽琛?`onNavigateBack()` 閫€鍑洪〉闈€?
-- 缁撴灉锛欱UILD SUCCESSFUL
+【2026-04-17】修复界面显示问题
+- 修复内容：
+  1. 首页食物记录编辑弹窗（`EditIntakeDialog`）：清理旧数据的单位字段，使用正则过滤前置数值，只显示纯单位名。
+  2. 添加食物弹窗（`AddIntakeScreen` 与 `AddMealPlanScreen`）：修改确认回调，确保只存入单位名称（如"克"），不再存入数值拼接的单位名称。
+  3. 搜索页面筛选弹窗（`SearchFilterDialog`）：移除餐次选项的 `weight(1f)` 并改为 `Arrangement.SpaceEvenly` 分布，解决内容拥挤导致的换行问题。
+- 结果：BUILD SUCCESSFUL
 
+【2026-04-18】修复带有单位重量食物的录入联动逻辑
+- 需求：修复带有单位重量的食物（如雪糕 75g/个）在录入和编辑时逻辑混乱的问题。实现数值框显示份数，单位框联动，并正确保存单位重量及按单位计的数值。
+- 解决：
+  1. 修改 `AddIntakeViewModel.kt`：在保存记录时新增持久化 `gramsPerUnit` 和 `amountInUnit` 字段。
+  2. 修改 `AddIntakeScreen.kt`：更新 `AddFoodDialog` 及其确认回调，确保数值（份数）与单位数据分离传递。
+  3. 重构 `HomeScreen.kt` 中的 `EditIntakeDialog`：
+     - 增加逆向换算逻辑：进入编辑时，若单位为非“克/毫升”，数值框自动根据 `amount / gramsPerUnit` 计算并显示份数。
+     - 修正实时计算：预览营养素时统一基于“每百克”数据与“实时换算总克数”的比例进行计算，确保绝对精确。
+     - 保存时同步更新所有相关字段（`amount`, `amountInUnit`, `calories` 等）。
+- 修改文件：
+  - `AddIntakeViewModel.kt`
+  - `AddIntakeScreen.kt`
+  - `HomeScreen.kt`
+- 结果：功能逻辑修复，Git 已提交。
 
 【2026-04-18】搜索页面体验优化与Bug修复
 - 需求：进入搜索页面自动弹出键盘；消除搜索结果中重复显示的碳蛋脂数据。
@@ -1460,3 +1524,9 @@ Token 浣跨敤閲忥細15.7m锛堟ā鍨嬶細glm-5锛?
 - 修改文件：
   - SearchScreen.kt
 - 结果：功能实现完成，Git 已提交。
+
+【2026-04-18】修复修改自定义食物相关Bug
+- 修复内容：
+  1. `IntakeRecordRepository.kt` 与 `EditFoodViewModel.kt`：修复食物数据修改后历史记录不同步的问题。同步机制现优先通过 `foodId` 和旧的 `food.name` 匹配，并同步更新关联记录中的 `foodName` 字段。
+  2. `EditFoodScreen.kt`：修复点击“保存修改”后无反应的问题。移除死胡同状态 UI（showSaveResult），保存成功后自动 Toast 提示并执行 `onNavigateBack()` 退出页面。
+- 结果：BUILD SUCCESSFUL
