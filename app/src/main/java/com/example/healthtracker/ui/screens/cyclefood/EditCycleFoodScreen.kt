@@ -33,7 +33,7 @@ fun EditCycleFoodScreen(
     viewModel: EditCycleFoodViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val cycleFood by viewModel.cycleFood.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
     val saveSuccess by viewModel.saveSuccess.collectAsState()
 
@@ -53,16 +53,26 @@ fun EditCycleFoodScreen(
     var totalWeight by remember { mutableStateOf("") }
     var estimatedDays by remember { mutableStateOf("") }
 
-    LaunchedEffect(uiState.cycleFood) {
-        uiState.cycleFood?.let { food ->
+    LaunchedEffect(cycleFoodId) {
+        viewModel.loadCycleFood(cycleFoodId)
+    }
+
+    LaunchedEffect(cycleFood) {
+        cycleFood?.let { food ->
             name = food.name
             selectedEmoji = food.icon
-            caloriesPer100g = food.caloriesPer100g.toString()
-            carbsPer100g = food.carbsPer100g.toString()
-            proteinPer100g = food.proteinPer100g.toString()
-            fatPer100g = food.fatPer100g.toString()
+            // 逆向推算每百克热量（用于编辑显示）
+            val c100 = if (food.totalWeight > 0) (food.totalCalories * 100.0 / food.totalWeight) else 0.0
+            val carbs100 = if (food.totalWeight > 0) (food.totalCarbs * 100.0 / food.totalWeight) else 0.0
+            val p100 = if (food.totalWeight > 0) (food.totalProtein * 100.0 / food.totalWeight) else 0.0
+            val f100 = if (food.totalWeight > 0) (food.totalFat * 100.0 / food.totalWeight) else 0.0
+            
+            caloriesPer100g = String.format("%.1f", c100)
+            carbsPer100g = String.format("%.1f", carbs100)
+            proteinPer100g = String.format("%.1f", p100)
+            fatPer100g = String.format("%.1f", f100)
             totalWeight = food.totalWeight.toString()
-            estimatedDays = food.estimatedDays.toString()
+            estimatedDays = food.expectedDays.toString()
         }
     }
 
@@ -72,6 +82,12 @@ fun EditCycleFoodScreen(
     val fatValue = fatPer100g.toDoubleOrNull() ?: 0.0
     val weightValue = totalWeight.toDoubleOrNull() ?: 0.0
     val daysValue = estimatedDays.toIntOrNull() ?: 1
+
+    // 计算总营养值
+    val totalCalories = (weightValue / 100.0) * caloriesValue
+    val totalCarbs = (weightValue / 100.0) * carbsValue
+    val totalProtein = (weightValue / 100.0) * proteinValue
+    val totalFat = (weightValue / 100.0) * fatValue
 
     val isValid = name.isNotBlank() && caloriesValue > 0 && weightValue > 0 && daysValue > 0
 
@@ -83,19 +99,11 @@ fun EditCycleFoodScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        viewModel.deleteCycleFood()
-                        onNavigateBack()
-                    }) {
-                        Icon(Icons.Default.Delete, contentDescription = "删除")
-                    }
                 }
             )
         }
     ) { paddingValues ->
-        if (uiState.isLoading) {
+        if (cycleFood == null) {
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
@@ -110,12 +118,7 @@ fun EditCycleFoodScreen(
             ) {
                 OutlinedTextField(
                     value = name,
-                    onValueChange = {
-                        name = it
-                        if (selectedEmoji == "🍽️" || selectedEmoji.isEmpty()) {
-                            selectedEmoji = FoodEmojiUtils.getDefaultEmojiForFood(it)
-                        }
-                    },
+                    onValueChange = { name = it },
                     label = { Text("食物名称 *") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
@@ -218,7 +221,6 @@ fun EditCycleFoodScreen(
                 }
 
                 if (weightValue > 0 && caloriesValue > 0) {
-                    val totalCalories = (weightValue / 100.0) * caloriesValue
                     val dailyWeight = weightValue / daysValue
                     val dailyCalories = totalCalories / daysValue
 
@@ -242,14 +244,14 @@ fun EditCycleFoodScreen(
                 Button(
                     onClick = {
                         viewModel.updateCycleFood(
+                            id = cycleFoodId,
                             name = name,
                             icon = selectedEmoji,
-                            caloriesPer100g = caloriesValue,
-                            carbsPer100g = carbsValue,
-                            proteinPer100g = proteinValue,
-                            fatPer100g = fatValue,
-                            totalWeight = weightValue,
-                            estimatedDays = daysValue
+                            totalCalories = totalCalories,
+                            totalCarbs = totalCarbs,
+                            totalProtein = totalProtein,
+                            totalFat = totalFat,
+                            expectedDays = daysValue
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -317,7 +319,7 @@ private fun EmojiPickerDialog(
                                     .clip(CircleShape)
                                     .background(
                                         if (emoji == selectedEmoji)
-                                            MaterialTheme.colorScheme.primary
+                                            MaterialTheme.colorScheme.primaryContainer
                                         else
                                             MaterialTheme.colorScheme.surfaceVariant
                                     )

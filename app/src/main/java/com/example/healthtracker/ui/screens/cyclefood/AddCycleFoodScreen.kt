@@ -57,6 +57,12 @@ fun AddCycleFoodScreen(
     val weightValue = totalWeight.toDoubleOrNull() ?: 0.0
     val daysValue = estimatedDays.toIntOrNull() ?: 1
 
+    // 计算总营养值
+    val totalCalories = (weightValue / 100.0) * caloriesValue
+    val totalCarbs = (weightValue / 100.0) * carbsValue
+    val totalProtein = (weightValue / 100.0) * proteinValue
+    val totalFat = (weightValue / 100.0) * fatValue
+
     val isValid = name.isNotBlank() && caloriesValue > 0 && weightValue > 0 && daysValue > 0
 
     Scaffold(
@@ -189,7 +195,6 @@ fun AddCycleFoodScreen(
             }
 
             if (weightValue > 0 && caloriesValue > 0) {
-                val totalCalories = (weightValue / 100.0) * caloriesValue
                 val dailyWeight = weightValue / daysValue
                 val dailyCalories = totalCalories / daysValue
 
@@ -215,12 +220,11 @@ fun AddCycleFoodScreen(
                     viewModel.saveCycleFood(
                         name = name,
                         icon = selectedEmoji,
-                        caloriesPer100g = caloriesValue,
-                        carbsPer100g = carbsValue,
-                        proteinPer100g = proteinValue,
-                        fatPer100g = fatValue,
-                        totalWeight = weightValue,
-                        estimatedDays = daysValue
+                        totalCalories = totalCalories,
+                        totalCarbs = totalCarbs,
+                        totalProtein = totalProtein,
+                        totalFat = totalFat,
+                        expectedDays = daysValue
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -287,7 +291,7 @@ private fun EmojiPickerDialog(
                                     .clip(CircleShape)
                                     .background(
                                         if (emoji == selectedEmoji)
-                                            MaterialTheme.colorScheme.primary
+                                            MaterialTheme.colorScheme.primaryContainer
                                         else
                                             MaterialTheme.colorScheme.surfaceVariant
                                     )
