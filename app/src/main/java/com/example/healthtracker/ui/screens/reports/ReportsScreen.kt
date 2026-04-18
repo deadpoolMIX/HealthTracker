@@ -65,10 +65,21 @@ fun ReportsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("数据报表", fontWeight = FontWeight.Medium) },
-                windowInsets = WindowInsets(0, 0, 0, 0),
-                actions = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "数据报表", 
+                    style = MaterialTheme.typography.titleLarge, 
+                    fontWeight = FontWeight.Medium
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     // 上周/上周切换按钮
                     IconButton(
                         onClick = { viewModel.setPeriodOffset(uiState.periodOffset + 1) },
@@ -88,7 +99,7 @@ fun ReportsScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "下一周期")
                     }
                 }
-            )
+            }
         }
     ) { paddingValues ->
         // 只在首次加载且无数据时显示骨架屏
@@ -324,35 +335,6 @@ private fun NutritionChartCard(
     period: Int,
     onClick: () -> Unit = {}
 ) {
-    var selectedItem by remember { mutableStateOf<DailyNutritionData?>(null) }
-    
-    // Popup
-    selectedItem?.let { dayData ->
-        AlertDialog(
-            onDismissRequest = { selectedItem = null },
-            title = {
-                val cal = Calendar.getInstance().apply { timeInMillis = dayData.timestamp }
-                val year = cal.get(Calendar.YEAR)
-                val month = cal.get(Calendar.MONTH) + 1
-                val day = cal.get(Calendar.DAY_OF_MONTH)
-                Text("${year}年${month}月${day}日", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("热量: ${dayData.calories.toInt()} kcal", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                    Text("碳水: ${String.format(Locale.getDefault(), "%.1f", dayData.carbs)} g", color = NutrientColors.Carbs)
-                    Text("蛋白质: ${String.format(Locale.getDefault(), "%.1f", dayData.protein)} g", color = NutrientColors.Protein)
-                    Text("脂肪: ${String.format(Locale.getDefault(), "%.1f", dayData.fat)} g", color = NutrientColors.Fat)
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { selectedItem = null }) {
-                    Text("关闭")
-                }
-            }
-        )
-    }
-
     val carbsColor = NutrientColors.Carbs
     val proteinColor = NutrientColors.Protein
     val fatColor = NutrientColors.Fat
@@ -397,26 +379,6 @@ private fun NutritionChartCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(250.dp)
-                        .pointerInput(data) {
-                            detectTapGestures { offset ->
-                                val width = size.width
-                                val yAxisWidth = 40.dp.toPx()
-                                val chartWidth = width - yAxisWidth
-                                val barWidth = chartWidth / (barCount * 2f)
-                                val spacing = chartWidth / barCount.toFloat()
-
-                                val x = offset.x
-                                if (x > yAxisWidth) {
-                                    val index = ((x - yAxisWidth) / spacing).toInt()
-                                    if (index in data.indices) {
-                                        val barCenterX = yAxisWidth + index * spacing + spacing / 2f
-                                        if (kotlin.math.abs(x - barCenterX) <= barWidth) {
-                                            selectedItem = data[index]
-                                        }
-                                    }
-                                }
-                            }
-                        }
                 ) {
                     val maxCals = maxOf(
                         targetCalories,

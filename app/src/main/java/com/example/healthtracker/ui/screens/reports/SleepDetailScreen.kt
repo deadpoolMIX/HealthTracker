@@ -578,30 +578,33 @@ private fun MonthSleepChart(
     primaryColor: Color,
     onSurfaceVariantColor: Color
 ) {
-    val calendar = Calendar.getInstance()
-
-    // 按固定日期区间划分为4周
+    // 按标准周分组计算
     val weeklyGroups = mutableMapOf<Int, MutableList<SleepRecordEntity>>()
+    val now = System.currentTimeMillis()
+    val cYear = com.example.healthtracker.util.ReportPeriodManager.getYear(now)
+    val cWeek = com.example.healthtracker.util.ReportPeriodManager.getCustomWeekNumber(now)
+
+    // 我们通常获取的是最近4周，为了按从早到晚排序，我们先收集所有的周号
+    val weekNumbers = mutableSetOf<Int>()
 
     data.forEach { record ->
-        calendar.timeInMillis = record.date
-        val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
-        if (dayOfMonth <= 28) {
-            val weekNum = when {
-                dayOfMonth <= 7 -> 1
-                dayOfMonth <= 14 -> 2
-                dayOfMonth <= 21 -> 3
-                else -> 4
-            }
-            if (!weeklyGroups.containsKey(weekNum)) {
-                weeklyGroups[weekNum] = mutableListOf()
-            }
-            weeklyGroups[weekNum]?.add(record)
+        val recordYear = com.example.healthtracker.util.ReportPeriodManager.getYear(record.date)
+        val recordWeek = com.example.healthtracker.util.ReportPeriodManager.getCustomWeekNumber(record.date)
+        // 简单处理：如果是同一年，或者是去年年底的周
+        val absoluteWeek = recordYear * 100 + recordWeek
+        weekNumbers.add(absoluteWeek)
+        
+        if (!weeklyGroups.containsKey(absoluteWeek)) {
+            weeklyGroups[absoluteWeek] = mutableListOf()
         }
+        weeklyGroups[absoluteWeek]?.add(record)
     }
 
-    val weeklyData = weeklyGroups.keys.sorted().mapNotNull { weekNum ->
-        val records = weeklyGroups[weekNum] ?: return@mapNotNull null
+    val sortedWeekKeys = weekNumbers.sorted()
+
+    val weeklyData = sortedWeekKeys.mapIndexedNotNull { index, weekKey ->
+        val records = weeklyGroups[weekKey] ?: return@mapIndexedNotNull null
+        val weekNum = weekKey % 100 // 提取周号
 
         val avgSleepHour = records.map { record ->
             val cal = Calendar.getInstance()

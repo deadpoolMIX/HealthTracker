@@ -50,21 +50,24 @@ class SleepDetailViewModel @Inject constructor(
 
     fun getPeriodLabel(): String {
         val offset = _uiState.value.periodOffset
-        val calendar = Calendar.getInstance()
+        val now = System.currentTimeMillis()
+        val cYear = com.example.healthtracker.util.ReportPeriodManager.getYear(now)
+        val cWeek = com.example.healthtracker.util.ReportPeriodManager.getCustomWeekNumber(now)
 
         return when (_uiState.value.selectedPeriod) {
             0 -> { // 周
-                calendar.add(Calendar.WEEK_OF_YEAR, -offset)
-                val month = calendar.get(Calendar.MONTH) + 1
-                "${month}月"
+                val targetStart = com.example.healthtracker.util.ReportPeriodManager.getStartTimestampOfWeek(cYear, cWeek) - offset * 7 * 24 * 60 * 60 * 1000L
+                val targetWeek = com.example.healthtracker.util.ReportPeriodManager.getCustomWeekNumber(targetStart)
+                "第 ${targetWeek} 周"
             }
-            1 -> { // 月
-                calendar.add(Calendar.MONTH, -offset)
-                val year = calendar.get(Calendar.YEAR)
-                val month = calendar.get(Calendar.MONTH) + 1
-                "${year}年${month}月"
+            1 -> { // 月 (最近4周)
+                val currentBlockStart = com.example.healthtracker.util.ReportPeriodManager.getStartTimestampOfWeek(cYear, cWeek) - offset * 4 * 7 * 24 * 60 * 60 * 1000L
+                val blockEndWeek = com.example.healthtracker.util.ReportPeriodManager.getCustomWeekNumber(currentBlockStart)
+                val blockStartWeek = (blockEndWeek - 3).coerceAtLeast(1)
+                "第 ${blockStartWeek}-${blockEndWeek} 周"
             }
             else -> { // 年
+                val calendar = Calendar.getInstance()
                 calendar.add(Calendar.YEAR, -offset)
                 "${calendar.get(Calendar.YEAR)}年"
             }
@@ -75,18 +78,18 @@ class SleepDetailViewModel @Inject constructor(
         val offset = _uiState.value.periodOffset - 1
         if (offset < 0) return ""
         return when (_uiState.value.selectedPeriod) {
-            0 -> if (offset == 0) "本周" else "${offset}周前"
-            1 -> if (offset == 0) "本月" else "${offset}个月前"
-            else -> if (offset == 0) "本年" else "${offset}年前"
+            0 -> if (offset == 0) "本周" else "上周"
+            1 -> if (offset == 0) "本月" else "上月"
+            else -> if (offset == 0) "本年" else "上年"
         }
     }
 
     fun getNextPeriodLabel(): String {
         val offset = _uiState.value.periodOffset + 1
         return when (_uiState.value.selectedPeriod) {
-            0 -> if (_uiState.value.periodOffset == 0) "上周" else "${offset}周前"
-            1 -> if (_uiState.value.periodOffset == 0) "上月" else "${offset}个月前"
-            else -> if (_uiState.value.periodOffset == 0) "上年" else "${offset}年前"
+            0 -> if (_uiState.value.periodOffset == 0) "上周" else "下周"
+            1 -> if (_uiState.value.periodOffset == 0) "上月" else "下月"
+            else -> if (_uiState.value.periodOffset == 0) "上年" else "下年"
         }
     }
 
@@ -108,37 +111,26 @@ class SleepDetailViewModel @Inject constructor(
         val now = System.currentTimeMillis()
         val calendar = Calendar.getInstance()
         val offset = _uiState.value.periodOffset
+        val cYear = com.example.healthtracker.util.ReportPeriodManager.getYear(now)
+        val cWeek = com.example.healthtracker.util.ReportPeriodManager.getCustomWeekNumber(now)
 
         return when (_uiState.value.selectedPeriod) {
             0 -> { // 周
-                calendar.timeInMillis = now
-                calendar.add(Calendar.WEEK_OF_YEAR, -offset)
-                calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-                calendar.set(Calendar.HOUR_OF_DAY, 0)
-                calendar.set(Calendar.MINUTE, 0)
-                calendar.set(Calendar.SECOND, 0)
-                calendar.set(Calendar.MILLISECOND, 0)
-                val start = calendar.timeInMillis
-                calendar.add(Calendar.DAY_OF_MONTH, 6)
-                calendar.set(Calendar.HOUR_OF_DAY, 23)
-                calendar.set(Calendar.MINUTE, 59)
-                calendar.set(Calendar.SECOND, 59)
-                Pair(start, calendar.timeInMillis)
+                val currentStart = com.example.healthtracker.util.ReportPeriodManager.getStartTimestampOfWeek(cYear, cWeek)
+                val targetStart = currentStart - offset * 7 * 24 * 60 * 60 * 1000L
+                val targetYear = com.example.healthtracker.util.ReportPeriodManager.getYear(targetStart)
+                val targetWeek = com.example.healthtracker.util.ReportPeriodManager.getCustomWeekNumber(targetStart)
+                val start = com.example.healthtracker.util.ReportPeriodManager.getStartTimestampOfWeek(targetYear, targetWeek)
+                val end = com.example.healthtracker.util.ReportPeriodManager.getEndTimestampOfWeek(targetYear, targetWeek)
+                Pair(start, end)
             }
-            1 -> { // 月
-                calendar.timeInMillis = now
-                calendar.add(Calendar.MONTH, -offset)
-                calendar.set(Calendar.DAY_OF_MONTH, 1)
-                calendar.set(Calendar.HOUR_OF_DAY, 0)
-                calendar.set(Calendar.MINUTE, 0)
-                calendar.set(Calendar.SECOND, 0)
-                calendar.set(Calendar.MILLISECOND, 0)
-                val start = calendar.timeInMillis
-                calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
-                calendar.set(Calendar.HOUR_OF_DAY, 23)
-                calendar.set(Calendar.MINUTE, 59)
-                calendar.set(Calendar.SECOND, 59)
-                Pair(start, calendar.timeInMillis)
+            1 -> { // 月 (4周)
+                val currentBlockEndTs = com.example.healthtracker.util.ReportPeriodManager.getStartTimestampOfWeek(cYear, cWeek) - offset * 4 * 7 * 24 * 60 * 60 * 1000L
+                val endWeek = com.example.healthtracker.util.ReportPeriodManager.getCustomWeekNumber(currentBlockEndTs)
+                val startWeek = (endWeek - 3).coerceAtLeast(1)
+                val start = com.example.healthtracker.util.ReportPeriodManager.getStartTimestampOfWeek(cYear, startWeek)
+                val end = com.example.healthtracker.util.ReportPeriodManager.getEndTimestampOfWeek(cYear, endWeek)
+                Pair(start, end)
             }
             2 -> { // 年
                 calendar.timeInMillis = now

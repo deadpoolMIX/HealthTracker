@@ -280,20 +280,6 @@ private fun BodyChartBlock(uiState: BodyDataDetailUiState, unitString: String) {
 
             var selectedPoint by remember { mutableStateOf<BodyChartPoint?>(null) }
 
-            // 弹窗
-            selectedPoint?.let { pt ->
-                AlertDialog(
-                    onDismissRequest = { selectedPoint = null },
-                    title = { Text("第 ${pt.weekNumber} 周", fontWeight = FontWeight.Bold) },
-                    text = {
-                        Text("$typeStr: ${String.format(Locale.getDefault(), "%.1f", pt.value)} $unitString", fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { selectedPoint = null }) { Text("关闭") }
-                    }
-                )
-            }
-
             val lineColor = MaterialTheme.colorScheme.primary
             val axisColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             val textColor = MaterialTheme.colorScheme.onSurface
