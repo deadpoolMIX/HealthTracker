@@ -83,6 +83,18 @@ class NutritionDetailViewModel @Inject constructor(
         loadData()
     }
 
+    fun goToCurrentWeek() {
+        val now = System.currentTimeMillis()
+        val currentYear = ReportPeriodManager.getYear(now)
+        val currentWeek = ReportPeriodManager.getCustomWeekNumber(now)
+        
+        _uiState.value = _uiState.value.copy(
+            year = currentYear,
+            weekNumber = currentWeek
+        )
+        loadData()
+    }
+
     fun jumpToWeek(targetWeekNumber: Int) {
         val now = System.currentTimeMillis()
         val currentYear = ReportPeriodManager.getYear(now)

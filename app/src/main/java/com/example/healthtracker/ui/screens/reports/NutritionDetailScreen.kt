@@ -42,10 +42,15 @@ fun NutritionDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("摄入详细数据", fontWeight = FontWeight.Medium) },
+                title = { Text("营养素摄入详情", fontWeight = FontWeight.Medium) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    TextButton(onClick = { viewModel.goToCurrentWeek() }) {
+                        Text("回到本周")
                     }
                 }
             )

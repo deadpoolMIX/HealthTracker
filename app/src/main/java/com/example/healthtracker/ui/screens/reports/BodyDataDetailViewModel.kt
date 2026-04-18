@@ -33,7 +33,7 @@ data class WeekToWeekChange(
 
 data class BodyDataDetailUiState(
     val dataType: Int = 0, // 0=体重, 1=体脂, 2=肌肉, 3=胸围, 4=腰围, 5=臀围
-    val statMode: Int = 0, // 0=平均数, 1=中位数
+    val statMode: Int = 1, // 0=平均数, 1=中位数
     val unitMode: Int = 0, // 0=kg(或标准单位), 1=斤
     val startWeek: Int = 1,
     val endWeek: Int = 8,

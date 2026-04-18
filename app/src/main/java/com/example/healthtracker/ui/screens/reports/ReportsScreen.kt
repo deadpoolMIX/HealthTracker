@@ -67,6 +67,7 @@ fun ReportsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("数据报表", fontWeight = FontWeight.Medium) },
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 actions = {
                     // 上周/上周切换按钮
                     IconButton(

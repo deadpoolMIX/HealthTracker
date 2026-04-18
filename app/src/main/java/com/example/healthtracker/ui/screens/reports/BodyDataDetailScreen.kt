@@ -158,6 +158,60 @@ private fun BodyFiltersBlock(
 
             // 4. 周区间选择 (下拉框或弹窗，这里用加减按钮简单实现)
             Text("区间选择 (第 ${uiState.startWeek} 周 - 第 ${uiState.endWeek} 周)", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            
+            var showStartWeekDialog by remember { mutableStateOf(false) }
+            var showEndWeekDialog by remember { mutableStateOf(false) }
+            
+            if (showStartWeekDialog) {
+                var tempVal by remember { mutableStateOf(uiState.startWeek.toString()) }
+                AlertDialog(
+                    onDismissRequest = { showStartWeekDialog = false },
+                    title = { Text("输入起始周") },
+                    text = {
+                        OutlinedTextField(
+                            value = tempVal,
+                            onValueChange = { tempVal = it },
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                            singleLine = true
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            tempVal.toIntOrNull()?.let { viewModel.updateFilters(startWeek = it) }
+                            showStartWeekDialog = false
+                        }) { Text("确定") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showStartWeekDialog = false }) { Text("取消") }
+                    }
+                )
+            }
+
+            if (showEndWeekDialog) {
+                var tempVal by remember { mutableStateOf(uiState.endWeek.toString()) }
+                AlertDialog(
+                    onDismissRequest = { showEndWeekDialog = false },
+                    title = { Text("输入结束周") },
+                    text = {
+                        OutlinedTextField(
+                            value = tempVal,
+                            onValueChange = { tempVal = it },
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                            singleLine = true
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            tempVal.toIntOrNull()?.let { viewModel.updateFilters(endWeek = it) }
+                            showEndWeekDialog = false
+                        }) { Text("确定") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showEndWeekDialog = false }) { Text("取消") }
+                    }
+                )
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -170,7 +224,15 @@ private fun BodyFiltersBlock(
                         enabled = uiState.startWeek > 1,
                         modifier = Modifier.size(32.dp)
                     ) { Text("-") }
-                    Text("${uiState.startWeek}", modifier = Modifier.padding(horizontal = 8.dp))
+                    Text(
+                        text = "${uiState.startWeek}", 
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp)
+                            .clickable { showStartWeekDialog = true },
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
+                    )
                     FilledIconButton(
                         onClick = { viewModel.updateFilters(startWeek = uiState.startWeek + 1) },
                         enabled = uiState.startWeek < uiState.maxWeekNumber,
@@ -185,7 +247,15 @@ private fun BodyFiltersBlock(
                         enabled = uiState.endWeek > 1,
                         modifier = Modifier.size(32.dp)
                     ) { Text("-") }
-                    Text("${uiState.endWeek}", modifier = Modifier.padding(horizontal = 8.dp))
+                    Text(
+                        text = "${uiState.endWeek}", 
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp)
+                            .clickable { showEndWeekDialog = true },
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
+                    )
                     FilledIconButton(
                         onClick = { viewModel.updateFilters(endWeek = uiState.endWeek + 1) },
                         enabled = uiState.endWeek < uiState.maxWeekNumber,

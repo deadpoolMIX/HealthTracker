@@ -349,6 +349,16 @@ name,category,calories,carbohydrates,protein,fat,emoji
                                  修复记录
 ================================================================================
 
+【2026-04-18】报表页面多处交互与UI优化
+- 需求：修复主报表顶部标题栏空白过大、移除营养素卡片图表内部交互、修改身体数据默认统计为中位数、增加周数手动输入交互、摄入子页面增加回到本周按钮。
+- 解决：
+  1. `ReportsScreen.kt`：为主报表的 `TopAppBar` 指定 `windowInsets = WindowInsets(0, 0, 0, 0)`，消除由于多层 Scaffold 造成的双重状态栏内边距，使标题栏更紧凑。
+  2. `ReportsScreen.kt`：彻底移除了 `NutritionChartCard` 内的 `pointerInput` 和 `AlertDialog` 等复杂图表点击交互代码，现在整个卡片均为统一点击跳转摄入详情页，避免误触。
+  3. `BodyDataDetailViewModel.kt`：将初始化的 `statMode` 状态默认值由 0（平均数）改为了 1（中位数）。
+  4. `BodyDataDetailScreen.kt`：为底部的周次区间起止数字文本添加了 `clickable`，点击后会弹出包含 `OutlinedTextField` 的对话框，允许用户直接使用键盘输入目标周次以快速跳转。
+  5. `NutritionDetailScreen.kt` 及 `NutritionDetailViewModel.kt`：增加了 `goToCurrentWeek()` 方法，并在详情页顶部导航栏的 actions 区域添加了“回到本周”的文本按钮。
+- 结果：环境构建通过，各项要求已精准实现。
+
 【2026-04-18】报表页面重写（阶段三补充）：折线图视觉对齐与快捷跳转
 - 需求：1. 身体数据子页面的折线图数据点点击弹窗要求完全照搬截图设计（暗色圆角框，内部带上下排文字，并且有一条竖线垂直到 X 轴）。2. 筛选区的起始/结束周数要求可以直接点击输入进行快速跳转。
 - 解决：
