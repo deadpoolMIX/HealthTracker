@@ -9,6 +9,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,74 +17,63 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.healthtracker.util.FoodEmojiUtils
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * 编辑周期食物页面
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun EditCycleFoodScreen(
     cycleFoodId: Long,
     viewModel: EditCycleFoodViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
-    val cycleFood by viewModel.cycleFood.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
     val saveSuccess by viewModel.saveSuccess.collectAsState()
 
-    // 加载数据
-    LaunchedEffect(cycleFoodId) {
-        viewModel.loadCycleFood(cycleFoodId)
-    }
-
-    // 保存成功后返回
     LaunchedEffect(saveSuccess) {
         if (saveSuccess) {
             onNavigateBack()
         }
     }
 
-    // 等待数据加载
-    if (cycleFood == null) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator()
+    var name by remember { mutableStateOf("") }
+    var selectedEmoji by remember { mutableStateOf("🍽️") }
+    var showEmojiPicker by remember { mutableStateOf(false) }
+    var caloriesPer100g by remember { mutableStateOf("") }
+    var carbsPer100g by remember { mutableStateOf("") }
+    var proteinPer100g by remember { mutableStateOf("") }
+    var fatPer100g by remember { mutableStateOf("") }
+    var totalWeight by remember { mutableStateOf("") }
+    var estimatedDays by remember { mutableStateOf("") }
+
+    LaunchedEffect(uiState.cycleFood) {
+        uiState.cycleFood?.let { food ->
+            name = food.name
+            selectedEmoji = food.icon
+            caloriesPer100g = food.caloriesPer100g.toString()
+            carbsPer100g = food.carbsPer100g.toString()
+            proteinPer100g = food.proteinPer100g.toString()
+            fatPer100g = food.fatPer100g.toString()
+            totalWeight = food.totalWeight.toString()
+            estimatedDays = food.estimatedDays.toString()
         }
-        return
     }
 
-    var name by remember { mutableStateOf(cycleFood!!.name) }
-    var selectedEmoji by remember { mutableStateOf(cycleFood!!.icon) }
-    var showEmojiPicker by remember { mutableStateOf(false) }
+    val caloriesValue = caloriesPer100g.toDoubleOrNull() ?: 0.0
+    val carbsValue = carbsPer100g.toDoubleOrNull() ?: 0.0
+    val proteinValue = proteinPer100g.toDoubleOrNull() ?: 0.0
+    val fatValue = fatPer100g.toDoubleOrNull() ?: 0.0
+    val weightValue = totalWeight.toDoubleOrNull() ?: 0.0
+    val daysValue = estimatedDays.toIntOrNull() ?: 1
 
-    // 从总数反推每百克数据（假设用户可能知道原始重量）
-    // 这里用总数据显示，编辑时直接修改总数
-    var totalCalories by remember { mutableStateOf(cycleFood!!.totalCalories.toString()) }
-    var totalCarbs by remember { mutableStateOf(cycleFood!!.totalCarbs.toString()) }
-    var totalProtein by remember { mutableStateOf(cycleFood!!.totalProtein.toString()) }
-    var totalFat by remember { mutableStateOf(cycleFood!!.totalFat.toString()) }
-    var expectedDays by remember { mutableStateOf(cycleFood!!.expectedDays.toString()) }
-
-    // 解析输入值
-    val caloriesValue = totalCalories.toDoubleOrNull() ?: 0.0
-    val carbsValue = totalCarbs.toDoubleOrNull() ?: 0.0
-    val proteinValue = totalProtein.toDoubleOrNull() ?: 0.0
-    val fatValue = totalFat.toDoubleOrNull() ?: 0.0
-    val daysValue = expectedDays.toIntOrNull() ?: 3
-
-    // 计算每份数据
-    val portionCalories = if (daysValue > 0) caloriesValue / daysValue else caloriesValue
-    val portionCarbs = if (daysValue > 0) carbsValue / daysValue else carbsValue
-    val portionProtein = if (daysValue > 0) proteinValue / daysValue else proteinValue
-    val portionFat = if (daysValue > 0) fatValue / daysValue else fatValue
-
-    // 验证输入
-    val isValid = name.isNotBlank() &&
-            caloriesValue > 0 &&
-            daysValue > 0
+    val isValid = name.isNotBlank() && caloriesValue > 0 && weightValue > 0 && daysValue > 0
 
     Scaffold(
         topBar = {
@@ -93,184 +83,192 @@ fun EditCycleFoodScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        viewModel.deleteCycleFood()
+                        onNavigateBack()
+                    }) {
+                        Icon(Icons.Default.Delete, contentDescription = "删除")
+                    }
                 }
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // 食物名称
-            OutlinedTextField(
-                value = name,
-                onValueChange = {
-                    name = it
-                    if (selectedEmoji == "🍽️" || selectedEmoji.isEmpty()) {
-                        selectedEmoji = FoodEmojiUtils.getDefaultEmojiForFood(it)
-                    }
-                },
-                label = { Text("食物名称 *") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            // 图标选择
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("图标", style = MaterialTheme.typography.titleSmall)
-                Spacer(modifier = Modifier.width(16.dp))
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .clickable { showEmojiPicker = true },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = selectedEmoji, fontSize = 24.sp)
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                TextButton(onClick = { showEmojiPicker = true }) {
-                    Text("更换")
-                }
+        if (uiState.isLoading) {
+            Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-            // 总营养数据（直接编辑）
-            Text(
-                text = "总营养数据 *",
-                style = MaterialTheme.typography.titleSmall
-            )
-
-            OutlinedTextField(
-                value = totalCalories,
-                onValueChange = { totalCalories = it },
-                label = { Text("总热量 (kcal)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 OutlinedTextField(
-                    value = totalCarbs,
-                    onValueChange = { totalCarbs = it },
-                    label = { Text("总碳水 (g)") },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-                )
-                OutlinedTextField(
-                    value = totalProtein,
-                    onValueChange = { totalProtein = it },
-                    label = { Text("总蛋白质 (g)") },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-                )
-            }
-
-            OutlinedTextField(
-                value = totalFat,
-                onValueChange = { totalFat = it },
-                label = { Text("总脂肪 (g)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-            )
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-            // 预计天数
-            OutlinedTextField(
-                value = expectedDays,
-                onValueChange = { expectedDays = it.filter { c -> c.isDigit() } },
-                label = { Text("预计几天吃完 *") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
-
-            // 每份预览
-            if (caloriesValue > 0 && daysValue > 0) {
-                Card(
+                    value = name,
+                    onValueChange = {
+                        name = it
+                        if (selectedEmoji == "🍽️" || selectedEmoji.isEmpty()) {
+                            selectedEmoji = FoodEmojiUtils.getDefaultEmojiForFood(it)
+                        }
+                    },
+                    label = { Text("食物名称 *") },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                    )
+                    singleLine = true
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = "每份营养（每天吃一份）",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                    Text(text = "图标", style = MaterialTheme.typography.titleSmall)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .clickable { showEmojiPicker = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = selectedEmoji, fontSize = 24.sp)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(onClick = { showEmojiPicker = true }) {
+                        Text("更换")
+                    }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                Text(text = "每百克营养数据", style = MaterialTheme.typography.titleSmall)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = caloriesPer100g,
+                        onValueChange = { caloriesPer100g = it },
+                        label = { Text("热量 (kcal) *") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    )
+                    OutlinedTextField(
+                        value = carbsPer100g,
+                        onValueChange = { carbsPer100g = it },
+                        label = { Text("碳水 (g)") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = proteinPer100g,
+                        onValueChange = { proteinPer100g = it },
+                        label = { Text("蛋白质 (g)") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    )
+                    OutlinedTextField(
+                        value = fatPer100g,
+                        onValueChange = { fatPer100g = it },
+                        label = { Text("脂肪 (g)") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    )
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                Text(text = "周期设置", style = MaterialTheme.typography.titleSmall)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = totalWeight,
+                        onValueChange = { totalWeight = it },
+                        label = { Text("总重量 (g) *") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    )
+                    OutlinedTextField(
+                        value = estimatedDays,
+                        onValueChange = { estimatedDays = it },
+                        label = { Text("预计天数 *") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                }
+
+                if (weightValue > 0 && caloriesValue > 0) {
+                    val totalCalories = (weightValue / 100.0) * caloriesValue
+                    val dailyWeight = weightValue / daysValue
+                    val dailyCalories = totalCalories / daysValue
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("热量: ${String.format("%.1f", portionCalories)} kcal")
-                            Text("碳水: ${String.format("%.1f", portionCarbs)} g")
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("蛋白质: ${String.format("%.1f", portionProtein)} g")
-                            Text("脂肪: ${String.format("%.1f", portionFat)} g")
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(text = "周期摘要", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("总热量: ${String.format("%.0f", totalCalories)} kcal")
+                            Text("平均每天: ${String.format("%.0f", dailyWeight)}g / ${String.format("%.0f", dailyCalories)} kcal")
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.weight(1f))
 
-            // 保存按钮
-            Button(
-                onClick = {
-                    viewModel.updateCycleFood(
-                        id = cycleFoodId,
-                        name = name,
-                        icon = selectedEmoji,
-                        totalCalories = caloriesValue,
-                        totalCarbs = carbsValue,
-                        totalProtein = proteinValue,
-                        totalFat = fatValue,
-                        expectedDays = daysValue
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = isValid && !isSaving
-            ) {
-                if (isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("保存中...")
-                } else {
-                    Text("保存修改")
+                Button(
+                    onClick = {
+                        viewModel.updateCycleFood(
+                            name = name,
+                            icon = selectedEmoji,
+                            caloriesPer100g = caloriesValue,
+                            carbsPer100g = carbsValue,
+                            proteinPer100g = proteinValue,
+                            fatPer100g = fatValue,
+                            totalWeight = weightValue,
+                            estimatedDays = daysValue
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = isValid && !isSaving
+                ) {
+                    if (isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("更新周期食物")
+                    }
                 }
             }
         }
     }
 
-    // Emoji 选择对话框
     if (showEmojiPicker) {
         EmojiPickerDialog(
             selectedEmoji = selectedEmoji,
@@ -283,7 +281,7 @@ fun EditCycleFoodScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun EmojiPickerDialog(
     selectedEmoji: String,
@@ -297,7 +295,7 @@ private fun EmojiPickerDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(400.dp)
+                    .height(450.dp)
                     .verticalScroll(rememberScrollState())
             ) {
                 FoodEmojiUtils.foodEmojisByCategory.forEach { (category, emojis) ->
@@ -307,10 +305,10 @@ private fun EmojiPickerDialog(
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         emojis.forEach { (emoji, _) ->
                             Box(
@@ -328,7 +326,8 @@ private fun EmojiPickerDialog(
                             ) {
                                 Text(
                                     text = emoji,
-                                    fontSize = 24.sp
+                                    fontSize = 24.sp,
+                                    textAlign = TextAlign.Center
                                 )
                             }
                         }

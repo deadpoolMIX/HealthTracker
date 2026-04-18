@@ -24,9 +24,8 @@ import com.example.healthtracker.util.FoodEmojiUtils
 
 /**
  * 添加自定义食物页面
- * 专门用于添加自定义食物到食物库
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddCustomFoodScreen(
     viewModel: AddCustomFoodViewModel = hiltViewModel(),
@@ -35,7 +34,6 @@ fun AddCustomFoodScreen(
     val isSaving by viewModel.isSaving.collectAsState()
     val saveSuccess by viewModel.saveSuccess.collectAsState()
 
-    // 保存成功后返回
     LaunchedEffect(saveSuccess) {
         if (saveSuccess) {
             onNavigateBack()
@@ -46,46 +44,38 @@ fun AddCustomFoodScreen(
     var selectedEmoji by remember { mutableStateOf("🍽️") }
     var showEmojiPicker by remember { mutableStateOf(false) }
 
-    // 单位相关
     var hasUnit by remember { mutableStateOf(false) }
     var unit by remember { mutableStateOf("") }
     var gramsPerUnit by remember { mutableStateOf("") }
 
-    // 每n克营养数据
     var perAmount by remember { mutableStateOf("100") }
     var perUnit by remember { mutableStateOf("克") }
     var expandedPerUnit by remember { mutableStateOf(false) }
 
-    // 每n克营养数据
     var caloriesPerN by remember { mutableStateOf("") }
     var carbsPerN by remember { mutableStateOf("") }
     var proteinPerN by remember { mutableStateOf("") }
     var fatPerN by remember { mutableStateOf("") }
 
-    // 热量单位选择
     var useKilojoules by remember { mutableStateOf(false) }
 
     val commonUnits = listOf("个", "杯", "瓶", "份", "块", "片", "勺", "包", "碗", "袋")
     var expandedUnit by remember { mutableStateOf(false) }
 
-    // 计算每百克的营养值（用于内部存储）
     val perAmountValue = perAmount.toDoubleOrNull() ?: 100.0
     val caloriesPerNValue = caloriesPerN.toDoubleOrNull() ?: 0.0
     val carbsPerNValue = carbsPerN.toDoubleOrNull() ?: 0.0
     val proteinPerNValue = proteinPerN.toDoubleOrNull() ?: 0.0
     val fatPerNValue = fatPerN.toDoubleOrNull() ?: 0.0
 
-    // 如果使用千焦，转换为千卡（1 kcal = 4.184 kJ）
     val caloriesPerNInKcal = if (useKilojoules) caloriesPerNValue / 4.184 else caloriesPerNValue
 
-    // 计算每百克营养值
     val caloriesValue = if (perAmountValue > 0) caloriesPerNInKcal * 100.0 / perAmountValue else 0.0
     val carbsValue = if (perAmountValue > 0) carbsPerNValue * 100.0 / perAmountValue else 0.0
     val proteinValue = if (perAmountValue > 0) proteinPerNValue * 100.0 / perAmountValue else 0.0
     val fatValue = if (perAmountValue > 0) fatPerNValue * 100.0 / perAmountValue else 0.0
     val gramsPerUnitValue = gramsPerUnit.toDoubleOrNull() ?: 0.0
 
-    // 验证输入
     val isValid = foodName.isNotBlank() &&
             caloriesPerNValue > 0 &&
             perAmountValue > 0 &&
@@ -111,12 +101,10 @@ fun AddCustomFoodScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 食物名称
             OutlinedTextField(
                 value = foodName,
                 onValueChange = {
                     foodName = it
-                    // 自动更新 emoji
                     if (selectedEmoji == "🍽️" || selectedEmoji.isEmpty()) {
                         selectedEmoji = FoodEmojiUtils.getDefaultEmojiForFood(it)
                     }
@@ -126,15 +114,11 @@ fun AddCustomFoodScreen(
                 singleLine = true
             )
 
-            // 图标选择
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "图标",
-                    style = MaterialTheme.typography.titleSmall
-                )
+                Text(text = "图标", style = MaterialTheme.typography.titleSmall)
                 Spacer(modifier = Modifier.width(16.dp))
                 Box(
                     modifier = Modifier
@@ -144,10 +128,7 @@ fun AddCustomFoodScreen(
                         .clickable { showEmojiPicker = true },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = selectedEmoji,
-                        fontSize = 24.sp
-                    )
+                    Text(text = selectedEmoji, fontSize = 24.sp)
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 TextButton(onClick = { showEmojiPicker = true }) {
@@ -157,13 +138,8 @@ fun AddCustomFoodScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            // 每n克营养数据
-            Text(
-                text = "营养数据 *",
-                style = MaterialTheme.typography.titleSmall
-            )
+            Text(text = "营养数据 *", style = MaterialTheme.typography.titleSmall)
 
-            // 每 n 克/毫升 输入行
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -219,20 +195,13 @@ fun AddCustomFoodScreen(
                 } else null
             )
 
-            // 热量单位切换
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "使用千焦 (kJ)",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Text(text = "使用千焦 (kJ)", style = MaterialTheme.typography.bodyMedium)
                 Spacer(modifier = Modifier.width(8.dp))
-                Switch(
-                    checked = useKilojoules,
-                    onCheckedChange = { useKilojoules = it }
-                )
+                Switch(checked = useKilojoules, onCheckedChange = { useKilojoules = it })
             }
 
             Row(
@@ -268,21 +237,11 @@ fun AddCustomFoodScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            // 单位设置（可选）
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = hasUnit,
-                    onCheckedChange = { hasUnit = it }
-                )
-                Text(
-                    text = "设置单位（可选）",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = hasUnit, onCheckedChange = { hasUnit = it })
+                Text(text = "设置单位（可选）", style = MaterialTheme.typography.bodyMedium)
             }
 
-            // 单位相关输入
             if (hasUnit) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -325,53 +284,10 @@ fun AddCustomFoodScreen(
                         }
                     }
                 }
-
-                // 每单位营养预览
-                if (gramsPerUnitValue > 0 && caloriesValue > 0) {
-                    // 计算每单位的营养值
-                    val unitCalories = caloriesValue * gramsPerUnitValue / 100
-                    val unitCarbs = carbsValue * gramsPerUnitValue / 100
-                    val unitProtein = proteinValue * gramsPerUnitValue / 100
-                    val unitFat = fatValue * gramsPerUnitValue / 100
-
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = "每${unit.ifBlank { "单位" }}营养值预览",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("热量: ${String.format("%.1f", unitCalories)} kcal")
-                                Text("碳水: ${String.format("%.1f", unitCarbs)} g")
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("蛋白质: ${String.format("%.1f", unitProtein)} g")
-                                Text("脂肪: ${String.format("%.1f", unitFat)} g")
-                            }
-                        }
-                    }
-                }
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // 保存按钮
             Button(
                 onClick = {
                     viewModel.saveCustomFood(
@@ -394,8 +310,6 @@ fun AddCustomFoodScreen(
                         color = MaterialTheme.colorScheme.onPrimary,
                         strokeWidth = 2.dp
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("保存中...")
                 } else {
                     Text("保存到食物库")
                 }
@@ -403,7 +317,6 @@ fun AddCustomFoodScreen(
         }
     }
 
-    // Emoji 选择对话框
     if (showEmojiPicker) {
         EmojiPickerDialog(
             selectedEmoji = selectedEmoji,
@@ -416,7 +329,7 @@ fun AddCustomFoodScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun EmojiPickerDialog(
     selectedEmoji: String,
@@ -430,7 +343,7 @@ private fun EmojiPickerDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(400.dp)
+                    .height(450.dp)
                     .verticalScroll(rememberScrollState())
             ) {
                 FoodEmojiUtils.foodEmojisByCategory.forEach { (category, emojis) ->
@@ -440,11 +353,10 @@ private fun EmojiPickerDialog(
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
-                    // 使用 FlowRow 代替 LazyVerticalGrid，使整个页面可以滚动
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         emojis.forEach { (emoji, _) ->
                             Box(

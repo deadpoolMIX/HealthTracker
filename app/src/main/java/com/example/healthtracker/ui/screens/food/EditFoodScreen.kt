@@ -9,7 +9,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,9 +26,8 @@ import kotlinx.coroutines.launch
 
 /**
  * 编辑食物页面
- * 布局与添加自定义食物页面一致
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun EditFoodScreen(
     foodId: Long,
@@ -41,19 +40,15 @@ fun EditFoodScreen(
     var foodName by remember { mutableStateOf("") }
     var selectedEmoji by remember { mutableStateOf("🍽️") }
     var showEmojiPicker by remember { mutableStateOf(false) }
-    var showSaveResult by remember { mutableStateOf(false) }
 
-    // 单位相关
     var hasUnit by remember { mutableStateOf(false) }
     var unit by remember { mutableStateOf("") }
     var gramsPerUnit by remember { mutableStateOf("") }
 
-    // 每n克营养数据
     var perAmount by remember { mutableStateOf("100") }
     var perUnit by remember { mutableStateOf("克") }
     var expandedPerUnit by remember { mutableStateOf(false) }
 
-    // 每n克营养数据
     var caloriesPerN by remember { mutableStateOf("") }
     var carbsPerN by remember { mutableStateOf("") }
     var proteinPerN by remember { mutableStateOf("") }
@@ -62,48 +57,40 @@ fun EditFoodScreen(
     val commonUnits = listOf("个", "杯", "瓶", "份", "块", "片", "勺", "包", "碗", "袋")
     var expandedUnit by remember { mutableStateOf(false) }
 
-    // 加载食物数据
     LaunchedEffect(foodId) {
         viewModel.loadFood(foodId)
     }
 
-    // 当食物数据加载完成后，更新表单
     LaunchedEffect(uiState.food) {
         uiState.food?.let { food ->
             foodName = food.name
-            // 直接使用食物库中的图标，如果为空则根据名称推断
             selectedEmoji = if (food.icon.isNotEmpty() && food.icon != "custom") {
                 food.icon
             } else {
                 FoodEmojiUtils.getDefaultEmojiForFood(food.name)
             }
-            // 默认显示每百克的数据
             caloriesPerN = food.calories.toString()
             carbsPerN = food.carbohydrates.toString()
             proteinPerN = food.protein.toString()
             fatPerN = food.fat.toString()
-            // 单位数据
             hasUnit = !food.unit.isNullOrEmpty() && food.gramsPerUnit != null && food.gramsPerUnit > 0
             unit = food.unit ?: ""
             gramsPerUnit = food.gramsPerUnit?.toString() ?: ""
         }
     }
 
-    // 计算每百克的营养值（用于内部存储）
     val perAmountValue = perAmount.toDoubleOrNull() ?: 100.0
     val caloriesPerNValue = caloriesPerN.toDoubleOrNull() ?: 0.0
     val carbsPerNValue = carbsPerN.toDoubleOrNull() ?: 0.0
     val proteinPerNValue = proteinPerN.toDoubleOrNull() ?: 0.0
     val fatPerNValue = fatPerN.toDoubleOrNull() ?: 0.0
 
-    // 计算每百克营养值
     val caloriesValue = if (perAmountValue > 0) caloriesPerNValue * 100.0 / perAmountValue else 0.0
     val carbsValue = if (perAmountValue > 0) carbsPerNValue * 100.0 / perAmountValue else 0.0
     val proteinValue = if (perAmountValue > 0) proteinPerNValue * 100.0 / perAmountValue else 0.0
     val fatValue = if (perAmountValue > 0) fatPerNValue * 100.0 / perAmountValue else 0.0
     val gramsPerUnitValue = gramsPerUnit.toDoubleOrNull() ?: 0.0
 
-    // 验证输入
     val isValid = foodName.isNotBlank() &&
             caloriesPerNValue > 0 &&
             perAmountValue > 0 &&
@@ -122,21 +109,11 @@ fun EditFoodScreen(
         }
     ) { paddingValues ->
         if (uiState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else if (uiState.food == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                 Text("食物不存在")
             }
         } else {
@@ -148,12 +125,10 @@ fun EditFoodScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 食物名称
                 OutlinedTextField(
                     value = foodName,
                     onValueChange = {
                         foodName = it
-                        // 如果当前图标是默认图标或为空，则自动更新为新名称对应的默认图标
                         if (selectedEmoji == "🍽️" || selectedEmoji.isEmpty()) {
                             selectedEmoji = FoodEmojiUtils.getDefaultEmojiForFood(it)
                         }
@@ -163,15 +138,11 @@ fun EditFoodScreen(
                     singleLine = true
                 )
 
-                // 图标选择
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "图标",
-                        style = MaterialTheme.typography.titleSmall
-                    )
+                    Text(text = "图标", style = MaterialTheme.typography.titleSmall)
                     Spacer(modifier = Modifier.width(16.dp))
                     Box(
                         modifier = Modifier
@@ -181,10 +152,7 @@ fun EditFoodScreen(
                             .clickable { showEmojiPicker = true },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = selectedEmoji,
-                            fontSize = 24.sp
-                        )
+                        Text(text = selectedEmoji, fontSize = 24.sp)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(onClick = { showEmojiPicker = true }) {
@@ -194,13 +162,8 @@ fun EditFoodScreen(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                // 每n克营养数据
-                Text(
-                    text = "营养数据 *",
-                    style = MaterialTheme.typography.titleSmall
-                )
+                Text(text = "营养数据 *", style = MaterialTheme.typography.titleSmall)
 
-                // 每 n 克/毫升 输入行
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -286,21 +249,11 @@ fun EditFoodScreen(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                // 单位设置（可选）
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = hasUnit,
-                        onCheckedChange = { hasUnit = it }
-                    )
-                    Text(
-                        text = "设置单位（可选）",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = hasUnit, onCheckedChange = { hasUnit = it })
+                    Text(text = "设置单位（可选）", style = MaterialTheme.typography.bodyMedium)
                 }
 
-                // 单位相关输入
                 if (hasUnit) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -343,52 +296,10 @@ fun EditFoodScreen(
                             }
                         }
                     }
-
-                    // 每单位营养预览
-                    if (gramsPerUnitValue > 0 && caloriesValue > 0) {
-                        val unitCalories = caloriesValue * gramsPerUnitValue / 100
-                        val unitCarbs = carbsValue * gramsPerUnitValue / 100
-                        val unitProtein = proteinValue * gramsPerUnitValue / 100
-                        val unitFat = fatValue * gramsPerUnitValue / 100
-
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp)
-                            ) {
-                                Text(
-                                    text = "每${unit.ifBlank { "单位" }}营养值预览",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text("热量: ${String.format("%.1f", unitCalories)} kcal")
-                                    Text("碳水: ${String.format("%.1f", unitCarbs)} g")
-                                }
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text("蛋白质: ${String.format("%.1f", unitProtein)} g")
-                                    Text("脂肪: ${String.format("%.1f", unitFat)} g")
-                                }
-                            }
-                        }
-                    }
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                // 保存按钮
                 val context = androidx.compose.ui.platform.LocalContext.current
                 Button(
                     onClick = {
@@ -415,7 +326,6 @@ fun EditFoodScreen(
                     Text("保存修改")
                 }
 
-                // 删除按钮（仅自定义食物可删除）
                 if (uiState.food?.isCustom == true) {
                     OutlinedButton(
                         onClick = {
@@ -425,9 +335,7 @@ fun EditFoodScreen(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
                     ) {
                         Icon(Icons.Default.Delete, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
@@ -438,7 +346,6 @@ fun EditFoodScreen(
         }
     }
 
-    // Emoji 选择对话框
     if (showEmojiPicker) {
         EmojiPickerDialog(
             selectedEmoji = selectedEmoji,
@@ -451,7 +358,7 @@ fun EditFoodScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun EmojiPickerDialog(
     selectedEmoji: String,
@@ -465,7 +372,7 @@ private fun EmojiPickerDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(400.dp)
+                    .height(450.dp)
                     .verticalScroll(rememberScrollState())
             ) {
                 FoodEmojiUtils.foodEmojisByCategory.forEach { (category, emojis) ->
@@ -475,11 +382,10 @@ private fun EmojiPickerDialog(
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
-                    // 使用普通 Row 代替 LazyVerticalGrid，使整个页面可以滚动
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         emojis.forEach { (emoji, _) ->
                             Box(

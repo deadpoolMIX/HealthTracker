@@ -3,16 +3,12 @@ package com.example.healthtracker.ui.screens.intake
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,21 +24,18 @@ import com.example.healthtracker.util.FoodEmojiUtils
 
 /**
  * 详细录入页面
- * 从搜索页点击食物后进入，或从食物库添加自定义食物进入
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun CustomFoodInputScreen(
     viewModel: AddIntakeViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
-    // 预填充的食物数据（从食物库选择时传入）
     initialFoodName: String = "",
     initialCalories: Double = 0.0,
     initialCarbs: Double = 0.0,
     initialProtein: Double = 0.0,
     initialFat: Double = 0.0,
     initialMealType: Int = 0,
-    // 是否是从食物库添加自定义食物入口进入
     isFromFoodLibrary: Boolean = false
 ) {
     val isSaving by viewModel.isSaving.collectAsState()
@@ -66,10 +59,8 @@ fun CustomFoodInputScreen(
     val commonUnits = listOf("克", "毫升", "个", "杯", "瓶", "份", "块", "片", "勺", "包")
     var expandedUnit by remember { mutableStateOf(false) }
 
-    // 是否有预填充数据（从食物库选择的）
     val hasPrefilledData = initialFoodName.isNotEmpty()
 
-    // 计算实际营养值
     val amountValue = amount.toDoubleOrNull() ?: 0.0
     val caloriesPer100gValue = caloriesPer100g.toDoubleOrNull() ?: 0.0
     val carbsPer100gValue = carbsPer100g.toDoubleOrNull() ?: 0.0
@@ -108,14 +99,8 @@ fun CustomFoodInputScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 餐次选择
-            Text(
-                text = "餐次",
-                style = MaterialTheme.typography.titleSmall
-            )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Text(text = "餐次", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 mealTypes.forEachIndexed { index, type ->
                     FilterChip(
                         selected = selectedMealType == index,
@@ -127,12 +112,10 @@ fun CustomFoodInputScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            // 食物名称
             OutlinedTextField(
                 value = foodName,
                 onValueChange = {
                     foodName = it
-                    // 自动更新 emoji
                     if (selectedEmoji == "🍽️" || selectedEmoji.isEmpty()) {
                         selectedEmoji = FoodEmojiUtils.getDefaultEmojiForFood(it)
                     }
@@ -143,16 +126,12 @@ fun CustomFoodInputScreen(
                 enabled = !hasPrefilledData
             )
 
-            // Emoji 选择（仅在保存到食物库时显示）
             if (saveAsCustomFood || isFromFoodLibrary) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "图标",
-                        style = MaterialTheme.typography.titleSmall
-                    )
+                    Text(text = "图标", style = MaterialTheme.typography.titleSmall)
                     Spacer(modifier = Modifier.width(16.dp))
                     Box(
                         modifier = Modifier
@@ -162,10 +141,7 @@ fun CustomFoodInputScreen(
                             .clickable { showEmojiPicker = true },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = selectedEmoji,
-                            fontSize = 24.sp
-                        )
+                        Text(text = selectedEmoji, fontSize = 24.sp)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(onClick = { showEmojiPicker = true }) {
@@ -174,7 +150,6 @@ fun CustomFoodInputScreen(
                 }
             }
 
-            // 重量和单位
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -198,8 +173,7 @@ fun CustomFoodInputScreen(
                         onValueChange = { unit = it },
                         label = { Text("单位") },
                         modifier = Modifier.menuAnchor(),
-                        singleLine = true,
-                        readOnly = false
+                        singleLine = true
                     )
                     ExposedDropdownMenu(
                         expanded = expandedUnit,
@@ -218,7 +192,6 @@ fun CustomFoodInputScreen(
                 }
             }
 
-            // 单位换算（可选）
             if (unit.isNotEmpty() && unit !in listOf("克", "毫升")) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -245,11 +218,7 @@ fun CustomFoodInputScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            // 每百克营养数据
-            Text(
-                text = "每百克营养数据",
-                style = MaterialTheme.typography.titleSmall
-            )
+            Text(text = "每百克营养数据", style = MaterialTheme.typography.titleSmall)
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -295,7 +264,6 @@ fun CustomFoodInputScreen(
                 )
             }
 
-            // 计算结果预览
             if (amountValue > 0 && caloriesPer100gValue > 0) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -303,27 +271,15 @@ fun CustomFoodInputScreen(
                         containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                     )
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "计算结果",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(text = "计算结果", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("热量: ${String.format("%.1f", actualCalories)} kcal")
                             Text("碳水: ${String.format("%.1f", actualCarbs)} g")
                         }
                         Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("蛋白质: ${String.format("%.1f", actualProtein)} g")
                             Text("脂肪: ${String.format("%.1f", actualFat)} g")
                         }
@@ -333,7 +289,6 @@ fun CustomFoodInputScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            // 备注
             OutlinedTextField(
                 value = note,
                 onValueChange = { note = it },
@@ -343,23 +298,13 @@ fun CustomFoodInputScreen(
                 maxLines = 4
             )
 
-            // 保存为自定义食物选项
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = saveAsCustomFood,
-                    onCheckedChange = { saveAsCustomFood = it }
-                )
-                Text(
-                    text = "同时保存到食物库",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = saveAsCustomFood, onCheckedChange = { saveAsCustomFood = it })
+                Text(text = "同时保存到食物库", style = MaterialTheme.typography.bodyMedium)
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // 保存按钮
             Button(
                 onClick = {
                     if (foodName.isNotBlank() && amountValue > 0 && caloriesPer100gValue > 0) {
@@ -390,8 +335,6 @@ fun CustomFoodInputScreen(
                         color = MaterialTheme.colorScheme.onPrimary,
                         strokeWidth = 2.dp
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("保存中...")
                 } else {
                     Text("保存记录")
                 }
@@ -399,7 +342,6 @@ fun CustomFoodInputScreen(
         }
     }
 
-    // Emoji 选择对话框
     if (showEmojiPicker) {
         EmojiPickerDialog(
             selectedEmoji = selectedEmoji,
@@ -412,7 +354,7 @@ fun CustomFoodInputScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun EmojiPickerDialog(
     selectedEmoji: String,
@@ -426,7 +368,8 @@ private fun EmojiPickerDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(400.dp)
+                    .height(450.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 FoodEmojiUtils.foodEmojisByCategory.forEach { (category, emojis) ->
                     Text(
@@ -435,13 +378,12 @@ private fun EmojiPickerDialog(
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(6),
-                        modifier = Modifier.height(80.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(emojis) { (emoji, description) ->
+                        emojis.forEach { (emoji, _) ->
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
