@@ -517,24 +517,48 @@ fun FabOption(icon: ImageVector, label: String, onClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditIntakeDialog(record: IntakeRecordEntity, onDismiss: () -> Unit, onConfirm: (IntakeRecordEntity) -> Unit) {
+fun EditIntakeDialog(
+    record: IntakeRecordEntity, 
+    onDismiss: () -> Unit, 
+    onConfirm: (IntakeRecordEntity) -> Unit,
+    viewModel: HomeViewModel = hiltViewModel()
+) {
     var selectedMealType by remember { mutableIntStateOf(record.mealType) }
+    var foodData by remember { mutableStateOf<com.example.healthtracker.data.local.entity.FoodEntity?>(null) }
+    
+    // 加载食物库中的原始数据以获取正确的单位换算
+    LaunchedEffect(record.foodId) {
+        if (record.foodId != null) {
+            foodData = viewModel.getFoodById(record.foodId)
+        }
+    }
+
+    // 初始化单位和单位克数
+    var selectedUnit by remember { mutableStateOf(record.unit?.replace(Regex("^[0-9.]*"), "") ?: "克") }
+    var gramsPerUnit by remember { mutableStateOf(record.gramsPerUnit ?: 1.0) }
     
     // 初始化数值：如果是特殊单位且有记录单价，则显示份数
-    val initialAmountText = if (record.gramsPerUnit != null && record.gramsPerUnit!! > 0 && record.unit != "克" && record.unit != "毫升") {
-        (record.amount / record.gramsPerUnit!!).let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }
-    } else {
-        record.amount.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }
+    val initialAmountText = remember(record) {
+        if (record.gramsPerUnit != null && record.gramsPerUnit!! > 0 && record.unit != "克" && record.unit != "毫升") {
+            val amountInUnit = record.amount / record.gramsPerUnit!!
+            if (amountInUnit % 1.0 == 0.0) amountInUnit.toInt().toString() else String.format("%.1f", amountInUnit)
+        } else {
+            if (record.amount % 1.0 == 0.0) record.amount.toInt().toString() else record.amount.toString()
+        }
     }
     
     var amountText by remember { mutableStateOf(initialAmountText) }
-    var selectedUnit by remember { mutableStateOf(record.unit?.replace(Regex("^[0-9.]*"), "") ?: "克") }
     var expandedUnit by remember { mutableStateOf(false) }
     val mealTypes = listOf("早餐", "午餐", "晚餐", "加餐")
     val units = listOf("克", "毫升", "个", "杯", "勺", "份", "块", "片", "包", "碗")
     
+    // 默认单位克数映射
+    val defaultUnitGrams = mapOf(
+        "克" to 1.0, "毫升" to 1.0, "杯" to 200.0, "勺" to 15.0, 
+        "块" to 50.0, "片" to 20.0, "包" to 100.0, "碗" to 200.0
+    )
+
     val inputAmount = amountText.toDoubleOrNull() ?: 0.0
-    val gramsPerUnit = record.gramsPerUnit ?: 1.0
     val currentGrams = if (selectedUnit == "克" || selectedUnit == "毫升") inputAmount else inputAmount * gramsPerUnit
     
     // 使用存储的每百克数据计算
@@ -551,7 +575,12 @@ fun EditIntakeDialog(record: IntakeRecordEntity, onDismiss: () -> Unit, onConfir
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     mealTypes.forEachIndexed { index, type ->
-                        FilterChip(selected = selectedMealType == index, onClick = { selectedMealType = index }, label = { Text(type) }, modifier = Modifier.weight(1f))
+                        FilterChip(
+                            selected = selectedMealType == index, 
+                            onClick = { selectedMealType = index }, 
+                            label = { Text(type, maxLines = 1) }, 
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -563,9 +592,37 @@ fun EditIntakeDialog(record: IntakeRecordEntity, onDismiss: () -> Unit, onConfir
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
                     ExposedDropdownMenuBox(expanded = expandedUnit, onExpandedChange = { expandedUnit = it }, modifier = Modifier.weight(1f)) {
-                        OutlinedTextField(value = selectedUnit, onValueChange = {}, label = { Text("单位") }, modifier = Modifier.menuAnchor(), readOnly = true, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedUnit) })
+                        OutlinedTextField(
+                            value = selectedUnit, 
+                            onValueChange = {}, 
+                            label = { Text("单位") }, 
+                            modifier = Modifier.menuAnchor(), 
+                            readOnly = true, 
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedUnit) }
+                        )
                         ExposedDropdownMenu(expanded = expandedUnit, onDismissRequest = { expandedUnit = false }) {
-                            units.forEach { unit -> DropdownMenuItem(text = { Text(unit) }, onClick = { selectedUnit = unit; expandedUnit = false }) }
+                            units.forEach { unitName -> 
+                                DropdownMenuItem(
+                                    text = { Text(unitName) }, 
+                                    onClick = { 
+                                        val oldGrams = currentGrams
+                                        val newGramsPerUnit = if (unitName == "克" || unitName == "毫升") 1.0 
+                                            else (foodData?.gramsPerUnit ?: defaultUnitGrams[unitName] ?: 100.0)
+                                        
+                                        selectedUnit = unitName
+                                        gramsPerUnit = newGramsPerUnit
+                                        
+                                        // 自动换算数值以保持总重量不变（改善体验）
+                                        if (newGramsPerUnit > 0) {
+                                            val newAmount = oldGrams / newGramsPerUnit
+                                            amountText = if (newAmount % 1.0 == 0.0) newAmount.toInt().toString() 
+                                                        else String.format("%.1f", newAmount)
+                                        }
+                                        
+                                        expandedUnit = false 
+                                    }
+                                ) 
+                            }
                         }
                     }
                 }
@@ -590,6 +647,7 @@ fun EditIntakeDialog(record: IntakeRecordEntity, onDismiss: () -> Unit, onConfir
                         amount = currentGrams, 
                         amountInUnit = inputAmount,
                         unit = selectedUnit,
+                        gramsPerUnit = gramsPerUnit,
                         calories = calories, 
                         carbohydrates = carbs, 
                         protein = protein, 

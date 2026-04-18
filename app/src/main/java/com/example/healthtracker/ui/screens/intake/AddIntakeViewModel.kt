@@ -216,8 +216,9 @@ class AddIntakeViewModel @Inject constructor(
                 proteinPer100g = proteinPer100g,
                 fatPer100g = fatPer100g,
                 unit = unit ?: "克",
-                amountInUnit = amountInUnit ?: amount,
-                gramsPerUnit = gramsPerUnit ?: 1.0,
+                // 修复逻辑：如果提供了单位但没提供份数，且有总克数，则默认为 1 份，每份重量等于总克数
+                amountInUnit = amountInUnit ?: (if (unit != null && unit != "克" && unit != "毫升") 1.0 else amount),
+                gramsPerUnit = gramsPerUnit ?: (if (unit != null && unit != "克" && unit != "毫升") amount else 1.0),
                 note = note,
                 createdAt = currentTime
             )

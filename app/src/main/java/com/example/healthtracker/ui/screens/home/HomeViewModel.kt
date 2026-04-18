@@ -54,11 +54,14 @@ class HomeViewModel @Inject constructor(
     private val bodyRecordRepository: BodyRecordRepository,
     private val sleepRecordRepository: SleepRecordRepository,
     private val userSettingsRepository: UserSettingsRepository,
-    private val cycleFoodRepository: CycleFoodRepository
+    private val cycleFoodRepository: CycleFoodRepository,
+    private val foodRepository: com.example.healthtracker.data.repository.FoodRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    suspend fun getFoodById(id: Long) = foodRepository.getFoodById(id)
 
     private val userSettings: StateFlow<UserSettingsEntity?> = userSettingsRepository
         .getSettingsFlow()
