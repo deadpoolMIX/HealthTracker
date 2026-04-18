@@ -220,6 +220,7 @@ fun AddCycleFoodScreen(
                     viewModel.saveCycleFood(
                         name = name,
                         icon = selectedEmoji,
+                        totalWeight = weightValue,
                         totalCalories = totalCalories,
                         totalCarbs = totalCarbs,
                         totalProtein = totalProtein,

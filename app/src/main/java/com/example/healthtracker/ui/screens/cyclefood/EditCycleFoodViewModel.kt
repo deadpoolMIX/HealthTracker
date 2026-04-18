@@ -35,6 +35,7 @@ class EditCycleFoodViewModel @Inject constructor(
         id: Long,
         name: String,
         icon: String,
+        totalWeight: Double,
         totalCalories: Double,
         totalCarbs: Double,
         totalProtein: Double,
@@ -55,6 +56,7 @@ class EditCycleFoodViewModel @Inject constructor(
                 val updatedCycleFood = existing.copy(
                     name = name,
                     icon = icon,
+                    totalWeight = totalWeight,
                     totalCalories = totalCalories,
                     totalCarbs = totalCarbs,
                     totalProtein = totalProtein,

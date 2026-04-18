@@ -19,7 +19,7 @@ import com.example.healthtracker.data.local.entity.*
         TestRecordEntity::class,
         CycleFoodEntity::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = false
 )
 abstract class HealthTrackerDatabase : RoomDatabase() {
@@ -34,6 +34,13 @@ abstract class HealthTrackerDatabase : RoomDatabase() {
     abstract fun cycleFoodDao(): CycleFoodDao
 
     companion object {
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 为 cycle_foods 表增加 totalWeight 字段
+                db.execSQL("ALTER TABLE cycle_foods ADD COLUMN totalWeight REAL NOT NULL DEFAULT 0")
+            }
+        }
+
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // 添加新字段

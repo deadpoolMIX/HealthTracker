@@ -28,6 +28,7 @@ class AddCycleFoodViewModel @Inject constructor(
     fun saveCycleFood(
         name: String,
         icon: String,
+        totalWeight: Double,
         totalCalories: Double,
         totalCarbs: Double,
         totalProtein: Double,
@@ -40,6 +41,7 @@ class AddCycleFoodViewModel @Inject constructor(
             val cycleFood = CycleFoodEntity(
                 name = name,
                 icon = icon,
+                totalWeight = totalWeight,
                 totalCalories = totalCalories,
                 totalCarbs = totalCarbs,
                 totalProtein = totalProtein,

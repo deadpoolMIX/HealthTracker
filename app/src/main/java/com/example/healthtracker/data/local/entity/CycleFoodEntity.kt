@@ -13,6 +13,7 @@ data class CycleFoodEntity(
     val id: Long = 0,
     val name: String,                    // 食物名称
     val icon: String = "🍽️",             // 图标（emoji）
+    val totalWeight: Double = 0.0,       // 总重量 (g)
     // 总营养数据
     val totalCalories: Double,           // 总热量 (kcal)
     val totalCarbs: Double,              // 总碳水化合物 (g)
