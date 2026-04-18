@@ -11,8 +11,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.healthtracker.ui.components.IntakeRecordItem
@@ -34,6 +37,11 @@ fun SearchScreen(
     val endDate by viewModel.endDate.collectAsState()
 
     var showFilterDialog by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
 
     if (showFilterDialog) {
         SearchFilterDialog(
@@ -59,7 +67,9 @@ fun SearchScreen(
                         value = searchQuery,
                         onValueChange = { viewModel.onSearchQueryChange(it) },
                         placeholder = { Text("搜索食物名称") },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
@@ -160,7 +170,7 @@ fun SearchScreen(
                                         records.forEach { record ->
                                             IntakeRecordItem(
                                                 record = record,
-                                                showMacros = true,
+                                                showMacros = false,
                                                 showMealType = false,
                                                 onClick = { onNavigateToEditIntake(record.id) }
                                             )
