@@ -16,7 +16,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.healthtracker.ui.components.IntakeRecordItem
+import com.example.healthtracker.ui.components.getMealTypeName
 import com.example.healthtracker.util.DateTimeUtils
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,6 +95,8 @@ fun SearchScreen(
             )
         }
     ) { paddingValues ->
+        val mealCardColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -110,29 +114,64 @@ fun SearchScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     // 按日期分组显示
-                    val groupedResults = searchResults.groupBy { it.date }
-                    groupedResults.forEach { (date, records) ->
+                    val groupedByDate = searchResults.groupBy { it.date }
+                    groupedByDate.forEach { (date, dateRecords) ->
                         item {
                             Text(
                                 text = DateTimeUtils.formatDate(date),
-                                style = MaterialTheme.typography.titleSmall,
+                                style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
                         }
-                        items(records) { record ->
-                            IntakeRecordItem(
-                                record = record,
-                                showMacros = true,
-                                showMealType = true,
-                                onClick = { onNavigateToEditIntake(record.id) }
-                            )
+                        
+                        // 再按餐次分组
+                        val groupedByMeal = dateRecords.groupBy { it.mealType }
+                        groupedByMeal.keys.sorted().forEach { mealType ->
+                            val records = groupedByMeal[mealType] ?: emptyList()
+                            item {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(containerColor = mealCardColor)
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = getMealTypeName(mealType),
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            Spacer(modifier = Modifier.weight(1f))
+                                            Text(
+                                                text = "C:${records.sumOf { it.carbohydrates.roundToInt() }} P:${records.sumOf { it.protein.roundToInt() }} F:${records.sumOf { it.fat.roundToInt() }}",
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "${records.sumOf { it.calories.roundToInt() }} kcal",
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                        
+                                        records.forEach { record ->
+                                            IntakeRecordItem(
+                                                record = record,
+                                                showMacros = true,
+                                                showMealType = false,
+                                                onClick = { onNavigateToEditIntake(record.id) }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
+                    
+                    item { Spacer(modifier = Modifier.height(16.dp)) }
                 }
             }
         }
