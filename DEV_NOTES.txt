@@ -211,6 +211,15 @@ name,category,calories,carbohydrates,protein,fat,emoji
                                  修复记录
 ================================================================================
 
+【2026-04-18】项目构建与周期食物逻辑修复
+- 需求：修复由于代码重构导致的构建失败，解决图标显示异常及周期食物编辑逻辑。
+- 解决：
+  1. 修复了 `AddCycleFoodScreen` 中的拼写错误（colorScheme）。
+  2. 在 `CycleFoodEntity` 中增加了 `totalWeight` 字段，并完成 `MIGRATION_15_16` 数据库迁移，解决了编辑页面无法回显总重量的问题。
+  3. 修正了 ViewModel 与 UI 层之间的参数调用不匹配问题。
+  4. 验证了图标选择器的 `FlowRow` 换行布局及 emoji 映射准确性。
+- 结果：BUILD SUCCESSFUL，代码已同步。
+
 【2026-04-18】项目结项：V.2.0.0 大版本发布
 - 需求：完成所有报表页面重写，同步 GitHub，整理 Release 文案。
 - 解决：

@@ -65,7 +65,9 @@ fun SearchScreenPreview() {
             onSearchQueryChange = {},
             onNavigateBack = {},
             onNavigateToEditIntake = {},
-            onFilterApply = { _, _, _ -> },
+            onToggleMealType = {},
+            onSetDateRange = { _, _ -> },
+            onClearFilters = {},
             onClearSearch = {}
         )
     }
@@ -82,7 +84,9 @@ fun SearchScreenContent(
     onSearchQueryChange: (String) -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateToEditIntake: (Long) -> Unit,
-    onFilterApply: (Set<Int>, Long?, Long?) -> Unit,
+    onToggleMealType: (Int) -> Unit,
+    onSetDateRange: (Long?, Long?) -> Unit,
+    onClearFilters: () -> Unit,
     onClearSearch: () -> Unit
 ) {
     var showFilterDialog by remember { mutableStateOf(false) }
@@ -92,6 +96,18 @@ fun SearchScreenContent(
         if (searchQuery.isEmpty()) {
             focusRequester.requestFocus()
         }
+    }
+
+    if (showFilterDialog) {
+        SearchFilterDialog(
+            selectedMealTypes = selectedMealTypes,
+            startDate = startDate,
+            endDate = endDate,
+            onDismiss = { showFilterDialog = false },
+            onToggleMealType = onToggleMealType,
+            onSetDateRange = onSetDateRange,
+            onClearFilters = onClearFilters
+        )
     }
 
     Scaffold(
@@ -242,7 +258,9 @@ fun SearchScreen(
         onSearchQueryChange = { viewModel.onSearchQueryChange(it) },
         onNavigateBack = onNavigateBack,
         onNavigateToEditIntake = onNavigateToEditIntake,
-        onFilterApply = { _, start, end -> viewModel.setDateRange(start, end) },
+        onToggleMealType = { viewModel.toggleMealType(it) },
+        onSetDateRange = { start, end -> viewModel.setDateRange(start, end) },
+        onClearFilters = { viewModel.clearFilters() },
         onClearSearch = { viewModel.onSearchQueryChange("") }
     )
 }
@@ -254,8 +272,9 @@ fun SearchFilterDialog(
     startDate: Long?,
     endDate: Long?,
     onDismiss: () -> Unit,
-    onApply: (Set<Int>, Long?, Long?) -> Unit,
-    viewModel: SearchViewModel
+    onToggleMealType: (Int) -> Unit,
+    onSetDateRange: (Long?, Long?) -> Unit,
+    onClearFilters: () -> Unit
 ) {
     val mealTypes = listOf("早餐", "午餐", "晚餐", "加餐")
     
@@ -269,7 +288,7 @@ fun SearchFilterDialog(
             onDismissRequest = { showStartPicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.setDateRange(datePickerState.selectedDateMillis, endDate)
+                    onSetDateRange(datePickerState.selectedDateMillis, endDate)
                     showStartPicker = false
                 }) { Text("确定") }
             }
@@ -284,7 +303,7 @@ fun SearchFilterDialog(
             onDismissRequest = { showEndPicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.setDateRange(startDate, datePickerState.selectedDateMillis)
+                    onSetDateRange(startDate, datePickerState.selectedDateMillis)
                     showEndPicker = false
                 }) { Text("确定") }
             }
@@ -306,7 +325,7 @@ fun SearchFilterDialog(
                     mealTypes.forEachIndexed { index, name ->
                         FilterChip(
                             selected = selectedMealTypes.contains(index),
-                            onClick = { viewModel.toggleMealType(index) },
+                            onClick = { onToggleMealType(index) },
                             label = { Text(name) }
                         )
                     }
@@ -338,7 +357,7 @@ fun SearchFilterDialog(
                 }
                 
                 TextButton(
-                    onClick = { viewModel.clearFilters() },
+                    onClick = onClearFilters,
                     modifier = Modifier.align(Alignment.End)
                 ) {
                     Text("重置筛选")
